@@ -1,0 +1,3225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Liguify ERP — Gestión Financiera</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  *{font-family:'Inter',sans-serif}
+  .mono{font-family:'JetBrains Mono',monospace}
+  .screen{display:none}.screen.active{display:block}
+  .nav-item.active{background:#4F86C6!important;color:#fff!important}
+  .nav-sub.active{background:#EAF1F9;color:#18324F;font-weight:600}
+  @keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+  .fade-in{animation:fi .15s ease-out}
+  @keyframes si{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
+  .toast-msg{animation:si .25s ease-out}
+  ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:#C7CFDA;border-radius:4px}
+  .role-btn.sel{border-color:#4F86C6!important;background:#EBF4FF}
+  .medio-btn.sel{border-color:#18324F!important;border-width:2px!important;background:rgba(24,50,79,.06);color:#18324F!important;font-weight:700}
+  input[type=number]::-webkit-inner-spin-button{opacity:.4}
+</style>
+</head>
+<body class="bg-slate-100 text-slate-800">
+
+<!-- Toast container -->
+<div id="tc" class="fixed top-4 right-4 z-[300] space-y-2 pointer-events-none w-72"></div>
+
+<!-- ===================== LOGIN ===================== -->
+<div id="loginScreen" class="min-h-screen bg-[#18324F] flex items-center justify-center p-4">
+  <div class="w-full max-w-sm">
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#4F86C6] mb-4 shadow-xl">
+        <span class="text-white font-extrabold text-2xl">L</span>
+      </div>
+      <h1 class="text-white text-2xl font-bold mb-1">Liguify ERP</h1>
+      <p class="text-blue-200 text-sm">Gestión Financiera de Torneos</p>
+    </div>
+
+    <div class="bg-white rounded-2xl p-7 shadow-2xl">
+      <h2 class="font-bold text-slate-800 mb-5">Iniciar sesión</h2>
+
+      <!-- Google -->
+      <button onclick="doLoginGoogle()" class="w-full flex items-center justify-center gap-3 border-2 border-slate-200 rounded-xl py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition mb-4">
+        <svg class="w-5 h-5" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+        Continuar con Google
+      </button>
+
+      <div class="flex items-center gap-3 mb-4">
+        <div class="flex-1 h-px bg-slate-200"></div>
+        <span class="text-xs text-slate-400 font-medium">o</span>
+        <div class="flex-1 h-px bg-slate-200"></div>
+      </div>
+
+      <!-- Email / Password -->
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Correo electrónico</label>
+      <input type="email" id="loginEmail" placeholder="tu@correo.com"
+        class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none">
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Contraseña</label>
+      <input type="password" id="loginPass" placeholder="••••••••"
+        class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-5 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none">
+
+      <button onclick="doLoginEmail()" class="w-full bg-[#18324F] text-white font-semibold py-3 rounded-xl text-sm hover:bg-[#0f253d] transition mb-4">
+        Entrar al sistema
+      </button>
+
+      <!-- Separador mockup -->
+      <details class="mt-2">
+        <summary class="text-[11px] text-slate-400 cursor-pointer select-none text-center hover:text-slate-600">⚙ Modo simulador (mockup)</summary>
+        <p class="text-[11px] text-slate-400 mt-2 mb-2 text-center">Selecciona un perfil para simular el acceso</p>
+        <div class="grid grid-cols-3 gap-2">
+          <button type="button" onclick="selectRole('organizador',this)" class="role-btn border-2 border-slate-200 rounded-xl p-2.5 text-center hover:border-blue-300 transition">
+            <div class="text-lg mb-0.5">👑</div>
+            <div class="text-[10px] font-semibold text-slate-700">Organizador</div>
+          </button>
+          <button type="button" onclick="selectRole('operador',this)" class="role-btn border-2 border-slate-200 rounded-xl p-2.5 text-center hover:border-blue-300 transition">
+            <div class="text-lg mb-0.5">📋</div>
+            <div class="text-[10px] font-semibold text-slate-700">Operador</div>
+          </button>
+          <button type="button" onclick="selectRole('tesorero',this)" class="role-btn border-2 border-slate-200 rounded-xl p-2.5 text-center hover:border-blue-300 transition">
+            <div class="text-lg mb-0.5">💰</div>
+            <div class="text-[10px] font-semibold text-slate-700">Tesorero</div>
+          </button>
+        </div>
+        <button id="loginBtn" onclick="doLogin()" disabled class="w-full mt-3 bg-slate-700 text-white font-semibold py-2.5 rounded-xl text-sm hover:bg-slate-800 transition disabled:opacity-40 disabled:cursor-not-allowed">
+          Entrar como simulador
+        </button>
+      </details>
+    </div>
+    <p class="text-center text-blue-300/50 text-xs mt-5">Mockup interactivo · datos de ejemplo</p>
+  </div>
+</div>
+
+<!-- ===================== APP SHELL ===================== -->
+<div id="appShell" class="flex min-h-screen hidden">
+
+  <!-- Sidebar -->
+  <div class="w-64 bg-[#18324F] text-white flex flex-col sticky top-0 h-screen shrink-0 z-30">
+    <div class="flex items-center gap-3 px-5 py-4 border-b border-white/10">
+      <div class="w-8 h-8 rounded-lg bg-[#4F86C6] flex items-center justify-center font-extrabold text-sm shrink-0">L</div>
+      <div class="font-bold text-sm">Liguify ERP</div>
+    </div>
+    <div class="flex items-center justify-between px-4 py-3 border-b border-white/10">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div id="sbAvatar" class="w-7 h-7 rounded-full bg-[#4F86C6] text-white text-[11px] font-bold flex items-center justify-center shrink-0">—</div>
+        <div class="min-w-0">
+          <div class="text-xs font-semibold truncate" id="sbName">—</div>
+          <div class="text-[10px] text-blue-300" id="sbRole">—</div>
+        </div>
+      </div>
+      <button onclick="toggleNotif()" class="relative p-1.5 rounded-lg hover:bg-white/10 transition" title="Notificaciones">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+        <span id="nbadge" class="hidden absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 bg-rose-500 rounded-full text-[9px] font-bold text-white flex items-center justify-center">0</span>
+      </button>
+    </div>
+    <nav id="sideNav" class="flex-1 overflow-y-auto py-3 px-3"></nav>
+    <div class="px-3 py-3 border-t border-white/10">
+      <button onclick="doLogout()" class="w-full flex items-center gap-2 text-blue-200 hover:text-white text-xs py-2 px-3 rounded-lg hover:bg-white/10 transition">
+        <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+        Cerrar sesión
+      </button>
+    </div>
+  </div>
+
+  <!-- Notif panel -->
+  <div id="notifOverlay" class="hidden fixed inset-0 z-40" onclick="closeNotifOutside(event)">
+    <div class="absolute left-64 top-0 bottom-0 w-80 bg-white shadow-2xl flex flex-col border-r border-slate-200">
+      <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200 shrink-0">
+        <h3 class="font-bold text-sm text-slate-800">Notificaciones</h3>
+        <button onclick="clearNotifs()" class="text-xs text-blue-600 hover:underline">Limpiar todo</button>
+      </div>
+      <div id="notifList" class="flex-1 overflow-y-auto divide-y divide-slate-100 text-sm"></div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="flex-1 min-w-0 overflow-auto">
+    <div class="max-w-[1400px] mx-auto p-6">
+
+      <!-- P1: Torneos (dashboard) -->
+      <div id="p1" class="screen">
+        <div class="flex items-start justify-between mb-5 gap-4">
+          <div>
+            <h1 class="text-xl font-bold mb-1">Torneos</h1>
+            <span id="p1badge"></span>
+          </div>
+          <div id="p1Actions" class="flex items-center gap-2 shrink-0"></div>
+        </div>
+        <div id="torneosList"></div>
+      </div>
+
+      <!-- P1 Detalle: vista de un torneo seleccionado -->
+      <div id="p1_detalle" class="screen">
+        <div id="p1DetalleContent"></div>
+      </div>
+
+      <!-- P: Configuración — Complejos Deportivos -->
+      <div id="p_cfg_complejos" class="screen">
+        <div class="flex items-start justify-between mb-5 gap-4">
+          <div>
+            <h1 class="text-xl font-bold mb-1">Complejos Deportivos</h1>
+            <p class="text-sm text-slate-400">Sedes disponibles para asignar a torneos.</p>
+          </div>
+          <button onclick="openModal('cfgComplejoModal')" class="flex items-center gap-2 bg-[#18324F] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#0f253d] transition shadow-sm shrink-0">+ Nuevo Complejo</button>
+        </div>
+        <div id="cfgComplejosList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      </div>
+
+      <!-- P: Configuración — Categorías -->
+      <div id="p_cfg_categorias" class="screen">
+        <div class="flex items-start justify-between mb-5 gap-4">
+          <div>
+            <h1 class="text-xl font-bold mb-1">Categorías</h1>
+            <p class="text-sm text-slate-400">Catálogo de categorías disponibles para tus torneos (por año de nacimiento, sub-edad, u otro criterio).</p>
+          </div>
+          <button onclick="openModal('cfgCategoriaModal')" class="flex items-center gap-2 bg-[#18324F] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#0f253d] transition shadow-sm shrink-0">+ Nueva Categoría</button>
+        </div>
+        <div id="cfgCategoriasList" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"></div>
+      </div>
+
+      <!-- P: Nuevo Torneo -->
+      <div id="p_nuevo_torneo" class="screen">
+        <div class="flex items-center gap-3 mb-5">
+          <button onclick="showScreen('p1')" class="text-slate-400 hover:text-slate-700 transition text-sm font-medium">← Torneos</button>
+          <span class="text-slate-300">/</span>
+          <h1 class="text-xl font-bold">Crear Nuevo Torneo</h1>
+        </div>
+        <div class="max-w-3xl">
+          <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-4">
+            <h3 class="font-bold text-sm text-slate-700 mb-4">Datos generales</h3>
+            <div class="mb-4">
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Nombre del torneo *</label>
+              <input type="text" id="ntNombre" placeholder="Ej. Copa Clausura Lima 2026" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+            </div>
+            <div class="mb-4">
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Sede / Complejo Deportivo *</label>
+              <div class="flex gap-2">
+                <select id="ntSede" class="flex-1 border border-slate-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 bg-white"></select>
+                <button onclick="showScreen('p_cfg_complejos')" class="shrink-0 text-xs font-semibold text-slate-500 border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-50 transition" title="Gestionar complejos">⚙️ Gestionar</button>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha inicio *</label>
+                <input type="date" id="ntInicio" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha fin *</label>
+                <input type="date" id="ntFin" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+              </div>
+            </div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1.5">Esquema de cobro *</label>
+            <div class="flex gap-3">
+              <label class="flex-1"><input type="radio" name="ntEsquema" value="inscripcion_arbitraje" checked class="sr-only peer">
+                <div class="border-2 border-slate-200 rounded-xl p-3 cursor-pointer peer-checked:border-[#4F86C6] peer-checked:bg-blue-50 hover:border-slate-300 transition">
+                  <p class="font-bold text-sm text-slate-700">Inscripción + Arbitraje</p>
+                  <p class="text-[11px] text-slate-400 mt-0.5">Cobra inscripción (CxC) y arbitraje por fecha (semanal)</p>
+                </div>
+              </label>
+              <label class="flex-1"><input type="radio" name="ntEsquema" value="solo_inscripcion" class="sr-only peer">
+                <div class="border-2 border-slate-200 rounded-xl p-3 cursor-pointer peer-checked:border-[#4F86C6] peer-checked:bg-blue-50 hover:border-slate-300 transition">
+                  <p class="font-bold text-sm text-slate-700">Solo Inscripción</p>
+                  <p class="text-[11px] text-slate-400 mt-0.5">Un único monto de inscripción por equipo</p>
+                </div>
+              </label>
+            </div>
+          </div>
+          <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-6">
+            <h3 class="font-bold text-sm text-slate-700 mb-1">Categorías a incluir</h3>
+            <p class="text-xs text-slate-400 mb-4">Selecciona las categorías que participarán y define los montos de referencia. El monto real por equipo se negocia individualmente al inscribir.</p>
+            <div id="ntCatsContainer" class="space-y-3"></div>
+          </div>
+          <div class="flex justify-end gap-3">
+            <button onclick="showScreen('p1')" class="text-sm font-medium text-slate-500 px-5 py-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition">Cancelar</button>
+            <button onclick="crearTorneo()" class="text-sm font-semibold text-white bg-[#18324F] px-6 py-2.5 rounded-lg hover:bg-[#0f253d] transition shadow-sm">✓ Crear Torneo</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- P1b: Clubes Interesados -->
+      <div id="p1b" class="screen">
+        <div class="flex items-center justify-between mb-1">
+          <h1 class="text-xl font-bold">Equipos Interesados / Prospectos</h1>
+          <button onclick="openInteresadoModal()" class="flex items-center gap-2 bg-[#18324F] text-white text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-[#0f253d] transition shadow-sm">
+            + Añadir Interesado
+          </button>
+        </div>
+        <p class="text-xs text-slate-500 mb-5 max-w-2xl">Prospectos que manifestaron interés pero aún no están inscritos. No ocupan cupo de aforo ni generan cargos.</p>
+        <div id="prospectosContainer" class="space-y-5"></div>
+      </div>
+
+      <!-- P2: Registrar Pagos -->
+      <div id="p2" class="screen">
+        <div class="flex items-center justify-between mb-5">
+          <h1 class="text-xl font-bold">Registrar Pago</h1>
+          <span id="p2badge"></span>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-5">
+          <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+
+            <!-- Campo 1: Club -->
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Club *</label>
+            <div class="flex items-center gap-2 mb-4">
+              <div class="relative flex-1">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
+                <input type="text" id="clubSel" placeholder="Buscar club…" autocomplete="off"
+                  oninput="clubACFilter(this)" onfocus="clubACAttach(this, id=>{ if(id) p2SelectClub(id); }, false); clubACFilter(this)"
+                  onblur="clubACBlur(this)"
+                  class="w-full border border-slate-300 rounded-lg pl-9 pr-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 bg-white">
+              </div>
+              <button onclick="openModal('nuevoClubModal')" class="flex items-center gap-1 text-xs font-semibold text-[#18324F] border border-slate-300 px-3 py-2.5 rounded-lg hover:bg-slate-50 whitespace-nowrap">+ Nuevo</button>
+            </div>
+
+            <!-- Campo 2: Torneo (se activa tras seleccionar club) -->
+            <div id="p2_torneo_row" class="hidden mb-4">
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Torneo *</label>
+              <select id="torneoP2Sel" onchange="p2SelectTorneo(parseInt(this.value))" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 bg-white"></select>
+            </div>
+
+            <!-- Detalle categorías + KPIs (se llena dinámicamente) -->
+            <div id="p2_detalle" class="hidden">
+              <div class="border-t border-slate-100 pt-4">
+                <p class="text-xs font-bold text-slate-500 uppercase mb-3">Categorías inscritas en el torneo</p>
+                <table class="w-full text-sm mb-4">
+                  <thead><tr class="text-left text-[10px] text-slate-400 uppercase border-b border-slate-100">
+                    <th class="pb-2 font-semibold">Equipo</th>
+                    <th class="pb-2 font-semibold">Categoría</th>
+                    <th class="pb-2 font-semibold text-center">Mod.</th>
+                    <th class="pb-2 font-semibold text-right">Inscripción</th>
+                  </tr></thead>
+                  <tbody id="p2_cats_tbody" class="divide-y divide-slate-100"></tbody>
+                </table>
+                <!-- KPI strip -->
+                <div class="grid grid-cols-3 gap-3 bg-slate-50 rounded-xl p-4 mb-5">
+                  <div>
+                    <p class="text-[10px] text-blue-500 font-semibold uppercase mb-1">Total Inscripción</p>
+                    <p class="font-bold mono text-blue-700" id="p2_total_insc">S/. 0.00</p>
+                  </div>
+                  <div>
+                    <p class="text-[10px] text-emerald-600 font-semibold uppercase mb-1">Pagado</p>
+                    <p class="font-bold mono text-emerald-700" id="p2_pagado">S/. 0.00</p>
+                    <p class="text-[10px] text-slate-300">Pendiente + aprobado</p>
+                  </div>
+                  <div>
+                    <p class="text-[10px] font-semibold uppercase mb-1" id="p2_pr_lbl">Pendiente de Pago</p>
+                    <p class="font-bold mono" id="p2_pendiente">S/. 0.00</p>
+                  </div>
+                </div>
+
+                <!-- Historial de pagos -->
+                <div class="border-t border-slate-100 pt-4">
+                  <div class="flex items-center justify-between mb-3">
+                    <p class="text-xs font-bold text-slate-500 uppercase tracking-wide">Historial de pagos en este torneo</p>
+                    <span id="p2_pagos_resumen" class="text-[11px] text-slate-400"></span>
+                  </div>
+                  <table class="w-full text-sm">
+                    <thead>
+                      <tr class="text-left text-[10px] text-slate-400 uppercase border-b border-slate-100">
+                        <th class="pb-2 font-semibold">Fecha</th>
+                        <th class="pb-2 font-semibold">Medio</th>
+                        <th class="pb-2 font-semibold">Referencia</th>
+                        <th class="pb-2 font-semibold text-right">Monto</th>
+                        <th class="pb-2 font-semibold text-center">Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody id="p2_pagos_tbody" class="divide-y divide-slate-100"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+          </div>
+          <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 h-fit">
+            <h4 class="font-bold text-sm mb-1">Registrar Nuevo Pago</h4>
+            <p class="text-[11px] text-slate-400 mb-4">El pago se aplica de forma global a la cuenta del club.</p>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Monto (S/.)</label>
+            <input type="number" id="pMonto" value="500" min="1" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-lg font-bold mono mb-4 outline-none focus:ring-2 focus:ring-blue-200">
+            <label class="block text-xs font-semibold text-slate-600 mb-2">Medio de pago</label>
+            <div class="grid grid-cols-3 gap-2 mb-4">
+              <button type="button" onclick="selMedio('Efectivo',this)" class="medio-btn border border-slate-300 text-slate-500 text-xs font-semibold py-2 rounded-lg hover:bg-slate-50 transition">Efectivo</button>
+              <button type="button" onclick="selMedio('BCP',this)" class="medio-btn sel border border-slate-300 text-slate-500 text-xs font-semibold py-2 rounded-lg">BCP</button>
+              <button type="button" onclick="selMedio('Interbank',this)" class="medio-btn border border-slate-300 text-slate-500 text-xs font-semibold py-2 rounded-lg hover:bg-slate-50 transition">Interbank</button>
+              <button type="button" onclick="selMedio('Yape',this)" class="medio-btn border border-slate-300 text-slate-500 text-xs font-semibold py-2 rounded-lg hover:bg-slate-50 transition">Yape</button>
+              <button type="button" onclick="selMedio('Plin',this)" class="medio-btn border border-slate-300 text-slate-500 text-xs font-semibold py-2 rounded-lg hover:bg-slate-50 transition">Plin</button>
+            </div>
+            <div class="grid grid-cols-2 gap-3 mb-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha del pago</label>
+                <input type="date" id="pFecha" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-200">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">N° de Operación</label>
+                <input type="text" id="pNroOp" placeholder="Ej. 7700" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs mono outline-none focus:ring-2 focus:ring-blue-200">
+              </div>
+            </div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Descripción</label>
+            <input type="text" id="pDesc" placeholder="Ej. Adelanto inscripción Cat. 2016" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs mb-4 outline-none focus:ring-2 focus:ring-blue-200">
+            <label class="block text-xs font-semibold text-slate-600 mb-2">Voucher <span class="text-rose-500">— obligatorio</span></label>
+            <div id="vzone" onclick="simUpload()" class="border-2 border-dashed border-slate-300 rounded-lg p-5 flex flex-col items-center text-center text-slate-400 hover:border-blue-300 hover:bg-blue-50/30 cursor-pointer transition">
+              <span class="text-2xl mb-2">📤</span>
+              <p class="text-xs font-medium">Arrastra la imagen aquí</p>
+              <p class="text-[11px]">o haz clic para seleccionar</p>
+            </div>
+            <div id="vpreview" class="hidden flex items-center gap-2 mt-2 bg-slate-50 rounded-lg p-2">
+              <div class="w-9 h-9 rounded bg-slate-200 flex items-center justify-center text-[10px] text-slate-500 shrink-0">IMG</div>
+              <span class="text-xs flex-1 truncate" id="vname">voucher.jpg</span>
+              <button onclick="removeVoucher()" class="text-slate-400 hover:text-rose-500 shrink-0 text-lg leading-none">✕</button>
+            </div>
+            <div id="verr" class="hidden text-xs text-rose-500 mt-1">⚠ El voucher es obligatorio para enviar a Tesorería.</div>
+            <button onclick="registrarPago()" class="w-full mt-5 bg-[#18324F] text-white font-semibold text-sm py-3 rounded-lg hover:bg-[#0f253d] transition shadow-sm">
+              Registrar y Enviar a Tesorería
+            </button>
+            <div class="mt-4 bg-blue-50 rounded-lg p-3 flex items-start gap-2">
+              <span>🔔</span>
+              <p class="text-[11px] text-blue-800"><span class="font-semibold">Notificaciones:</span> cuando Tesorería procese este pago recibirás un aviso aquí para informar al club.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- P3: Aprobar Pagos -->
+      <div id="p3" class="screen">
+        <div class="flex items-center justify-between mb-1">
+          <h1 class="text-xl font-bold">Aprobar Pagos</h1>
+          <span id="p3badge"></span>
+        </div>
+        <p class="text-xs text-slate-500 mb-5">Resumen del día y bandeja de pagos pendientes de aprobación.</p>
+
+        <!-- KPIs del día por medio de pago -->
+        <p class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3" id="p3_fecha_label">Pagos del día —</p>
+        <div id="kpiMedios" class="grid gap-4 mb-6" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr))"></div>
+
+        <!-- KPIs de estado -->
+        <div id="kpiEstado" class="grid grid-cols-3 gap-4 mb-6"></div>
+
+        <!-- Bandeja de pendientes -->
+        <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Pagos Pendientes de Aprobación <span id="p3_nPend" class="ml-1 bg-amber-100 text-amber-700 text-[11px] font-bold px-2 py-0.5 rounded-full"></span></h4>
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <table class="w-full text-sm">
+            <thead><tr class="text-left text-[11px] text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+              <th class="py-3 px-4 font-semibold">Fecha</th>
+              <th class="py-3 px-4 font-semibold">Club</th>
+              <th class="py-3 px-4 font-semibold">Torneo</th>
+              <th class="py-3 px-4 font-semibold text-right">Monto</th>
+              <th class="py-3 px-4 font-semibold">Medio</th>
+              <th class="py-3 px-4 font-semibold">N° Op.</th>
+              <th class="py-3 px-4 font-semibold">Registrado por</th>
+              <th class="py-3 px-4 font-semibold text-center">Voucher</th>
+            </tr></thead>
+            <tbody id="pendientesT" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- P4: Clubes historial -->
+      <div id="p4" class="screen">
+        <h1 id="p4titulo" class="text-xl font-bold mb-1">—</h1>
+        <p class="text-xs text-slate-500 mb-5">Historial financiero del club a través de múltiples torneos.</p>
+        <div id="p4kpis" class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5"></div>
+        <div class="flex items-center justify-between mb-3">
+          <h4 class="text-sm font-bold text-slate-600">Historial de Movimientos</h4>
+          <select class="text-xs border border-slate-300 rounded-md px-2.5 py-1.5 bg-white outline-none">
+            <option>Todos los torneos</option><option>Copa Apertura Lima 2026</option>
+          </select>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <table class="w-full text-sm">
+            <thead><tr class="text-left text-[11px] text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+              <th class="py-3 px-4 font-semibold">Fecha</th><th class="py-3 px-4 font-semibold">Tipo</th>
+              <th class="py-3 px-4 font-semibold">Torneo / Categoría</th><th class="py-3 px-4 font-semibold text-right">Monto</th>
+              <th class="py-3 px-4 font-semibold text-center">Estado</th><th class="py-3 px-4 font-semibold">Usuario</th>
+            </tr></thead>
+            <tbody id="historialT" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- P_cxc: Cuentas por Cobrar -->
+      <div id="p_cxc" class="screen">
+        <h1 class="text-xl font-bold mb-1">Cuentas por Cobrar — Consolidado</h1>
+        <p class="text-xs text-slate-500 mb-5">Saldo de cada club sumando todos los torneos en los que ha participado.</p>
+        <div id="cxcKpi" class="mb-5"></div>
+        <!-- Filtro activo -->
+        <div id="cxcFiltroBar" class="hidden mb-3 flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5">
+          <span class="text-xs text-blue-700 font-semibold">Filtrando por torneo:</span>
+          <span id="cxcFiltroNombre" class="text-xs font-bold text-blue-900"></span>
+          <button onclick="setCxcTorneoFilter(null)" class="ml-auto text-xs text-blue-500 hover:text-blue-700 font-semibold underline">Ver todos los torneos ✕</button>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <table class="w-full text-sm">
+            <thead><tr class="text-left text-[11px] text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+              <th class="py-3 px-4 font-semibold">Club</th>
+              <th class="py-3 px-4 font-semibold">Provincia</th>
+              <th class="py-3 px-4 font-semibold text-right">Deuda en el torneo</th>
+              <th class="py-3 px-4 font-semibold text-center">Acción</th>
+            </tr></thead>
+            <tbody id="cxcT" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- P_seguridad -->
+      <div id="p_seguridad" class="screen">
+        <div class="flex items-center justify-between mb-1">
+          <h1 class="text-xl font-bold">Seguridad — Usuarios del Sistema</h1>
+          <button onclick="openModal('invitarUsuarioModal')" class="flex items-center gap-2 bg-[#18324F] text-white text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-[#0f253d] transition shadow-sm">+ Invitar usuario</button>
+        </div>
+        <p class="text-xs text-slate-500 mb-5">El Organizador asigna y modifica el perfil de acceso de cada usuario.</p>
+        <div id="segKpis" class="grid grid-cols-4 gap-4 mb-6"></div>
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <table class="w-full text-sm">
+            <thead><tr class="text-left text-[11px] text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+              <th class="py-3 px-4 font-semibold">Usuario</th>
+              <th class="py-3 px-4 font-semibold">Correo</th>
+              <th class="py-3 px-4 font-semibold text-center">Método</th>
+              <th class="py-3 px-4 font-semibold text-center">Perfil / Rol</th>
+              <th class="py-3 px-4 font-semibold text-center">Estado</th>
+              <th class="py-3 px-4 font-semibold text-center">Acciones</th>
+            </tr></thead>
+            <tbody id="segUsuariosT" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </div>
+
+
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODALS ===================== -->
+
+<!-- Modal wrapper helper: reused per modal -->
+<!-- catModal -->
+<div id="catModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 fade-in">
+    <h3 class="font-bold text-base mb-1">Nueva Categoría</h3>
+    <p class="text-xs text-slate-500 mb-4">El número de fechas es solo referencia para planeación.</p>
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Nombre de la categoría</label>
+    <input type="text" id="catNombre" placeholder="Ej. Categoría 2016" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mb-3 focus:ring-2 focus:ring-blue-200 outline-none">
+    <div class="grid grid-cols-2 gap-3 mb-4">
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Aforo máximo</label>
+        <input type="number" id="catAforo" placeholder="8" min="1" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">N° Fechas <span class="text-slate-400 font-normal">(referencial)</span></label>
+        <input type="number" id="catFechas" placeholder="6" min="1" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+    </div>
+    <p class="text-[11px] text-blue-700 bg-blue-50 rounded-md px-2.5 py-2 mb-4">ℹ El precio final de cada equipo se digita libremente. El desglose de arbitraje y fechas es solo de referencia.</p>
+    <div class="flex justify-end gap-2">
+      <button onclick="closeModal('catModal')" class="text-sm font-medium text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">Cancelar</button>
+      <button onclick="crearCategoria()" class="text-sm font-semibold text-white bg-[#18324F] px-4 py-2 rounded-lg hover:bg-[#0f253d]">Crear Categoría</button>
+    </div>
+  </div>
+</div>
+
+<!-- interesadoModal -->
+<div id="interesadoModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 fade-in">
+    <h3 class="font-bold text-base mb-1">Club Interesado</h3>
+    <p class="text-xs text-slate-500 mb-4">Registra la intención. No genera cargos ni ocupa cupo de aforo.</p>
+
+    <!-- Club: autocomplete (existente o nuevo) -->
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Club *</label>
+    <input type="text" id="iClubInput" placeholder="Buscar club existente o escribir nombre nuevo…" autocomplete="off"
+      oninput="clubACFilter(this)"
+      onfocus="clubACAttach(this, iOnClubACSelect, true); clubACFilter(this)"
+      onblur="clubACBlur(this)"
+      class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mb-4 outline-none focus:ring-2 focus:ring-blue-200">
+    <p id="iClubHint" class="hidden -mt-3 mb-3 text-[11px] text-emerald-600 font-medium">✓ Club existente seleccionado</p>
+
+    <!-- Categorías (multiselect checkboxes) -->
+    <label class="block text-xs font-semibold text-slate-600 mb-2">Categorías de interés * <span class="text-slate-400 font-normal">(puede seleccionar varias)</span></label>
+    <div id="iCatChecks" class="grid grid-cols-2 gap-1.5 mb-4 p-3 border border-slate-200 rounded-lg bg-slate-50 max-h-40 overflow-y-auto"></div>
+
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Delegado</label>
+        <input type="text" id="iDelegado" placeholder="Nombre" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Teléfono</label>
+        <input type="text" id="iTel" placeholder="999 999 999" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+    </div>
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Nota</label>
+    <textarea id="iNota" placeholder="Ej. pidió descuento, a la espera de presupuesto…" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mb-4 outline-none focus:ring-2 focus:ring-blue-200 resize-none" rows="2"></textarea>
+    <div class="flex justify-end gap-2">
+      <button onclick="closeModal('interesadoModal')" class="text-sm font-medium text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">Cancelar</button>
+      <button onclick="crearInteresado()" class="text-sm font-semibold text-white bg-[#18324F] px-4 py-2 rounded-lg hover:bg-[#0f253d]">Guardar Interesado</button>
+    </div>
+  </div>
+</div>
+
+<!-- confirmarInscripcionModal -->
+<div id="confirmarInscripcionModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60">
+  <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full max-w-2xl fade-in max-h-[92vh] flex flex-col">
+    <div class="flex items-start justify-between px-6 py-4 border-b border-slate-100 shrink-0">
+      <div>
+        <p class="text-[10px] text-slate-400 uppercase font-semibold mb-0.5" id="ci_torneo_label">Torneo</p>
+        <h2 class="text-lg font-bold text-slate-800" id="ci_club_nombre">Club</h2>
+        <p class="text-xs text-slate-400 mt-0.5">Define los montos de inscripción antes de confirmar. No genera cobro hasta registrar un pago.</p>
+      </div>
+      <button onclick="closeModal('confirmarInscripcionModal')" class="text-slate-300 hover:text-slate-500 text-xl leading-none mt-1">✕</button>
+    </div>
+    <div class="overflow-y-auto flex-1 px-6 py-5">
+      <p class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Categorías a inscribir</p>
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-[10px] text-slate-400 uppercase border-b border-slate-100">
+            <th class="pb-2 font-semibold">Categoría</th>
+            <th class="pb-2 font-semibold text-center">Mod.</th>
+            <th class="pb-2 font-semibold text-right">Inscripción (S/.)</th>
+            <th class="pb-2 font-semibold text-right" id="ci_arb_col">Arb./fecha (S/.)</th>
+            <th class="pb-2 font-semibold text-right" id="ci_fechas_col">Fechas</th>
+          </tr>
+        </thead>
+        <tbody id="ci_cats_tbody" class="divide-y divide-slate-100"></tbody>
+      </table>
+    </div>
+    <div class="px-6 py-3 border-t border-slate-100 shrink-0 flex items-center justify-between">
+      <button onclick="closeModal('confirmarInscripcionModal')" class="text-sm font-medium text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">Cancelar</button>
+      <button onclick="doConfirmarInscripcion()" class="text-sm font-bold bg-emerald-600 text-white px-5 py-2 rounded-lg hover:bg-emerald-700 transition shadow-sm">Confirmar Inscripción ✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- nuevoClubModal -->
+<div id="nuevoClubModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 fade-in">
+    <h3 class="font-bold text-base mb-4">Nuevo Club</h3>
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Nombre del Club</label>
+    <input type="text" id="ncNombre" placeholder="Ej. Club Atlético San Isidro" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mb-3 outline-none focus:ring-2 focus:ring-blue-200">
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Delegado</label>
+        <input type="text" id="ncDelegado" placeholder="Nombre" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Teléfono</label>
+        <input type="text" id="ncTel" placeholder="999 999 999" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+    </div>
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Provincia</label>
+    <input type="text" id="ncProv" value="Lima" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mb-4 outline-none focus:ring-2 focus:ring-blue-200">
+    <div class="flex justify-end gap-2">
+      <button onclick="closeModal('nuevoClubModal')" class="text-sm font-medium text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">Cancelar</button>
+      <button onclick="crearClub()" class="text-sm font-semibold text-white bg-[#18324F] px-4 py-2 rounded-lg hover:bg-[#0f253d]">Crear Club</button>
+    </div>
+  </div>
+</div>
+
+<!-- estadoCuentaModal -->
+<div id="estadoCuentaModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60">
+  <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full max-w-3xl fade-in max-h-[92vh] flex flex-col">
+
+    <!-- Header -->
+    <div class="flex items-start justify-between px-6 py-4 border-b border-slate-100 shrink-0">
+      <div>
+        <p class="text-[10px] text-slate-400 uppercase font-semibold mb-0.5" id="ec_torneo_label">Torneo</p>
+        <h2 class="text-lg font-bold text-slate-800" id="ec_club_nombre">Club</h2>
+        <p class="text-xs text-slate-400 mt-0.5" id="ec_club_detalle"></p>
+      </div>
+      <button onclick="closeModal('estadoCuentaModal')" class="text-slate-300 hover:text-slate-500 text-xl leading-none mt-1">✕</button>
+    </div>
+
+    <!-- KPIs: 3 tarjetas -->
+    <div class="grid grid-cols-3 gap-0 border-b border-slate-100 shrink-0 divide-x divide-slate-100 bg-slate-50">
+      <div class="px-6 py-3">
+        <p class="text-[10px] text-blue-500 uppercase font-semibold mb-1">Total Inscripción</p>
+        <p class="font-bold text-blue-700 mono text-base" id="ec_total_insc">S/. 0.00</p>
+        <p class="text-[10px] text-slate-300 mt-0.5">Suma inscripciones activas</p>
+      </div>
+      <div class="px-6 py-3">
+        <p class="text-[10px] text-emerald-600 uppercase font-semibold mb-1">Pagado</p>
+        <p class="font-bold text-emerald-700 mono text-base" id="ec_recaudado">S/. 0.00</p>
+        <p class="text-[10px] text-slate-300 mt-0.5">Pagos aprobados</p>
+      </div>
+      <div class="px-6 py-3">
+        <p class="text-[10px] uppercase font-semibold mb-1" id="ec_pr_label">Pendiente de Pago</p>
+        <p class="font-bold mono text-base" id="ec_por_recaudar">S/. 0.00</p>
+        <p class="text-[10px] text-slate-300 mt-0.5">Inscripción − Pagado</p>
+      </div>
+    </div>
+
+    <!-- Cuerpo scrolleable -->
+    <div class="overflow-y-auto flex-1 px-6 py-5 space-y-6">
+
+      <!-- Sección 1: Categorías activas -->
+      <div>
+        <div class="flex items-center justify-between mb-3">
+          <p class="text-xs font-bold text-slate-500 uppercase tracking-wide">Categorías inscritas</p>
+          <button id="ec_btn_cat" onclick="abrirAgregarCatEC()" class="text-xs font-semibold text-[#4F86C6] border border-blue-200 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition">+ Agregar categoría</button>
+        </div>
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-[10px] text-slate-400 uppercase border-b border-slate-100">
+              <th class="pb-2 font-semibold">Nombre equipo</th>
+              <th class="pb-2 font-semibold">Categoría</th>
+              <th class="pb-2 font-semibold text-center">Mod.</th>
+              <th class="pb-2 font-semibold text-right">Inscripción</th>
+              <th class="pb-2 font-semibold text-right">Arb./fecha</th>
+              <th class="pb-2 font-semibold text-center">Acción</th>
+            </tr>
+          </thead>
+          <tbody id="ec_cats_tbody" class="divide-y divide-slate-100"></tbody>
+        </table>
+      </div>
+
+      <!-- Sección 2: Historial de pagos -->
+      <div>
+        <div class="flex items-center justify-between mb-3">
+          <p class="text-xs font-bold text-slate-500 uppercase tracking-wide">Historial de pagos</p>
+          <span id="ec_pagos_resumen" class="text-[11px] text-slate-400"></span>
+        </div>
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-[10px] text-slate-400 uppercase border-b border-slate-100">
+              <th class="pb-2 font-semibold">Fecha</th>
+              <th class="pb-2 font-semibold">Medio</th>
+              <th class="pb-2 font-semibold">Referencia</th>
+              <th class="pb-2 font-semibold text-right">Monto</th>
+              <th class="pb-2 font-semibold text-center">Estado</th>
+            </tr>
+          </thead>
+          <tbody id="ec_pagos_tbody" class="divide-y divide-slate-100"></tbody>
+        </table>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="px-6 py-3 border-t border-slate-100 shrink-0 flex items-center justify-between">
+      <button onclick="closeModal('estadoCuentaModal')" class="text-sm font-semibold text-slate-400 hover:text-slate-600 px-4 py-2 rounded-lg hover:bg-slate-100 transition">Cerrar</button>
+      <button id="ec_btn_pago" onclick="abrirPagoDesdeEC()" class="text-sm font-bold bg-[#18324F] text-white px-5 py-2 rounded-lg hover:bg-[#0f1f33] transition shadow-sm">+ Registrar pago</button>
+    </div>
+  </div>
+</div>
+
+<!-- addCatModal -->
+<div id="addCatModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 fade-in">
+    <h3 class="font-bold text-base mb-1">Inscribir Equipo</h3>
+    <p class="text-xs text-slate-500 mb-4">Los montos son editables libremente. El nombre del equipo es opcional (por defecto usa el nombre del club).</p>
+
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Club *</label>
+    <div class="flex gap-2 mb-3">
+      <input type="text" id="acClub" placeholder="Buscar club…" autocomplete="off"
+        oninput="clubACFilter(this)" onfocus="clubACAttach(this, (id,c)=>{ _acClubId=id; if(id) acOnClubChange(); }, false); clubACFilter(this)"
+        onblur="clubACBlur(this)"
+        class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      <button onclick="closeModal('addCatModal');openModal('nuevoClubModal')" class="shrink-0 text-xs font-semibold text-[#18324F] border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-50 transition">+ Nuevo club</button>
+    </div>
+
+    <div class="mb-3">
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Nombre del equipo <span class="text-slate-400 font-normal">(opcional — ej. "Diamante A")</span></label>
+      <input type="text" id="acNombreEquipo" placeholder="Deja vacío para usar el nombre del club"
+        class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+    </div>
+
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Categoría *</label>
+    <select id="acCat" onchange="acOnCatChange()" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mb-3 outline-none focus:ring-2 focus:ring-blue-200 bg-white"></select>
+
+    <div class="mb-3">
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Inscripción (S/.)</label>
+      <input type="number" id="acInsc" placeholder="250" oninput="calcMontoTotal()" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+    </div>
+    <div id="acArbRow" class="grid grid-cols-2 gap-2 mb-3">
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Arbitraje / fecha (S/.)</label>
+        <input type="number" id="acArb" placeholder="80" oninput="calcMontoTotal()" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">N° Fechas</label>
+        <input type="number" id="acFechas" placeholder="6" oninput="calcMontoTotal()" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+    </div>
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Monto Total <span class="text-[#4F86C6]">(campo principal)</span></label>
+    <input type="number" id="acMonto" placeholder="730" class="w-full border-2 border-blue-200 rounded-lg px-3 py-2 text-sm font-bold mono mb-4 outline-none focus:ring-2 focus:ring-blue-300">
+    <div class="flex justify-end gap-2">
+      <button onclick="closeModal('addCatModal')" class="text-sm font-medium text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">Cancelar</button>
+      <button onclick="addCategoria()" class="text-sm font-semibold text-white bg-[#18324F] px-4 py-2 rounded-lg hover:bg-[#0f253d]">Inscribir Equipo</button>
+    </div>
+  </div>
+</div>
+
+<!-- voucherModal -->
+<div id="voucherModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden fade-in">
+    <div class="flex items-center justify-between px-5 py-3 border-b border-slate-200">
+      <h3 id="vmTitle" class="font-bold text-sm">Validación de Pago</h3>
+      <button onclick="closeModal('voucherModal')" class="text-slate-400 hover:text-slate-600 text-xl leading-none">✕</button>
+    </div>
+    <div class="grid grid-cols-2">
+      <div class="bg-slate-900 p-6 flex flex-col items-center justify-center relative" style="min-height:380px">
+        <div class="bg-white rounded-lg p-4 w-56 shadow-xl">
+          <div class="text-[10px] text-slate-400 mb-2 text-center" id="vmBanco">BCP — Comprobante</div>
+          <div class="h-28 bg-slate-100 rounded mb-2 flex items-center justify-center text-slate-300 text-xs">vista previa</div>
+          <div class="text-[10px] text-slate-500 space-y-1">
+            <div class="flex justify-between"><span>Monto:</span><span id="vmMonto" class="font-bold mono">—</span></div>
+            <div class="flex justify-between"><span>Fecha:</span><span id="vmFecha" class="mono">—</span></div>
+          </div>
+        </div>
+        <div class="absolute bottom-4 right-4 flex gap-2">
+          <button class="w-9 h-9 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 text-sm">🔍</button>
+          <button class="w-9 h-9 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 text-sm">🔄</button>
+        </div>
+      </div>
+      <div class="p-6 flex flex-col">
+        <h4 class="text-xs font-bold text-slate-500 uppercase mb-3">Ficha del Depósito</h4>
+        <div id="vmFicha" class="space-y-0 flex-1 text-sm"></div>
+        <p class="text-[11px] text-slate-400 mt-3 mb-4">Al confirmar, el sistema registra automáticamente tu usuario y hora de validación.</p>
+        <div id="vmActions" class="flex gap-2"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- invitarUsuarioModal -->
+<div id="invitarUsuarioModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 fade-in">
+    <h3 class="font-bold text-base mb-1">Invitar Usuario</h3>
+    <p class="text-xs text-slate-500 mb-4">El usuario recibirá un correo para registrarse. El Organizador le asigna el perfil.</p>
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Correo electrónico *</label>
+    <input type="email" id="invEmail" placeholder="correo@ejemplo.com" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 outline-none focus:ring-2 focus:ring-blue-200">
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Nombre completo *</label>
+    <input type="text" id="invNombre" placeholder="Nombre y apellido" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 outline-none focus:ring-2 focus:ring-blue-200">
+    <label class="block text-xs font-semibold text-slate-600 mb-2">Perfil de acceso *</label>
+    <div class="grid grid-cols-3 gap-2 mb-5">
+      <label class="cursor-pointer"><input type="radio" name="invRol" value="organizador" class="sr-only peer">
+        <div class="border-2 border-slate-200 rounded-xl p-2.5 text-center peer-checked:border-[#4F86C6] peer-checked:bg-blue-50 transition hover:border-slate-300">
+          <div class="text-lg mb-0.5">👑</div><div class="text-[10px] font-semibold text-slate-700">Organizador</div>
+        </div></label>
+      <label class="cursor-pointer"><input type="radio" name="invRol" value="operador" class="sr-only peer" checked>
+        <div class="border-2 border-[#4F86C6] bg-blue-50 rounded-xl p-2.5 text-center peer-checked:border-[#4F86C6] peer-checked:bg-blue-50 transition hover:border-slate-300">
+          <div class="text-lg mb-0.5">📋</div><div class="text-[10px] font-semibold text-slate-700">Operador</div>
+        </div></label>
+      <label class="cursor-pointer"><input type="radio" name="invRol" value="tesorero" class="sr-only peer">
+        <div class="border-2 border-slate-200 rounded-xl p-2.5 text-center peer-checked:border-[#4F86C6] peer-checked:bg-blue-50 transition hover:border-slate-300">
+          <div class="text-lg mb-0.5">💰</div><div class="text-[10px] font-semibold text-slate-700">Tesorero</div>
+        </div></label>
+    </div>
+    <div class="flex justify-end gap-2">
+      <button onclick="closeModal('invitarUsuarioModal')" class="text-sm font-medium text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">Cancelar</button>
+      <button onclick="invitarUsuario()" class="text-sm font-semibold text-white bg-[#18324F] px-4 py-2 rounded-lg hover:bg-[#0f253d]">Enviar invitación</button>
+    </div>
+  </div>
+</div>
+
+<!-- cxcClubModal -->
+<div id="cxcClubModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60">
+  <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full max-w-2xl fade-in max-h-[90vh] flex flex-col">
+    <div class="flex items-start justify-between px-6 py-4 border-b border-slate-100 shrink-0">
+      <div>
+        <p class="text-[10px] text-rose-500 uppercase font-semibold mb-0.5">Estado de Cuenta — Deuda Pendiente</p>
+        <h2 class="text-lg font-bold text-slate-800" id="cxcm_club"></h2>
+      </div>
+      <button onclick="closeModal('cxcClubModal')" class="text-slate-300 hover:text-slate-500 text-xl leading-none mt-1">✕</button>
+    </div>
+    <!-- KPI total -->
+    <div class="bg-rose-50 border-b border-rose-100 px-6 py-3 shrink-0 flex items-center justify-between">
+      <p class="text-xs text-rose-600 font-semibold uppercase tracking-wide">Total deuda pendiente</p>
+      <p class="text-xl font-extrabold mono text-rose-700" id="cxcm_total"></p>
+    </div>
+    <!-- Detalle por torneo -->
+    <div class="overflow-y-auto flex-1 px-6 py-5 space-y-5" id="cxcm_body"></div>
+    <div class="px-6 py-3 border-t border-slate-100 shrink-0 flex justify-end">
+      <button onclick="closeModal('cxcClubModal')" class="text-sm font-medium text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- rechazoModal -->
+<div id="rechazoModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 fade-in">
+    <h3 class="font-bold text-base mb-1 text-rose-700">Rechazar Pago</h3>
+    <p class="text-xs text-slate-500 mb-3">El motivo es obligatorio. Se registrará en la auditoría y el Operador será notificado.</p>
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Motivo del rechazo</label>
+    <textarea id="rechazoMotivo" placeholder="Ej. El monto del voucher no coincide con el depósito bancario…" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mb-4 outline-none focus:ring-2 focus:ring-rose-200 resize-none" rows="3"></textarea>
+    <div id="rechazoErr" class="hidden text-xs text-rose-500 mb-2">⚠ El motivo es obligatorio.</div>
+    <div class="flex justify-end gap-2">
+      <button onclick="closeModal('rechazoModal')" class="text-sm font-medium text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">Cancelar</button>
+      <button onclick="confirmarRechazo()" class="text-sm font-semibold text-white bg-rose-600 px-4 py-2 rounded-lg hover:bg-rose-700">Confirmar Rechazo</button>
+    </div>
+  </div>
+</div>
+
+<!-- editTorneoModal -->
+<div id="editTorneoModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 fade-in">
+    <h3 class="font-bold text-base mb-4">Editar Torneo</h3>
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Nombre del torneo *</label>
+    <input type="text" id="etNombre" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 outline-none focus:ring-2 focus:ring-blue-200">
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Sede / Complejo Deportivo *</label>
+    <select id="etSede" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 outline-none focus:ring-2 focus:ring-blue-200 bg-white"></select>
+    <div class="grid grid-cols-2 gap-3 mb-4">
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha inicio</label>
+        <input type="date" id="etInicio" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha fin</label>
+        <input type="date" id="etFin" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+    </div>
+    <label class="block text-xs font-semibold text-slate-600 mb-1.5">Esquema de cobro</label>
+    <div class="flex gap-3 mb-4">
+      <label class="flex-1"><input type="radio" name="etEsquema" value="inscripcion_arbitraje" class="sr-only peer">
+        <div class="border-2 border-slate-200 rounded-xl p-3 cursor-pointer peer-checked:border-[#4F86C6] peer-checked:bg-blue-50 hover:border-slate-300 transition">
+          <p class="font-bold text-sm text-slate-700">Inscripción + Arbitraje</p>
+          <p class="text-[11px] text-slate-400 mt-0.5">Inscripción (CxC) + arbitraje semanal</p>
+        </div>
+      </label>
+      <label class="flex-1"><input type="radio" name="etEsquema" value="solo_inscripcion" class="sr-only peer">
+        <div class="border-2 border-slate-200 rounded-xl p-3 cursor-pointer peer-checked:border-[#4F86C6] peer-checked:bg-blue-50 hover:border-slate-300 transition">
+          <p class="font-bold text-sm text-slate-700">Solo Inscripción</p>
+          <p class="text-[11px] text-slate-400 mt-0.5">Un único monto por equipo</p>
+        </div>
+      </label>
+    </div>
+    <div class="flex justify-end gap-2">
+      <button onclick="closeModal('editTorneoModal')" class="text-sm font-medium text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">Cancelar</button>
+      <button onclick="guardarEditTorneo()" class="text-sm font-semibold text-white bg-[#18324F] px-4 py-2 rounded-lg hover:bg-[#0f253d]">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- agregarCatTorneoModal -->
+<div id="agregarCatTorneoModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 fade-in">
+    <h3 class="font-bold text-base mb-1">Agregar Categoría al Torneo</h3>
+    <p class="text-xs text-slate-400 mb-4">El aforo y fechas son específicos para este torneo.</p>
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Categoría *</label>
+    <select id="acTCat" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mb-3 outline-none focus:ring-2 focus:ring-blue-200 bg-white"></select>
+    <label class="block text-xs font-semibold text-slate-600 mb-1.5">Modalidad *</label>
+    <div class="flex gap-2 mb-4">
+      <label class="flex-1 text-center"><input type="radio" name="acTMod" value="F5" class="sr-only peer"><span class="block border border-slate-300 rounded-lg py-2 text-sm font-bold text-slate-500 cursor-pointer peer-checked:border-[#4F86C6] peer-checked:bg-blue-50 peer-checked:text-[#18324F] hover:bg-slate-50 transition">F5</span></label>
+      <label class="flex-1 text-center"><input type="radio" name="acTMod" value="F7" class="sr-only peer" checked><span class="block border border-slate-300 rounded-lg py-2 text-sm font-bold text-slate-500 cursor-pointer peer-checked:border-[#4F86C6] peer-checked:bg-blue-50 peer-checked:text-[#18324F] hover:bg-slate-50 transition">F7</span></label>
+      <label class="flex-1 text-center"><input type="radio" name="acTMod" value="F9" class="sr-only peer"><span class="block border border-slate-300 rounded-lg py-2 text-sm font-bold text-slate-500 cursor-pointer peer-checked:border-[#4F86C6] peer-checked:bg-blue-50 peer-checked:text-[#18324F] hover:bg-slate-50 transition">F9</span></label>
+      <label class="flex-1 text-center"><input type="radio" name="acTMod" value="F11" class="sr-only peer"><span class="block border border-slate-300 rounded-lg py-2 text-sm font-bold text-slate-500 cursor-pointer peer-checked:border-[#4F86C6] peer-checked:bg-blue-50 peer-checked:text-[#18324F] hover:bg-slate-50 transition">F11</span></label>
+    </div>
+    <div class="grid grid-cols-4 gap-3 mb-4">
+      <div>
+        <label class="block text-[10px] font-semibold text-slate-500 mb-1 uppercase">Aforo</label>
+        <input type="number" id="acTAforo" value="8" min="2" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+      <div>
+        <label class="block text-[10px] font-semibold text-slate-500 mb-1 uppercase">N° Fechas</label>
+        <input type="number" id="acTFechas" value="6" min="1" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+      <div>
+        <label class="block text-[10px] font-semibold text-slate-500 mb-1 uppercase">Inscripción (S/.)</label>
+        <input type="number" id="acTInsc" placeholder="250" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+      <div>
+        <label class="block text-[10px] font-semibold text-slate-500 mb-1 uppercase">Arb./fecha (S/.)</label>
+        <input type="number" id="acTArb" placeholder="80" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+    </div>
+    <div class="flex justify-end gap-2">
+      <button onclick="closeModal('agregarCatTorneoModal')" class="text-sm font-medium text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">Cancelar</button>
+      <button onclick="guardarTorneoCat()" class="text-sm font-semibold text-white bg-[#18324F] px-4 py-2 rounded-lg hover:bg-[#0f253d]">Agregar Categoría</button>
+    </div>
+  </div>
+</div>
+
+<!-- cfgComplejoModal -->
+<div id="cfgComplejoModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 fade-in">
+    <h3 class="font-bold text-base mb-4">Nuevo Complejo Deportivo</h3>
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Nombre del complejo *</label>
+    <input type="text" id="ccNombre" placeholder="Ej. Complejo Deportivo Villa El Salvador" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 outline-none focus:ring-2 focus:ring-blue-200">
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Dirección</label>
+    <input type="text" id="ccDireccion" placeholder="Ej. Av. Micaela Bastidas 120" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 outline-none focus:ring-2 focus:ring-blue-200">
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Distrito</label>
+    <input type="text" id="ccDistrito" placeholder="Ej. San Isidro" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-4 outline-none focus:ring-2 focus:ring-blue-200">
+    <div class="flex justify-end gap-2">
+      <button onclick="closeModal('cfgComplejoModal')" class="text-sm font-medium text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">Cancelar</button>
+      <button onclick="crearComplejo()" class="text-sm font-semibold text-white bg-[#18324F] px-4 py-2 rounded-lg hover:bg-[#0f253d]">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- cfgCategoriaModal -->
+<div id="cfgCategoriaModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 fade-in">
+    <h3 class="font-bold text-base mb-1">Nueva Categoría</h3>
+    <p class="text-xs text-slate-400 mb-4">Puede ser por año de nacimiento (2016, Sub-9) o cualquier nombre que uses en tus torneos. El aforo y las fechas se configuran por torneo al momento de crearlo.</p>
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Nombre de la categoría *</label>
+    <input type="text" id="cfgCatNombre" placeholder="Ej. 2015 · Sub-12 · Open · Femenino" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-4 outline-none focus:ring-2 focus:ring-blue-200">
+    <div class="flex justify-end gap-2">
+      <button onclick="closeModal('cfgCategoriaModal')" class="text-sm font-medium text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">Cancelar</button>
+      <button onclick="crearCategoriaConfig()" class="text-sm font-semibold text-white bg-[#18324F] px-4 py-2 rounded-lg hover:bg-[#0f253d]">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== JS ===================== -->
+<script>
+// ---- STATE ----
+const S = {
+  role: null,
+  selectedPagoId: null,
+  selectedClubId: 1,
+  voucherUploaded: false,
+  medioSeleccionado: 'BCP',
+  nextId: 100,
+
+  torneoSelId: 1,
+
+  usuarios: [
+    {id:1, nombre:'Carlos Mendoza',  email:'carlos@liguify.pe',    rol:'organizador', metodo:'email',  activo:true},
+    {id:2, nombre:'María Quispe',    email:'mquispe@liguify.pe',   rol:'operador',    metodo:'email',  activo:true},
+    {id:3, nombre:'Roberto Salas',   email:'rsalas@liguify.pe',    rol:'tesorero',    metodo:'google', activo:true},
+    {id:4, nombre:'Ana Torres',      email:'ana.torres@gmail.com', rol:null,          metodo:'google', activo:false, pendiente:true},
+  ],
+  usuarioActual: null,
+
+  torneos: [
+    {id:1, nombre:'Copa Apertura Lima 2026', estado:'activo',
+     inicio:'2026-03-01', fin:'2026-08-31', label:'Mar 2026 — Ago 2026',
+     sede:'Complejo Deportivo Villa El Salvador',
+     esquema:'inscripcion_arbitraje',
+     cats:[
+       {catId:1,modalidad:'F7',aforo:8,fechas:6,inscripcion:250,arbitraje:80},
+       {catId:2,modalidad:'F7',aforo:8,fechas:5,inscripcion:280,arbitraje:90},
+       {catId:3,modalidad:'F9',aforo:8,fechas:7,inscripcion:250,arbitraje:80},
+       {catId:4,modalidad:'F11',aforo:6,fechas:8,inscripcion:300,arbitraje:100},
+       {catId:5,modalidad:'F11',aforo:10,fechas:6,inscripcion:200,arbitraje:70},
+     ],
+     snap: null},
+    {id:2, nombre:'Copa Verano 2025', estado:'cerrado',
+     inicio:'2025-01-15', fin:'2025-06-30', label:'Ene 2025 — Jun 2025',
+     snap:{total:18400, recaudado:18400,
+      cats:[
+        {nombre:'Categoría 2016',aforo:8,inscritos:8,fechas:5,pct:100},
+        {nombre:'Categoría 2013',aforo:8,inscritos:7,fechas:5,pct:87},
+        {nombre:'Categoría 2011',aforo:6,inscritos:6,fechas:6,pct:100},
+      ],
+      equipos:[
+        {cat:'Categoría 2016',club:'Club Atlético San Isidro',monto:600,estado:'activo'},
+        {cat:'Categoría 2016',club:'Deportivo Las Palmeras',monto:600,estado:'activo'},
+        {cat:'Categoría 2013',club:'Academia Miraflores FC',monto:730,estado:'activo'},
+        {cat:'Categoría 2011',club:'Real Garcilaso B',monto:2000,estado:'activo'},
+      ]
+     }},
+    {id:3, nombre:'Copa Apertura 2025', estado:'cerrado',
+     inicio:'2025-03-01', fin:'2025-09-30', label:'Mar 2025 — Sep 2025',
+     snap:{total:22100, recaudado:21500,
+      cats:[
+        {nombre:'Categoría 2016',aforo:8,inscritos:8,fechas:6,pct:100},
+        {nombre:'Categoría 2013',aforo:8,inscritos:8,fechas:6,pct:100},
+        {nombre:'Categoría 2011',aforo:8,inscritos:7,fechas:7,pct:87},
+        {nombre:'Categoría 2009',aforo:6,inscritos:5,fechas:8,pct:83},
+      ],
+      equipos:[
+        {cat:'Categoría 2016',club:'Club Atlético San Isidro',monto:730,estado:'activo'},
+        {cat:'Categoría 2016',club:'Deportivo Las Palmeras',monto:600,estado:'activo'},
+        {cat:'Categoría 2013',club:'Academia Miraflores FC',monto:730,estado:'activo'},
+        {cat:'Categoría 2013',club:'Real Garcilaso B',monto:850,estado:'activo'},
+        {cat:'Categoría 2011',club:'Club Atlético San Isidro',monto:810,estado:'inactivo'},
+        {cat:'Categoría 2009',club:'Deportivo Las Palmeras',monto:900,estado:'activo'},
+      ]
+     }},
+  ],
+
+  // Catálogos configurables (solo Organizador)
+  complejos: [
+    {id:1,nombre:'Complejo Deportivo Villa El Salvador',direccion:'Av. Micaela Bastidas 120',distrito:'Villa El Salvador'},
+    {id:2,nombre:'Estadio Municipal San Isidro',direccion:'Av. Javier Prado Oeste 490',distrito:'San Isidro'},
+    {id:3,nombre:'Cancha Sintética La Molina',direccion:'Jr. Los Álamos 320',distrito:'La Molina'},
+  ],
+  categorias: [
+    {id:1,nombre:'Categoría 2016',aforo:8,fechas:6},
+    {id:2,nombre:'Categoría 2013',aforo:8,fechas:5},
+    {id:3,nombre:'Categoría 2011',aforo:8,fechas:7},
+    {id:4,nombre:'Categoría 2009',aforo:6,fechas:8},
+    {id:5,nombre:'Categoría 2008',aforo:10,fechas:6},
+  ],
+  clubes: [
+    {id:1,nombre:'Club Atlético San Isidro',delegado:'Miguel Quispe',telefono:'987 654 321',provincia:'Lima'},
+    {id:2,nombre:'Deportivo Las Palmeras',delegado:'Carlos Torres',telefono:'956 123 456',provincia:'Lima'},
+    {id:3,nombre:'Academia Miraflores FC',delegado:'Ana García',telefono:'945 678 901',provincia:'Lima'},
+    {id:4,nombre:'Real Garcilaso B',delegado:'Diego Salas',telefono:'944 882 011',provincia:'Cusco'},
+  ],
+  equipos: [
+    {id:1,torneoId:1,clubId:1,catId:1,nombre:'Diamante A',inscripcion:250,arbitraje:80,fechas:6,monto:730,estado:'activo'},
+    {id:2,torneoId:1,clubId:1,catId:2,nombre:'Diamante B',inscripcion:280,arbitraje:90,fechas:5,monto:600,estado:'activo'},
+    {id:3,torneoId:1,clubId:1,catId:3,nombre:'',inscripcion:250,arbitraje:80,fechas:7,monto:810,estado:'inactivo'},
+    {id:4,torneoId:1,clubId:2,catId:1,nombre:'',inscripcion:250,arbitraje:80,fechas:6,monto:600,estado:'activo'},
+    {id:5,torneoId:1,clubId:3,catId:2,nombre:'',inscripcion:280,arbitraje:90,fechas:5,monto:730,estado:'activo'},
+    {id:6,torneoId:1,clubId:4,catId:3,nombre:'',inscripcion:300,arbitraje:100,fechas:8,monto:2410,estado:'activo'},
+  ],
+  pagos: [
+    {id:1,torneoId:1,clubId:1,monto:500,medio:'BCP',fecha:'2026-06-24',nroOp:'7700',desc:'Adelanto inscripción Cat. 2016',op:'M. Quispe',estado:'pendiente',regEn:'2026-06-24 09:14',procPor:null,procEn:null,motivo:null},
+    {id:2,torneoId:1,clubId:2,monto:350,medio:'Yape',fecha:'2026-06-24',nroOp:'8731',desc:'Pago categoría 2016',op:'J. Torres',estado:'pendiente',regEn:'2026-06-24 10:30',procPor:null,procEn:null,motivo:null},
+    {id:3,torneoId:1,clubId:3,monto:730,medio:'Efectivo',fecha:'2026-06-23',nroOp:'—',desc:'Pago total categoría 2013',op:'M. Quispe',estado:'pendiente',regEn:'2026-06-23 16:45',procPor:null,procEn:null,motivo:null},
+    {id:4,torneoId:1,clubId:1,monto:1300,medio:'BCP',fecha:'2026-06-20',nroOp:'6521',desc:'Inscripción Cat. 2013',op:'M. Quispe',estado:'aprobado',regEn:'2026-06-20 09:00',procPor:'A. Reyes',procEn:'2026-06-20 11:00',motivo:null},
+    {id:5,torneoId:1,clubId:4,monto:1200,medio:'Interbank',fecha:'2026-06-15',nroOp:'3310',desc:'Pago total',op:'J. Torres',estado:'rechazado',regEn:'2026-06-15 14:20',procPor:'A. Reyes',procEn:'2026-06-15 17:00',motivo:'El monto del voucher no coincide con el depósito real.'},
+  ],
+  prospectos: [
+    {id:1,torneoId:1,clubId:null,clubNombre:'Tales FC',catIds:[1,2],delegado:'Raúl Mendoza',telefono:'951 220 410',nota:'Pidió descuento por pago adelantado.'},
+    {id:2,torneoId:1,clubId:null,clubNombre:'San Martín Juniors',catIds:[1],delegado:'Carla Vidal',telefono:'987 304 552',nota:'A la espera de presupuesto del club.'},
+    {id:3,torneoId:1,clubId:null,clubNombre:'Pumas Surco',catIds:[1,3,4],delegado:'Jorge Aliaga',telefono:'996 112 870',nota:''},
+    {id:4,torneoId:1,clubId:null,clubNombre:'Real Atlético Surco',catIds:[3],delegado:'Diego Salas',telefono:'944 882 011',nota:'Confirmaría si se libera otro cupo.'},
+    {id:5,torneoId:1,clubId:null,clubNombre:'Atlético Chorrillos',catIds:[5,2],delegado:'Pamela Ruiz',telefono:'922 014 738',nota:''},
+    {id:6,torneoId:1,clubId:null,clubNombre:'Defensores La Molina',catIds:[5],delegado:'Luis Bravo',telefono:'978 663 029',nota:'Interesado solo si hay descuento grupal.'},
+  ],
+  notifications: [],
+};
+
+const ROLES = {
+  organizador:{label:'Organizador',nombre:'Luis Ortega',color:'#7C3AED'},
+  operador:{label:'Operador',nombre:'Miguel Quispe',color:'#0D9488'},
+  tesorero:{label:'Tesorero',nombre:'Ana Reyes',color:'#B45309'},
+};
+
+const MENU = [
+  {id:'p1',label:'Torneos',icon:'🏆',roles:['organizador','operador','tesorero'],
+    children:[
+      {id:'p_nuevo_torneo',label:'Nuevo Torneo',roles:['organizador']},
+    ]},
+  {id:'__pagos',label:'Pagos',icon:'💳',roles:['organizador','operador','tesorero'],noScreen:true,
+    children:[
+      {id:'p2',label:'Registrar Pagos',roles:['organizador','operador']},
+      {id:'p3',label:'Aprobar Pagos',roles:['organizador','tesorero']},
+    ]},
+  {id:'p_cxc',label:'Cuentas por Cobrar',icon:'📊',roles:['organizador','tesorero']},
+  {id:'p_seguridad',label:'Seguridad',icon:'🔐',roles:['organizador']},
+  {id:'__cfg',label:'Configuración',icon:'⚙️',roles:['organizador'],noScreen:true,
+    children:[
+      {id:'p_cfg_complejos',label:'Complejos Deportivos',roles:['organizador']},
+      {id:'p_cfg_categorias',label:'Categorías',roles:['organizador']},
+    ]},
+];
+
+// ---- HELPERS ----
+const fmt = n => 'S/. ' + (n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+const today = () => new Date().toISOString().slice(0,10);
+const now = () => { const d = new Date(); return d.toISOString().slice(0,10) + ' ' + d.toTimeString().slice(0,5); };
+const clubById = id => S.clubes.find(c => c.id === id);
+const catById = id => S.categorias.find(c => c.id === id);
+const equiposByClub = id => S.equipos.filter(e => e.clubId === id);
+const equiposByCat = id => S.equipos.filter(e => e.catId === id && e.estado === 'activo');
+const prospectosByCat = id => S.prospectos.filter(p => p.catId === id);
+const pendientes = () => S.pagos.filter(p => p.estado === 'pendiente');
+const aprobadosHoy = () => S.pagos.filter(p => p.estado === 'aprobado' && p.procEn && p.procEn.startsWith(today()));
+const rechazadosHoy = () => S.pagos.filter(p => p.estado === 'rechazado' && p.procEn && p.procEn.startsWith(today()));
+
+function cargosClub(id) { return equiposByClub(id).reduce((s,e)=>s+e.monto,0); }
+function abonadoClub(id) { return S.pagos.filter(p=>p.clubId===id&&p.estado==='aprobado').reduce((s,p)=>s+p.monto,0); }
+function saldoClub(id) { return cargosClub(id) - abonadoClub(id); }
+
+function badgeEstado(e) {
+  const m = {pendiente:'bg-amber-100 text-amber-700',aprobado:'bg-emerald-100 text-emerald-700',rechazado:'bg-rose-100 text-rose-700'};
+  const l = {pendiente:'Pendiente',aprobado:'Aprobado',rechazado:'Rechazado'};
+  return `<span class="text-[11px] font-semibold px-2 py-0.5 rounded-full ${m[e]||'bg-slate-100 text-slate-500'}">${l[e]||e}</span>`;
+}
+function badgeEquipo(e) {
+  return e==='activo'
+    ? '<span class="bg-emerald-100 text-emerald-700 text-[11px] font-semibold px-2 py-0.5 rounded-full">Activo</span>'
+    : '<span class="bg-slate-200 text-slate-600 text-[11px] font-semibold px-2 py-0.5 rounded-full">Inactivo</span>';
+}
+function roleTag(role) {
+  const r = ROLES[role]; if(!r) return '';
+  return `<span class="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full" style="background:${r.color}1A;color:${r.color}"><span class="w-1.5 h-1.5 rounded-full" style="background:${r.color}"></span>Rol: ${r.label}</span>`;
+}
+
+// ---- TOAST + NOTIF ----
+function toast(msg, type='success') {
+  const tc = document.getElementById('tc');
+  const div = document.createElement('div');
+  const colors = {success:'bg-emerald-600',error:'bg-rose-600',info:'bg-blue-600',warn:'bg-amber-600'};
+  div.className = `toast-msg pointer-events-auto ${colors[type]||colors.info} text-white text-xs font-medium px-4 py-3 rounded-xl shadow-lg`;
+  div.textContent = msg;
+  tc.appendChild(div);
+  setTimeout(()=>div.remove(), 3500);
+}
+function addNotif(msg, type='info') {
+  S.notifications.unshift({id:S.nextId++,msg,type,ts:now()});
+  const b = document.getElementById('nbadge');
+  b.textContent = S.notifications.length;
+  b.classList.remove('hidden');
+  renderNotifList();
+}
+function renderNotifList() {
+  const el = document.getElementById('notifList');
+  if(!el) return;
+  if(!S.notifications.length) { el.innerHTML='<p class="text-xs text-slate-400 p-4">Sin notificaciones.</p>'; return; }
+  el.innerHTML = S.notifications.map(n=>`
+    <div class="px-4 py-3">
+      <p class="text-xs text-slate-700">${n.msg}</p>
+      <p class="text-[10px] text-slate-400 mt-0.5">${n.ts}</p>
+    </div>`).join('');
+}
+function toggleNotif() { document.getElementById('notifOverlay').classList.toggle('hidden'); renderNotifList(); }
+function closeNotifOutside(e) { if(e.target===document.getElementById('notifOverlay')) document.getElementById('notifOverlay').classList.add('hidden'); }
+function clearNotifs() { S.notifications=[]; document.getElementById('nbadge').classList.add('hidden'); renderNotifList(); }
+
+// ---- MODAL ----
+function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+// ---- LOGIN / LOGOUT ----
+let _selectedRole = null;
+function selectRole(role, btn) {
+  _selectedRole = role;
+  document.querySelectorAll('.role-btn').forEach(b=>b.classList.remove('sel'));
+  btn.classList.add('sel');
+  document.getElementById('loginBtn').disabled = false;
+}
+
+function _enterApp(usuarioActual) {
+  S.usuarioActual = usuarioActual;
+  S.role = usuarioActual.rol;
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('appShell').classList.remove('hidden');
+  // Sidebar: nombre y rol
+  const initials = usuarioActual.nombre.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('sbName').textContent = usuarioActual.nombre;
+  document.getElementById('sbRole').textContent = ROLES[S.role]?.label || S.role;
+  document.getElementById('sbAvatar').textContent = initials;
+  renderNav();
+  const fd = document.getElementById('pFecha'); if(fd) fd.value = today();
+  renderClubSelector();
+  const firstScreen = MENU.find(m=>m.roles.includes(S.role));
+  if(firstScreen) {
+    if(firstScreen.noScreen && firstScreen.children) {
+      const ch = firstScreen.children.find(c=>c.roles.includes(S.role));
+      showScreen(ch ? ch.id : 'p1');
+    } else showScreen(firstScreen.id);
+  } else showScreen('p1');
+}
+
+function doLoginEmail() {
+  const email = (document.getElementById('loginEmail')?.value||'').trim().toLowerCase();
+  if(!email){ toast('Ingresa tu correo electrónico.','error'); return; }
+  const u = S.usuarios.find(x=>x.email.toLowerCase()===email && x.activo && x.rol);
+  if(!u){ toast('Correo no encontrado o sin perfil asignado. Contacta al Organizador.','error'); return; }
+  _enterApp(u);
+}
+
+function doLoginGoogle() {
+  // Simula login con Google — muestra lista de usuarios con método google
+  const googleUsers = S.usuarios.filter(u=>u.metodo==='google' && u.activo && u.rol);
+  if(!googleUsers.length){ toast('No hay usuarios registrados con Google.','error'); return; }
+  // Simula selección del primer usuario Google activo (en producción sería el popup de OAuth)
+  _enterApp(googleUsers[0]);
+  toast(`Sesión iniciada con Google como ${googleUsers[0].nombre}`,'success');
+}
+
+// Login modo simulador (mockup)
+function doLogin() {
+  if(!_selectedRole) return;
+  const mockUser = S.usuarios.find(u=>u.rol===_selectedRole && u.activo) ||
+    {id:0, nombre: ROLES[_selectedRole]?.nombre||_selectedRole, email:'demo@mockup.pe', rol:_selectedRole, metodo:'email', activo:true};
+  _enterApp(mockUser);
+}
+
+function doLogout() {
+  S.role = null; S.usuarioActual = null; _selectedRole = null;
+  document.getElementById('appShell').classList.add('hidden');
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.querySelectorAll('.role-btn').forEach(b=>b.classList.remove('sel'));
+  document.getElementById('loginBtn').disabled = true;
+  document.getElementById('loginEmail').value='';
+  document.getElementById('loginPass').value='';
+}
+
+// ---- SEGURIDAD ----
+function renderSeguridad() {
+  const total = S.usuarios.length;
+  const activos = S.usuarios.filter(u=>u.activo && u.rol).length;
+  const pendientes = S.usuarios.filter(u=>u.pendiente || !u.rol).length;
+  const byRol = r => S.usuarios.filter(u=>u.rol===r && u.activo).length;
+
+  document.getElementById('segKpis').innerHTML = `
+    <div class="bg-white border border-slate-200 rounded-xl p-4">
+      <p class="text-xs text-slate-500 mb-1">Total usuarios</p>
+      <p class="text-2xl font-extrabold text-slate-700">${total}</p>
+    </div>
+    <div class="bg-emerald-50 ring-1 ring-emerald-200 rounded-xl p-4">
+      <p class="text-xs text-emerald-700 mb-1">Activos</p>
+      <p class="text-2xl font-extrabold text-emerald-700">${activos}</p>
+    </div>
+    <div class="bg-amber-50 ring-1 ring-amber-200 rounded-xl p-4">
+      <p class="text-xs text-amber-700 mb-1">Pendientes</p>
+      <p class="text-2xl font-extrabold text-amber-700">${pendientes}</p>
+    </div>
+    <div class="bg-slate-50 ring-1 ring-slate-200 rounded-xl p-4 text-xs text-slate-500 space-y-1">
+      <div class="flex justify-between"><span>👑 Organizadores</span><span class="font-bold text-slate-700">${byRol('organizador')}</span></div>
+      <div class="flex justify-between"><span>📋 Operadores</span><span class="font-bold text-slate-700">${byRol('operador')}</span></div>
+      <div class="flex justify-between"><span>💰 Tesoreros</span><span class="font-bold text-slate-700">${byRol('tesorero')}</span></div>
+    </div>`;
+
+  const rolIcon = {organizador:'👑',operador:'📋',tesorero:'💰'};
+  const rolLabel = {organizador:'Organizador',operador:'Operador',tesorero:'Tesorero'};
+  const metodoIcon = {email:'✉️',google:'<svg class="inline w-3.5 h-3.5" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>'};
+
+  document.getElementById('segUsuariosT').innerHTML = S.usuarios.map(u=>{
+    const initials = u.nombre.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const esSelf = S.usuarioActual?.id === u.id;
+    const rolOpts = ['organizador','operador','tesorero'].map(r=>
+      `<option value="${r}" ${u.rol===r?'selected':''}>${rolIcon[r]} ${rolLabel[r]}</option>`
+    ).join('');
+    const estadoBadge = u.pendiente || !u.rol
+      ? '<span class="text-[10px] bg-amber-100 text-amber-700 font-semibold px-2 py-0.5 rounded-full">Pendiente</span>'
+      : u.activo
+        ? '<span class="text-[10px] bg-emerald-100 text-emerald-700 font-semibold px-2 py-0.5 rounded-full">Activo</span>'
+        : '<span class="text-[10px] bg-slate-100 text-slate-500 font-semibold px-2 py-0.5 rounded-full">Inactivo</span>';
+    return `<tr class="hover:bg-slate-50">
+      <td class="py-3 px-4">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-full bg-[#4F86C6] text-white text-xs font-bold flex items-center justify-center shrink-0">${initials}</div>
+          <div>
+            <p class="font-semibold text-sm">${u.nombre}${esSelf?' <span class="text-[10px] text-blue-500 font-normal">(tú)</span>':''}</p>
+          </div>
+        </div>
+      </td>
+      <td class="py-3 px-4 text-slate-500 text-sm">${u.email}</td>
+      <td class="py-3 px-4 text-center text-base" title="${u.metodo==='google'?'Google':'Email y contraseña'}">${metodoIcon[u.metodo]||'✉️'}</td>
+      <td class="py-3 px-4 text-center">
+        ${esSelf
+          ? `<span class="text-sm font-semibold">${rolIcon[u.rol]||''} ${rolLabel[u.rol]||'—'}</span>`
+          : `<select onchange="cambiarRol(${u.id},this.value)" class="border border-slate-200 rounded-lg px-2 py-1 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-200">
+              <option value="">— Sin perfil —</option>${rolOpts}
+             </select>`
+        }
+      </td>
+      <td class="py-3 px-4 text-center">${estadoBadge}</td>
+      <td class="py-3 px-4 text-center">
+        ${esSelf ? '<span class="text-xs text-slate-300">—</span>'
+          : `<button onclick="toggleActivo(${u.id})" class="text-xs font-semibold ${u.activo?'text-rose-500 hover:text-rose-700':'text-emerald-600 hover:text-emerald-800'} hover:underline">
+              ${u.activo?'Desactivar':'Activar'}
+             </button>`
+        }
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function cambiarRol(userId, rol) {
+  const u = S.usuarios.find(x=>x.id===userId); if(!u) return;
+  u.rol = rol||null;
+  u.pendiente = !rol;
+  renderSeguridad();
+  toast(`Perfil de ${u.nombre} actualizado a ${rol||'Sin perfil'} ✓`,'success');
+}
+
+function toggleActivo(userId) {
+  const u = S.usuarios.find(x=>x.id===userId); if(!u) return;
+  u.activo = !u.activo;
+  renderSeguridad();
+  toast(`${u.nombre} ${u.activo?'activado':'desactivado'} ✓`, u.activo?'success':'warn');
+}
+
+function invitarUsuario() {
+  const email  = document.getElementById('invEmail').value.trim();
+  const nombre = document.getElementById('invNombre').value.trim();
+  const rol    = document.querySelector('input[name="invRol"]:checked')?.value || 'operador';
+  if(!email){ toast('El correo es obligatorio.','error'); return; }
+  if(!nombre){ toast('El nombre es obligatorio.','error'); return; }
+  if(S.usuarios.find(u=>u.email.toLowerCase()===email.toLowerCase())){
+    toast('Ya existe un usuario con ese correo.','error'); return;
+  }
+  S.usuarios.push({id:S.nextId++, nombre, email, rol, metodo:'email', activo:false, pendiente:true});
+  closeModal('invitarUsuarioModal');
+  document.getElementById('invEmail').value='';
+  document.getElementById('invNombre').value='';
+  renderSeguridad();
+  toast(`Invitación enviada a ${email} ✓`,'success');
+}
+
+// ---- NAV ----
+function renderNav() {
+  const nav = document.getElementById('sideNav');
+  nav.innerHTML = MENU.map(item=>{
+    if(!item.roles.includes(S.role)) return '';
+    const visChildren = (item.children||[]).filter(c=>c.roles.includes(S.role));
+    const hasOwnScreen = !item.noScreen && !!document.getElementById(item.id);
+    const target = hasOwnScreen ? item.id : (visChildren[0]?.id||'');
+    const childHtml = visChildren.map(c=>`
+      <button onclick="showScreen('${c.id}')" data-screen="${c.id}" class="nav-sub w-full text-left text-xs px-3 py-2 rounded-lg text-blue-100 hover:bg-white/10 transition flex items-center gap-2 ml-3">
+        <span class="w-1 h-1 rounded-full bg-blue-300"></span>${c.label}
+      </button>`).join('');
+    return `<div class="mb-0.5">
+      <button onclick="${target?`showScreen('${target}')`:'void 0'}" data-screen="${hasOwnScreen?item.id:''}" class="nav-item w-full text-left text-sm font-semibold px-3 py-2.5 rounded-lg text-blue-50 hover:bg-white/10 transition flex items-center gap-2.5">
+        <span>${item.icon}</span>${item.label}
+      </button>
+      ${childHtml?`<div class="mt-0.5 space-y-0.5">${childHtml}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function highlightNav(id) {
+  document.querySelectorAll('[data-screen]').forEach(b=>{
+    b.classList.toggle('active', b.dataset.screen===id);
+  });
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.classList.add('active','fade-in');
+  highlightNav(id);
+  window.scrollTo({top:0,behavior:'instant'});
+  renderScreen(id);
+}
+
+function renderScreen(id) {
+  if(id==='p1') renderP1();
+  else if(id==='p1_detalle') renderP1Detalle();
+  else if(id==='p_nuevo_torneo') renderNuevoTorneo();
+  else if(id==='p_cfg_complejos') renderCfgComplejos();
+  else if(id==='p_cfg_categorias') renderCfgCategorias();
+  else if(id==='p1b') renderP1b();
+  else if(id==='p2') renderP2();
+  else if(id==='p3') renderP3();
+  else if(id==='p4') renderP4(S.selectedClubId);
+  else if(id==='p_cxc') renderCxc();
+  else if(id==='p_seguridad') renderSeguridad();
+}
+
+// ---- P1: TORNEOS (dashboard) ----
+function renderP1() {
+  document.getElementById('p1badge').innerHTML = roleTag(S.role);
+  // Botón "Nuevo Torneo" solo para organizador
+  const actions = document.getElementById('p1Actions');
+  if(actions) {
+    actions.innerHTML = S.role === 'organizador'
+      ? `<button onclick="showScreen('p_nuevo_torneo')" class="flex items-center gap-2 bg-[#18324F] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#0f253d] transition shadow-sm">+ Nuevo Torneo</button>`
+      : '';
+  }
+  renderTorneosList();
+}
+
+// ---- P1 DETALLE: vista completa de un torneo ----
+function renderP1Detalle() {
+  const t = S.torneos.find(x=>x.id===S.torneoSelId);
+  if(!t) { document.getElementById('p1DetalleContent').innerHTML = '<p class="text-slate-400">Selecciona un torneo.</p>'; return; }
+
+  const f = torneoFinancials(t);
+  const isActivo = t.estado==='activo';
+
+  const esquemaLabel = (t.esquema||'inscripcion_arbitraje')==='solo_inscripcion'
+    ? '<span class="text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full ml-2">Solo Inscripción</span>'
+    : '<span class="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full ml-2">Inscripción + Arbitraje</span>';
+
+  const kpiBar = `
+  <div class="flex items-center gap-2 mb-3">
+    <p class="text-xs text-slate-400">Esquema de cobro:</p>${esquemaLabel}
+  </div>
+  <div class="grid grid-cols-4 gap-3 mb-6">
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+      <p class="text-[10px] text-slate-400 mb-1 uppercase font-semibold">Monto Total</p>
+      <p class="font-bold mono text-slate-800 text-lg">${fmt(f.total)}</p>
+      <p class="text-[10px] text-slate-300 mt-1">Insc. + Arb. × fechas</p>
+    </div>
+    <div class="bg-white rounded-xl border border-blue-100 p-4 shadow-sm">
+      <p class="text-[10px] text-blue-500 mb-1 uppercase font-semibold">Total Inscripción</p>
+      <p class="font-bold mono text-blue-700 text-lg">${fmt(f.totalInsc)}</p>
+      <p class="text-[10px] text-slate-300 mt-1">Base CxC</p>
+    </div>
+    <div class="bg-emerald-50 rounded-xl border border-emerald-100 p-4 shadow-sm">
+      <p class="text-[10px] text-emerald-600 mb-1 uppercase font-semibold">Recaudado</p>
+      <p class="font-bold mono text-emerald-700 text-lg">${fmt(f.recaudado)}</p>
+      <p class="text-[10px] text-slate-300 mt-1">Inscripciones cobradas</p>
+    </div>
+    <div class="${f.porRecaudar>0?'bg-rose-50 border-rose-100':'bg-emerald-50 border-emerald-100'} rounded-xl border p-4 shadow-sm">
+      <p class="text-[10px] ${f.porRecaudar>0?'text-rose-600':'text-emerald-600'} mb-1 uppercase font-semibold">Por Recaudar</p>
+      <p class="font-bold mono ${f.porRecaudar>0?'text-rose-700':'text-emerald-700'} text-lg">${fmt(f.porRecaudar)}</p>
+      <p class="text-[10px] text-slate-300 mt-1">Inscripciones pendientes</p>
+    </div>
+  </div>`;
+
+  // Categorías + equipos agrupados
+  let catsSections = '';
+  if(isActivo) {
+    // Categorías configuradas para este torneo específico
+    const tornCats = (t.cats||[]).map(tc => {
+      const cat = S.categorias.find(c=>c.id===tc.catId);
+      return cat ? {...tc, nombre: cat.nombre} : null;
+    }).filter(Boolean);
+
+    catsSections = tornCats.map(tc => {
+      const equipos = S.equipos.filter(e=>e.torneoId===t.id && e.catId===tc.catId);
+      const inscritos = equipos.filter(e=>e.estado==='activo').length;
+      const pctCat = tc.aforo>0 ? Math.min(100, Math.round(inscritos/tc.aforo*100)) : 0;
+      const barCol = pctCat>=100?'bg-emerald-500':pctCat>=60?'bg-blue-500':'bg-amber-500';
+      const canAdd = ['organizador','operador'].includes(S.role);
+      const rows = equipos.length>0 ? equipos.map(e=>{
+        const club = clubById(e.clubId);
+        return `<tr class="hover:bg-blue-50 cursor-pointer ${e.estado==='inactivo'?'opacity-40':''}" onclick="openEstadoCuenta(${e.clubId},${t.id})">
+          <td class="py-2.5 px-4 font-medium text-sm">${club?.nombre||'—'}</td>
+          <td class="py-2.5 px-4 text-slate-400 text-xs mono">${fmt(e.inscripcion)} + ${fmt(e.arbitraje)}×${e.fechas}</td>
+          <td class="py-2.5 px-4 text-right mono font-bold text-sm">${fmt(e.monto)}</td>
+          <td class="py-2.5 px-4 text-center">${badgeEquipo(e.estado)}</td>
+          <td class="py-2.5 px-4 text-center text-slate-300 text-xs">→</td>
+        </tr>`;
+      }).join('') : `<tr><td colspan="5" class="py-5 text-center text-slate-300 text-xs">Sin equipos inscritos en esta categoría</td></tr>`;
+      return `
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-4">
+        <div class="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-200">
+          <div class="flex items-center gap-3">
+            <h3 class="font-bold text-sm">${tc.nombre}</h3>
+            <span class="text-xs text-slate-400">${inscritos} / ${tc.aforo} equipos · ~${tc.fechas} fechas</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="w-20 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+              <div class="h-full rounded-full ${barCol}" style="width:${pctCat}%"></div>
+            </div>
+            <span class="text-xs font-semibold text-slate-400">${pctCat}%</span>
+            ${canAdd ? `<button onclick="openAddEquipo(${tc.catId})" class="text-xs font-semibold text-[#18324F] border border-slate-200 bg-white px-2.5 py-1 rounded-lg hover:bg-slate-100 transition">+ Añadir equipo</button>` : ''}
+          </div>
+        </div>
+        <table class="w-full text-sm">
+          <thead><tr class="text-left text-[10px] text-slate-400 uppercase bg-white border-b border-slate-100">
+            <th class="py-2 px-4 font-semibold">Club</th>
+            <th class="py-2 px-4 font-semibold">Insc. + Arb. (ref.)</th>
+            <th class="py-2 px-4 font-semibold text-right">Monto Total</th>
+            <th class="py-2 px-4 font-semibold text-center">Estado</th>
+            <th class="py-2 px-4"></th>
+          </tr></thead>
+          <tbody class="divide-y divide-slate-100">${rows}</tbody>
+        </table>
+      </div>`;
+    }).join('');
+  } else {
+    const snap = t.snap;
+    catsSections = snap.cats.map(cat => {
+      const catEquipos = snap.equipos.filter(e=>e.cat===cat.nombre);
+      const rows = catEquipos.length>0 ? catEquipos.map(e=>`
+        <tr class="hover:bg-slate-50 ${e.estado==='inactivo'?'opacity-40':''}">
+          <td class="py-2.5 px-4 font-medium text-sm">${e.club}</td>
+          <td class="py-2.5 px-4 text-slate-300 text-xs">—</td>
+          <td class="py-2.5 px-4 text-right mono font-bold text-sm">${fmt(e.monto)}</td>
+          <td class="py-2.5 px-4 text-center">${badgeEquipo(e.estado)}</td>
+        </tr>`).join('')
+        : `<tr><td colspan="4" class="py-5 text-center text-slate-300 text-xs">Sin equipos registrados</td></tr>`;
+      return `
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-4 opacity-90">
+        <div class="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-200">
+          <div class="flex items-center gap-3">
+            <h3 class="font-bold text-sm text-slate-600">${cat.nombre}</h3>
+            <span class="text-xs text-slate-400">${cat.inscritos} / ${cat.aforo} equipos · ~${cat.fechas} fechas</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="w-20 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+              <div class="h-full bg-slate-400 rounded-full" style="width:${cat.pct}%"></div>
+            </div>
+            <span class="text-xs font-semibold text-slate-400">${cat.pct}%</span>
+            <span class="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">Cerrado</span>
+          </div>
+        </div>
+        <table class="w-full text-sm">
+          <thead><tr class="text-left text-[10px] text-slate-400 uppercase bg-white border-b border-slate-100">
+            <th class="py-2 px-4 font-semibold">Club</th>
+            <th class="py-2 px-4 font-semibold">Detalle</th>
+            <th class="py-2 px-4 font-semibold text-right">Monto Total</th>
+            <th class="py-2 px-4 font-semibold text-center">Estado</th>
+          </tr></thead>
+          <tbody class="divide-y divide-slate-100">${rows}</tbody>
+        </table>
+      </div>`;
+    }).join('');
+  }
+
+  // ---- semáforo de cupos ----
+  const semaforoCards = isActivo ? (t.cats||[]).map(tc=>{
+    const cat = S.categorias.find(c=>c.id===tc.catId);
+    if(!cat) return '';
+    const inscritos = S.equipos.filter(e=>e.torneoId===t.id&&e.catId===tc.catId&&e.estado==='activo').length;
+    const disponibles = tc.aforo - inscritos;
+    const pct = tc.aforo>0 ? Math.min(100,Math.round(inscritos/tc.aforo*100)) : 0;
+    const [bg,border,barColor,textColor] =
+      disponibles<=0   ? ['bg-emerald-50','border-emerald-200','#16a34a','text-emerald-700'] :
+      disponibles<=2   ? ['bg-amber-50','border-amber-200','#D97706','text-amber-700'] :
+                         ['bg-rose-50','border-rose-200','#DC2626','text-rose-700'];
+    const modBadge = tc.modalidad ? `<span class="text-[10px] font-bold bg-[#18324F]/10 text-[#18324F] px-2 py-0.5 rounded-full">${tc.modalidad}</span>` : '';
+    return `<div class="${bg} rounded-xl border ${border} p-4">
+      <div class="flex items-center justify-between mb-2 gap-2">
+        <span class="font-bold text-sm text-slate-800 truncate">${cat.nombre}</span>
+        ${modBadge}
+      </div>
+      <div class="w-full h-2 bg-white/70 rounded-full overflow-hidden mb-3">
+        <div class="h-full rounded-full transition-all" style="width:${pct}%;background:${barColor}"></div>
+      </div>
+      <div class="grid grid-cols-3 gap-1 text-center">
+        <div><p class="text-[10px] text-slate-400 uppercase font-semibold">Total</p><p class="font-bold text-slate-700">${tc.aforo}</p></div>
+        <div><p class="text-[10px] text-slate-400 uppercase font-semibold">Registrados</p><p class="font-bold text-slate-700">${inscritos}</p></div>
+        <div><p class="text-[10px] ${textColor} uppercase font-semibold">Disponibles</p><p class="font-bold ${textColor}">${disponibles}</p></div>
+      </div>
+    </div>`;
+  }).join('') : '';
+
+  const semaforoSection = isActivo && semaforoCards ? `
+    <div class="mb-6">
+      <h4 class="text-sm font-bold text-slate-600 mb-3">Cupos por Categoría</h4>
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">${semaforoCards}</div>
+    </div>` : '';
+
+  const canEdit = isActivo && S.role==='organizador';
+
+  document.getElementById('p1DetalleContent').innerHTML = `
+    <div class="flex items-start justify-between mb-5 gap-4">
+      <div>
+        <div class="flex items-center gap-2 mb-2 text-sm">
+          <button onclick="showScreen('p1')" class="text-slate-400 hover:text-slate-700 transition font-medium">← Torneos</button>
+          <span class="text-slate-300">/</span>
+          <span class="text-slate-500">${t.nombre}</span>
+        </div>
+        <h1 class="text-xl font-bold mb-1.5">${t.nombre}</h1>
+        <div class="flex items-center gap-3 flex-wrap text-sm">
+          ${t.sede ? `<span class="text-slate-500">📍 ${t.sede}</span>` : ''}
+          <span class="text-slate-400">· ${t.label}</span>
+          ${isActivo
+            ? '<span class="text-[11px] font-bold bg-emerald-100 text-emerald-700 px-2.5 py-0.5 rounded-full">Activo</span>'
+            : '<span class="text-[11px] font-bold bg-slate-200 text-slate-500 px-2.5 py-0.5 rounded-full">Cerrado</span>'}
+        </div>
+      </div>
+      <div class="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+        ${isActivo && ['organizador','operador'].includes(S.role) ? `<button onclick="showScreen('p1b')" class="text-xs font-semibold text-violet-600 border border-violet-200 bg-violet-50 px-3 py-2 rounded-lg hover:bg-violet-100 transition">🏟 Interesados</button>` : ''}
+        ${canEdit ? `<button onclick="openAgregarCat()" class="text-xs font-semibold text-[#18324F] border border-slate-200 bg-white px-3 py-2 rounded-lg hover:bg-slate-50 transition">+ Categoría</button>` : ''}
+        ${canEdit ? `<button onclick="openEditTorneo()" class="text-xs font-semibold text-white bg-[#18324F] px-3 py-2 rounded-lg hover:bg-[#0f253d] transition">✏️ Editar torneo</button>` : ''}
+      </div>
+    </div>
+    ${kpiBar}
+    ${semaforoSection}
+    <h4 class="text-sm font-bold text-slate-600 mb-3">Equipos por Categoría</h4>
+    ${catsSections}`;
+}
+
+// ---- NUEVO TORNEO ----
+function renderNuevoTorneo() {
+  // Poblar select de complejos
+  const sedeEl = document.getElementById('ntSede');
+  if(sedeEl) {
+    sedeEl.innerHTML = '<option value="">— Selecciona un complejo —</option>' +
+      S.complejos.map(c=>`<option value="${c.nombre}">${c.nombre}${c.distrito?' ('+c.distrito+')':''}</option>`).join('');
+  }
+  const container = document.getElementById('ntCatsContainer');
+  if(!container) return;
+  container.innerHTML = S.categorias.map(cat => `
+    <div class="border border-slate-200 rounded-xl p-4 transition" id="ntCatRow_${cat.id}">
+      <div class="flex items-center gap-3 mb-0">
+        <input type="checkbox" id="ntCat_${cat.id}" onchange="toggleNtCat(${cat.id})" class="w-4 h-4 rounded accent-[#18324F] cursor-pointer">
+        <label for="ntCat_${cat.id}" class="font-semibold text-sm cursor-pointer select-none">${cat.nombre}</label>
+      </div>
+      <div id="ntCatFields_${cat.id}" class="hidden mt-3 space-y-3">
+        <div>
+          <label class="block text-[10px] font-semibold text-slate-500 mb-1.5 uppercase">Modalidad</label>
+          <div class="flex gap-2">
+            ${['F5','F7','F9','F11'].map(m=>`<label class="flex-1 text-center"><input type="radio" name="ntMod_${cat.id}" value="${m}" class="sr-only peer"><span class="block border border-slate-300 rounded-lg py-1.5 text-xs font-bold text-slate-500 cursor-pointer peer-checked:border-[#4F86C6] peer-checked:bg-blue-50 peer-checked:text-[#18324F] hover:bg-slate-50 transition">${m}</span></label>`).join('')}
+          </div>
+        </div>
+        <div class="grid grid-cols-4 gap-3">
+          <div>
+            <label class="block text-[10px] font-semibold text-slate-500 mb-1 uppercase">Aforo</label>
+            <input type="number" id="ntAforo_${cat.id}" value="8" min="2" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+          </div>
+          <div>
+            <label class="block text-[10px] font-semibold text-slate-500 mb-1 uppercase">N° Fechas</label>
+            <input type="number" id="ntFechas_${cat.id}" value="6" min="1" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+          </div>
+          <div>
+            <label class="block text-[10px] font-semibold text-slate-500 mb-1 uppercase">Inscripción (S/.)</label>
+            <input type="number" id="ntInsc_${cat.id}" placeholder="250" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+          </div>
+          <div>
+            <label class="block text-[10px] font-semibold text-slate-500 mb-1 uppercase">Arb./fecha (S/.)</label>
+            <input type="number" id="ntArb_${cat.id}" placeholder="80" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+          </div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function toggleNtCat(catId) {
+  const cb = document.getElementById(`ntCat_${catId}`);
+  const fields = document.getElementById(`ntCatFields_${catId}`);
+  const row = document.getElementById(`ntCatRow_${catId}`);
+  if(cb.checked) {
+    fields.classList.remove('hidden');
+    row.classList.add('border-blue-300','bg-blue-50/40');
+  } else {
+    fields.classList.add('hidden');
+    row.classList.remove('border-blue-300','bg-blue-50/40');
+  }
+}
+
+// ---- EDITAR TORNEO ----
+function openEditTorneo() {
+  const t = S.torneos.find(x=>x.id===S.torneoSelId);
+  if(!t) return;
+  document.getElementById('etNombre').value = t.nombre;
+  document.getElementById('etInicio').value = t.inicio;
+  document.getElementById('etFin').value    = t.fin;
+  const sedeEl = document.getElementById('etSede');
+  sedeEl.innerHTML = '<option value="">— Sin sede asignada —</option>' +
+    S.complejos.map(c=>`<option value="${c.nombre}">${c.nombre}${c.distrito?' ('+c.distrito+')':''}</option>`).join('');
+  sedeEl.value = t.sede||'';
+  const esq = t.esquema||'inscripcion_arbitraje';
+  const radio = document.querySelector(`input[name="etEsquema"][value="${esq}"]`);
+  if(radio) radio.checked = true;
+  openModal('editTorneoModal');
+}
+
+function guardarEditTorneo() {
+  const t = S.torneos.find(x=>x.id===S.torneoSelId);
+  if(!t) return;
+  const nombre  = (document.getElementById('etNombre').value||'').trim();
+  const sede    = document.getElementById('etSede').value;
+  const inicio  = document.getElementById('etInicio').value;
+  const fin     = document.getElementById('etFin').value;
+  const esquema = document.querySelector('input[name="etEsquema"]:checked')?.value||'inscripcion_arbitraje';
+  if(!nombre||!inicio||!fin) { toast('⚠ Completa todos los campos requeridos.'); return; }
+  const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const d0=new Date(inicio), d1=new Date(fin);
+  t.nombre  = nombre;
+  t.sede    = sede;
+  t.inicio  = inicio;
+  t.fin     = fin;
+  t.esquema = esquema;
+  t.label   = `${MESES[d0.getMonth()]} ${d0.getFullYear()} — ${MESES[d1.getMonth()]} ${d1.getFullYear()}`;
+  closeModal('editTorneoModal');
+  toast('✅ Torneo actualizado.');
+  renderP1Detalle();
+}
+
+// ---- AGREGAR CATEGORÍA A TORNEO EXISTENTE ----
+function openAgregarCat() {
+  const t = S.torneos.find(x=>x.id===S.torneoSelId);
+  if(!t) return;
+  // Solo categorías que aún no están en este torneo
+  const usadas = (t.cats||[]).map(tc=>tc.catId);
+  const disponibles = S.categorias.filter(c=>!usadas.includes(c.id));
+  const sel = document.getElementById('acTCat');
+  if(!disponibles.length) { toast('Todas las categorías del catálogo ya están en este torneo.'); return; }
+  sel.innerHTML = disponibles.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('');
+  document.getElementById('acTAforo').value  = 8;
+  document.getElementById('acTFechas').value = 6;
+  document.getElementById('acTInsc').value   = '';
+  document.getElementById('acTArb').value    = '';
+  // Reset modalidad a F7
+  const f7 = document.querySelector('input[name="acTMod"][value="F7"]');
+  if(f7) f7.checked = true;
+  openModal('agregarCatTorneoModal');
+}
+
+function guardarTorneoCat() {
+  const t = S.torneos.find(x=>x.id===S.torneoSelId);
+  if(!t) return;
+  const catId     = parseInt(document.getElementById('acTCat').value);
+  const modalidad = document.querySelector('input[name="acTMod"]:checked')?.value||'F7';
+  const aforo     = parseInt(document.getElementById('acTAforo').value)||8;
+  const fechas    = parseInt(document.getElementById('acTFechas').value)||6;
+  const inscripcion = parseFloat(document.getElementById('acTInsc').value)||0;
+  const arbitraje   = parseFloat(document.getElementById('acTArb').value)||0;
+  if(!catId) { toast('⚠ Selecciona una categoría.'); return; }
+  if(!t.cats) t.cats = [];
+  t.cats.push({catId, modalidad, aforo, fechas, inscripcion, arbitraje});
+  closeModal('agregarCatTorneoModal');
+  const cat = S.categorias.find(c=>c.id===catId);
+  toast(`✅ Categoría "${cat?.nombre}" (${modalidad}) agregada al torneo.`);
+  renderP1Detalle();
+}
+
+// ---- CFG: COMPLEJOS DEPORTIVOS ----
+function renderCfgComplejos() {
+  const list = document.getElementById('cfgComplejosList');
+  if(!list) return;
+  if(!S.complejos.length) {
+    list.innerHTML = '<p class="text-slate-400 text-sm col-span-3 py-8 text-center">Sin complejos registrados.</p>';
+    return;
+  }
+  list.innerHTML = S.complejos.map(c=>`
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+      <div class="flex items-start justify-between gap-3 mb-2">
+        <div>
+          <h3 class="font-bold text-sm text-slate-800">${c.nombre}</h3>
+          ${c.distrito ? `<span class="text-[11px] font-semibold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">${c.distrito}</span>` : ''}
+        </div>
+        <button onclick="eliminarComplejo(${c.id})" class="shrink-0 text-slate-300 hover:text-rose-500 transition text-lg leading-none" title="Eliminar">✕</button>
+      </div>
+      ${c.direccion ? `<p class="text-xs text-slate-400 mt-2">📍 ${c.direccion}</p>` : ''}
+    </div>`).join('');
+}
+
+function crearComplejo() {
+  const nombre   = (document.getElementById('ccNombre').value||'').trim();
+  const direccion= (document.getElementById('ccDireccion').value||'').trim();
+  const distrito = (document.getElementById('ccDistrito').value||'').trim();
+  if(!nombre) { toast('⚠ El nombre del complejo es obligatorio.'); return; }
+  const newId = Math.max(0,...S.complejos.map(c=>c.id))+1;
+  S.complejos.push({id:newId, nombre, direccion, distrito});
+  document.getElementById('ccNombre').value='';
+  document.getElementById('ccDireccion').value='';
+  document.getElementById('ccDistrito').value='';
+  closeModal('cfgComplejoModal');
+  toast('✅ Complejo "'+nombre+'" registrado.');
+  renderCfgComplejos();
+}
+
+function eliminarComplejo(id) {
+  const c = S.complejos.find(x=>x.id===id);
+  if(!c) return;
+  S.complejos = S.complejos.filter(x=>x.id!==id);
+  toast('Complejo "'+c.nombre+'" eliminado.');
+  renderCfgComplejos();
+}
+
+// ---- CFG: CATEGORÍAS ----
+function renderCfgCategorias() {
+  const list = document.getElementById('cfgCategoriasList');
+  if(!list) return;
+  if(!S.categorias.length) {
+    list.innerHTML = '<p class="text-slate-400 text-sm p-8 text-center">Sin categorías registradas.</p>';
+    return;
+  }
+  list.innerHTML = `
+    <table class="w-full text-sm">
+      <thead><tr class="text-left text-[11px] text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+        <th class="py-3 px-4 font-semibold">Nombre de la categoría</th>
+        <th class="py-3 px-4 font-semibold text-center">Acción</th>
+      </tr></thead>
+      <tbody class="divide-y divide-slate-100">
+        ${S.categorias.map(c=>`
+        <tr class="hover:bg-slate-50">
+          <td class="py-3 px-4 font-semibold">${c.nombre}</td>
+          <td class="py-3 px-4 text-center">
+            <button onclick="eliminarCategoriaConfig(${c.id})" class="text-slate-300 hover:text-rose-500 transition text-lg leading-none" title="Eliminar">✕</button>
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+function crearCategoriaConfig() {
+  const nombre = (document.getElementById('cfgCatNombre').value||'').trim();
+  if(!nombre) { toast('⚠ El nombre de la categoría es obligatorio.'); return; }
+  if(S.categorias.find(c=>c.nombre.toLowerCase()===nombre.toLowerCase())) {
+    toast('⚠ Ya existe una categoría con ese nombre.'); return;
+  }
+  const newId = Math.max(0,...S.categorias.map(c=>c.id))+1;
+  S.categorias.push({id:newId, nombre});
+  document.getElementById('cfgCatNombre').value='';
+  closeModal('cfgCategoriaModal');
+  toast('✅ Categoría "'+nombre+'" agregada.');
+  renderCfgCategorias();
+}
+
+function eliminarCategoriaConfig(id) {
+  const c = S.categorias.find(x=>x.id===id);
+  if(!c) return;
+  const enUso = S.equipos.some(e=>e.catId===id);
+  if(enUso) { toast('⚠ No se puede eliminar: hay equipos inscritos en esta categoría.'); return; }
+  S.categorias = S.categorias.filter(x=>x.id!==id);
+  toast('Categoría "'+c.nombre+'" eliminada.');
+  renderCfgCategorias();
+}
+
+function crearTorneo() {
+  const nombre = (document.getElementById('ntNombre').value||'').trim();
+  const sede   = document.getElementById('ntSede').value||'';
+  const inicio = document.getElementById('ntInicio').value;
+  const fin    = document.getElementById('ntFin').value;
+  if(!nombre||!sede||!inicio||!fin) { toast('⚠ Completa todos los campos requeridos.'); return; }
+  const cats = S.categorias.filter(cat=>document.getElementById(`ntCat_${cat.id}`)?.checked)
+    .map(cat=>{
+      const modEl = document.querySelector(`input[name="ntMod_${cat.id}"]:checked`);
+      return {catId:cat.id,
+        modalidad: modEl?.value||'F7',
+        aforo:+document.getElementById(`ntAforo_${cat.id}`).value||8,
+        fechas:+document.getElementById(`ntFechas_${cat.id}`).value||6,
+        inscripcion:+document.getElementById(`ntInsc_${cat.id}`).value||0,
+        arbitraje:+document.getElementById(`ntArb_${cat.id}`).value||0};
+    });
+  if(!cats.length) { toast('⚠ Selecciona al menos una categoría.'); return; }
+  const esquema = document.querySelector('input[name="ntEsquema"]:checked')?.value||'inscripcion_arbitraje';
+  const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const d0=new Date(inicio), d1=new Date(fin);
+  const label = `${MESES[d0.getMonth()]} ${d0.getFullYear()} — ${MESES[d1.getMonth()]} ${d1.getFullYear()}`;
+  const nuevoId = Math.max(...S.torneos.map(t=>t.id))+1;
+  S.torneos.unshift({id:nuevoId,nombre,sede,esquema,estado:'activo',inicio,fin,label,cats,snap:null});
+  S.torneoSelId = nuevoId;
+  toast('✅ Torneo "'+nombre+'" creado.');
+  showScreen('p1');
+}
+
+// ---- helpers financieros por torneo ----
+function equiposByTorneo(torneoId) { return S.equipos.filter(e=>e.torneoId===torneoId); }
+
+function torneoFinancials(t) {
+  if(t.estado === 'activo') {
+    const equipos    = equiposByTorneo(t.id).filter(e=>e.estado==='activo');
+    // Monto Total = inscripción + arbitraje × fechas por equipo
+    const total      = equipos.reduce((s,e)=>s+(e.monto||0), 0);
+    // CxC solo sobre inscripción
+    const totalInsc  = equipos.reduce((s,e)=>s+(e.inscripcion||0), 0);
+    const clubIds    = [...new Set(equipos.map(e=>e.clubId))];
+    const recaudado  = S.pagos.filter(p=>p.estado==='aprobado'&&p.torneoId===t.id&&clubIds.includes(p.clubId)).reduce((s,p)=>s+p.monto,0);
+    return {total, totalInsc, recaudado, porRecaudar: Math.max(0, totalInsc-recaudado),
+            esquema: t.esquema||'inscripcion_arbitraje'};
+  }
+  const total     = t.snap?.total    || 0;
+  const recaudado = t.snap?.recaudado|| 0;
+  return {total, totalInsc: total, recaudado, porRecaudar: Math.max(0, total-recaudado), esquema:'inscripcion_arbitraje'};
+}
+
+function sumKpis(torneoIds) {
+  return torneoIds.reduce((acc, id)=>{
+    const t = S.torneos.find(x=>x.id===id);
+    if(!t) return acc;
+    const f = torneoFinancials(t);
+    // totalArb = total - totalInsc (arbitraje puro)
+    const arb = (f.total||0) - (f.totalInsc||0);
+    return {
+      total:      acc.total      + (f.total||0),
+      totalInsc:  acc.totalInsc  + (f.totalInsc||0),
+      totalArb:   acc.totalArb   + arb,
+      recaudado:  acc.recaudado  + (f.recaudado||0),
+      porRecaudar:acc.porRecaudar+ (f.porRecaudar||0),
+    };
+  }, {total:0, totalInsc:0, totalArb:0, recaudado:0, porRecaudar:0});
+}
+
+function kpiBlock(label, sublabel, kpi, color) {
+  const pct = kpi.totalInsc>0 ? Math.round(kpi.recaudado/kpi.totalInsc*100) : 100;
+  const barColor = pct>=100?'#16a34a':pct>=60?'#4F86C6':'#D97706';
+  return `
+  <div class="bg-white rounded-xl border-2 border-${color}-100 p-5 shadow-sm">
+    <div class="flex items-start justify-between mb-4">
+      <div>
+        <p class="text-xs font-bold text-${color}-600 uppercase tracking-wide">${label}</p>
+        <p class="text-[11px] text-slate-400 mt-0.5">${sublabel}</p>
+      </div>
+      <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-${color}-50 text-${color}-700">${pct}% inscripción cobrada</span>
+    </div>
+    <div class="grid grid-cols-2 gap-2 mb-2">
+      <div class="bg-slate-50 rounded-lg p-3">
+        <div class="text-[10px] text-slate-400 mb-1 uppercase font-semibold">Monto Total</div>
+        <div class="font-bold mono text-slate-700">${fmt(kpi.total)}</div>
+        <div class="text-[10px] text-slate-300 mt-0.5">Insc. + Arb.</div>
+      </div>
+      <div class="bg-blue-50 rounded-lg p-3">
+        <div class="text-[10px] text-blue-500 mb-1 uppercase font-semibold">Total Inscripciones</div>
+        <div class="font-bold mono text-blue-700">${fmt(kpi.totalInsc)}</div>
+        <div class="text-[10px] text-slate-300 mt-0.5">Base CxC</div>
+      </div>
+      <div class="bg-amber-50 rounded-lg p-3">
+        <div class="text-[10px] text-amber-600 mb-1 uppercase font-semibold">Total Arbitraje</div>
+        <div class="font-bold mono text-amber-700">${fmt(kpi.totalArb)}</div>
+        <div class="text-[10px] text-slate-300 mt-0.5">Cobro semanal</div>
+      </div>
+      <div class="${kpi.porRecaudar>0?'bg-rose-50':'bg-emerald-50'} rounded-lg p-3">
+        <div class="text-[10px] ${kpi.porRecaudar>0?'text-rose-600':'text-emerald-600'} mb-1 uppercase font-semibold">Por Recaudar</div>
+        <div class="font-bold mono ${kpi.porRecaudar>0?'text-rose-700':'text-emerald-700'}">${fmt(kpi.porRecaudar)}</div>
+        <div class="text-[10px] text-slate-300 mt-0.5">Inscripciones pend.</div>
+      </div>
+    </div>
+    <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mt-3">
+      <div class="h-full rounded-full" style="width:${pct}%;background:${barColor}"></div>
+    </div>
+  </div>`;
+}
+
+function renderTorneosList() {
+  // ---- Bloques de KPI comparativos ----
+  // Año calendario 2026: torneos con inicio en 2026
+  const ids2026   = S.torneos.filter(t=>t.inicio.startsWith('2026')).map(t=>t.id);
+  // Últimos 12 meses: Jun 2025 – Jun 2026 (todos los torneos con solapamiento)
+  const ids12m    = S.torneos.map(t=>t.id); // los tres se solapan en el rango
+  const kpi2026   = sumKpis(ids2026);
+  const kpi12m    = sumKpis(ids12m);
+
+  const comparativo = `
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+    ${kpiBlock('Año 2026','Ene 2026 — a la fecha', kpi2026, 'blue')}
+    ${kpiBlock('Últimos 12 meses','Jun 2025 — Jun 2026', kpi12m, 'violet')}
+  </div>`;
+
+  // ---- Tarjetas de torneos seleccionables ----
+  const cards = S.torneos.map(t=>{
+    const f = torneoFinancials(t);
+    const pct = f.total>0 ? Math.round(f.recaudado/f.total*100) : 100;
+    const barColor = pct>=100?'#16a34a':pct>=60?'#4F86C6':'#D97706';
+    const isActivo = t.estado==='activo';
+    const isSel    = t.id === S.torneoSelId;
+
+    const estadoBadge = isActivo
+      ? '<span class="text-[11px] font-bold bg-emerald-100 text-emerald-700 px-2.5 py-0.5 rounded-full">Activo</span>'
+      : '<span class="text-[11px] font-bold bg-slate-200 text-slate-500 px-2.5 py-0.5 rounded-full">Cerrado</span>';
+
+    return `
+    <div onclick="selTorneo(${t.id})" class="cursor-pointer bg-white rounded-xl border-2 ${isSel?'border-[#4F86C6] ring-2 ring-blue-100':'border-slate-200 hover:border-slate-300'} p-5 shadow-sm transition-all">
+      <div class="flex items-start justify-between gap-3 mb-4">
+        <div class="min-w-0">
+          <div class="flex items-center gap-2 flex-wrap mb-0.5">
+            <h3 class="font-bold text-sm text-slate-800">${t.nombre}</h3>
+            ${estadoBadge}
+            ${isSel?'<span class="text-[10px] font-bold text-[#4F86C6]">● seleccionado</span>':''}
+          </div>
+          <p class="text-xs text-slate-400">${t.label}</p>
+        </div>
+        ${isActivo&&isSel ? `<button onclick="event.stopPropagation();showScreen('p1b')" class="shrink-0 text-xs font-semibold text-violet-600 border border-violet-200 bg-violet-50 px-2.5 py-1.5 rounded-lg hover:bg-violet-100 transition">🏟 Interesados</button>` : ''}
+      </div>
+      <div class="grid grid-cols-2 gap-1.5 mb-3">
+        <div class="bg-slate-50 rounded-lg px-3 py-2">
+          <div class="text-[10px] text-slate-400 mb-0.5 font-semibold uppercase">Monto Total</div>
+          <div class="font-bold mono text-slate-700 text-xs">${fmt(f.total)}</div>
+        </div>
+        <div class="bg-blue-50 rounded-lg px-3 py-2">
+          <div class="text-[10px] text-blue-500 mb-0.5 font-semibold uppercase">Total Inscripción</div>
+          <div class="font-bold mono text-blue-700 text-xs">${fmt(f.totalInsc)}</div>
+        </div>
+        <div class="bg-amber-50 rounded-lg px-3 py-2">
+          <div class="text-[10px] text-amber-600 mb-0.5 font-semibold uppercase">Total Arbitraje</div>
+          <div class="font-bold mono text-amber-700 text-xs">${fmt((f.total||0)-(f.totalInsc||0))}</div>
+        </div>
+        <div class="${f.porRecaudar>0?'bg-rose-50':'bg-emerald-50'} rounded-lg px-3 py-2">
+          <div class="text-[10px] ${f.porRecaudar>0?'text-rose-600':'text-emerald-600'} mb-0.5 font-semibold uppercase">Por Recaudar</div>
+          <div class="font-bold mono ${f.porRecaudar>0?'text-rose-700':'text-emerald-700'} text-xs">${fmt(f.porRecaudar)}</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <div class="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+          <div class="h-full rounded-full" style="width:${pct}%;background:${barColor}"></div>
+        </div>
+        <span class="text-[11px] font-semibold text-slate-500 shrink-0">${pct}%</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('torneosList').innerHTML = `
+    ${comparativo}
+    <div class="flex items-center justify-between mb-3">
+      <h4 class="text-sm font-bold text-slate-600">Torneos — haz clic para ver el detalle</h4>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">${cards}</div>`;
+}
+
+function selTorneo(id) {
+  S.torneoSelId = id;
+  showScreen('p1_detalle');
+}
+
+function renderCatGrid() {
+  const grid = document.getElementById('catGrid');
+  const t = S.torneos.find(x=>x.id===S.torneoSelId);
+
+  // Torneo cerrado: usar snapshot
+  if(t && t.estado==='cerrado' && t.snap) {
+    grid.innerHTML = t.snap.cats.map(c=>{
+      const pct = Math.min(100, Math.round(c.inscritos/c.aforo*100));
+      const barColor = pct>=100?'#16a34a':'#4F86C6';
+      const tag = pct>=100
+        ? '<span class="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">Cerrado · Lleno</span>'
+        : '<span class="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">Cerrado</span>';
+      return `<div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm opacity-80">
+        <div class="flex items-center justify-between mb-2"><h3 class="font-bold text-sm">${c.nombre}</h3>${tag}</div>
+        <div class="flex items-center justify-between text-xs text-slate-500 mb-1.5">
+          <span>${c.inscritos} / ${c.aforo} equipos</span>
+          <span class="mono text-slate-400">~${c.fechas} fechas</span>
+        </div>
+        <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+          <div class="h-full rounded-full" style="width:${pct}%;background:${barColor}"></div>
+        </div>
+      </div>`;
+    }).join('');
+    return;
+  }
+
+  // Torneo activo: datos en vivo
+  grid.innerHTML = S.categorias.map(c=>{
+    const inscritos = equiposByCat(c.id).length;
+    const prosp = prospectosByCat(c.id).length;
+    const remaining = c.aforo - inscritos;
+    const pct = Math.min(100, Math.round(inscritos/c.aforo*100));
+    let barColor='#4F86C6', tag='';
+    if(remaining<=0){barColor='#DC2626';tag='<span class="text-[10px] font-bold bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full">CUPO LLENO</span>';}
+    else if(remaining===1){barColor='#D97706';tag='<span class="text-[10px] font-bold bg-amber-100 text-amber-600 px-2 py-0.5 rounded-full">Último cupo</span>';}
+    else{tag=`<span class="text-[10px] text-slate-400">${remaining} cupos libres</span>`;}
+    const prospHtml = prosp>0
+      ? `<button onclick="showScreen('p1b')" class="text-[11px] font-semibold text-violet-600 bg-violet-50 px-2 py-1.5 rounded-md hover:bg-violet-100 flex items-center gap-1 w-fit">🏟 ${prosp} interesado${prosp>1?'s':''}</button>`
+      : '<span class="text-[11px] text-slate-300">Sin interesados pendientes</span>';
+    return `<div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition">
+      <div class="flex items-center justify-between mb-2"><h3 class="font-bold text-sm">${c.nombre}</h3>${tag}</div>
+      <div class="flex items-center justify-between text-xs text-slate-500 mb-1.5">
+        <span>${inscritos} / ${c.aforo} equipos</span>
+        <span class="mono text-slate-400">~${c.fechas} fechas</span>
+      </div>
+      <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-3">
+        <div class="h-full rounded-full transition-all" style="width:${pct}%;background:${barColor}"></div>
+      </div>
+      <div class="pt-2.5 border-t border-slate-100">${prospHtml}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderEquiposGlobal() {
+  const tb = document.getElementById('equiposGlobal');
+  const t = S.torneos.find(x=>x.id===S.torneoSelId);
+
+  // Torneo cerrado: usar snapshot
+  if(t && t.estado==='cerrado' && t.snap) {
+    tb.innerHTML = t.snap.equipos.map(e=>`
+      <tr class="hover:bg-slate-50 ${e.estado==='inactivo'?'opacity-50':''}">
+        <td class="py-2.5 px-4 text-slate-600">${e.cat}</td>
+        <td class="py-2.5 px-4 font-medium">${e.club}</td>
+        <td class="py-2.5 px-4 text-right mono font-semibold">${fmt(e.monto)}</td>
+        <td class="py-2.5 px-4 text-center">${badgeEquipo(e.estado)}</td>
+      </tr>`).join('');
+    return;
+  }
+
+  // Torneo activo
+  const rows = S.equipos.map(e=>{
+    const club = clubById(e.clubId); const cat = catById(e.catId);
+    return `<tr class="hover:bg-slate-50 ${e.estado==='inactivo'?'opacity-50':''}">
+      <td class="py-2.5 px-4 text-slate-600">${cat?.nombre||'—'}</td>
+      <td class="py-2.5 px-4 font-medium">${club?.nombre||'—'}</td>
+      <td class="py-2.5 px-4 text-right mono font-semibold">${fmt(e.monto)}</td>
+      <td class="py-2.5 px-4 text-center">${badgeEquipo(e.estado)}</td>
+    </tr>`;
+  });
+  tb.innerHTML = rows.join('') || '<tr><td colspan="4" class="py-8 text-center text-slate-400 text-sm">Sin equipos registrados.</td></tr>';
+}
+
+// ---- P1b: PROSPECTOS ----
+let _iClubId = null;
+
+function openInteresadoModal() {
+  const t = S.torneos.find(x=>x.id===S.torneoSelId);
+  // Limpiar campo de club
+  _iClubId = null;
+  document.getElementById('iClubInput').value = '';
+  document.getElementById('iClubHint').classList.add('hidden');
+  // Poblar checkboxes de categorías del torneo
+  const cats = (t?.cats||[]).map(tc=>({...tc, nombre: S.categorias.find(c=>c.id===tc.catId)?.nombre||''})).filter(x=>x.nombre);
+  document.getElementById('iCatChecks').innerHTML = cats.map(tc=>`
+    <label class="flex items-center gap-2 text-sm cursor-pointer p-1.5 rounded hover:bg-white">
+      <input type="checkbox" value="${tc.catId}" class="icat-check accent-blue-600 w-4 h-4">
+      <span>${tc.nombre}</span>
+      <span class="text-[10px] text-slate-400">${tc.modalidad||''}</span>
+    </label>`).join('') || '<p class="text-xs text-slate-400">No hay categorías configuradas en este torneo.</p>';
+  document.getElementById('iDelegado').value='';
+  document.getElementById('iTel').value='';
+  document.getElementById('iNota').value='';
+  openModal('interesadoModal');
+}
+
+// Callback del autocomplete del interesado — muestra hint y auto-completa contacto
+function iOnClubACSelect(id, club) {
+  _iClubId = id;
+  const hint = document.getElementById('iClubHint');
+  if(id && club) {
+    hint.classList.remove('hidden');
+    if(club.delegado) document.getElementById('iDelegado').value = club.delegado;
+    if(club.telefono) document.getElementById('iTel').value = club.telefono;
+  } else {
+    hint.classList.add('hidden');
+  }
+}
+
+function renderP1b() {
+  const container = document.getElementById('prospectosContainer');
+  const torneoId  = S.torneoSelId;
+  const torneo    = S.torneos.find(t=>t.id===torneoId);
+  const prospectos = S.prospectos.filter(p=>p.torneoId===torneoId);
+
+  if(!prospectos.length) {
+    container.innerHTML = `<div class="bg-white rounded-xl border border-slate-200 p-10 text-center">
+      <p class="text-slate-400 text-sm mb-3">No hay clubes interesados registrados para este torneo.</p>
+      <button onclick="openInteresadoModal()" class="text-sm font-semibold text-[#4F86C6] hover:underline">+ Añadir el primero</button>
+    </div>`;
+    return;
+  }
+
+  // Ordenar por prioridad: más categorías primero
+  const sorted = [...prospectos].sort((a,b)=>(b.catIds||[]).length-(a.catIds||[]).length);
+
+  const prioBadge = n => {
+    const color = n>=3?'bg-emerald-100 text-emerald-700':n===2?'bg-blue-100 text-blue-700':'bg-slate-100 text-slate-500';
+    return `<span class="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full ${color}">
+      ★ ${n} cat.
+    </span>`;
+  };
+
+  const rows = sorted.map(p=>{
+    const clubNombre = p.clubId ? (S.clubes.find(c=>c.id===p.clubId)?.nombre||p.clubNombre) : p.clubNombre;
+    const catNames   = (p.catIds||[]).map(id=>{
+      const tc = torneo?.cats?.find(x=>x.catId===id);
+      const cat = S.categorias.find(c=>c.id===id);
+      return cat ? `<span class="text-[11px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-medium">${cat.nombre}${tc?.modalidad?' '+tc.modalidad:''}</span>` : '';
+    }).join(' ');
+    return `<tr class="hover:bg-slate-50">
+      <td class="py-3 px-4 font-semibold text-sm">${clubNombre}</td>
+      <td class="py-3 px-4">${catNames}</td>
+      <td class="py-3 px-4 text-center">${prioBadge((p.catIds||[]).length)}</td>
+      <td class="py-3 px-4 text-xs text-slate-500">${p.delegado||'—'}</td>
+      <td class="py-3 px-4 text-xs mono text-slate-400">${p.telefono||'—'}</td>
+      <td class="py-3 px-4 text-xs text-slate-400 italic max-w-[160px] truncate" title="${p.nota||''}">${p.nota||'—'}</td>
+      <td class="py-3 px-4 text-right">
+        <button onclick="confirmarInscripcion(${p.id})" class="text-xs font-semibold text-emerald-600 border border-emerald-200 bg-emerald-50 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition whitespace-nowrap">Inscribir →</button>
+        <button onclick="eliminarProspecto(${p.id})" class="ml-1 text-slate-300 hover:text-rose-400 text-xs px-1">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-200">
+        <p class="text-xs font-bold text-slate-500 uppercase tracking-wide">${prospectos.length} club(s) interesado(s) — ordenados por prioridad</p>
+        <p class="text-[11px] text-slate-400">Más categorías = mayor prioridad de contacto</p>
+      </div>
+      <table class="w-full text-sm">
+        <thead><tr class="text-left text-[10px] text-slate-400 uppercase border-b border-slate-100">
+          <th class="py-2 px-4 font-semibold">Club</th>
+          <th class="py-2 px-4 font-semibold">Categorías de interés</th>
+          <th class="py-2 px-4 font-semibold text-center">Prioridad</th>
+          <th class="py-2 px-4 font-semibold">Delegado</th>
+          <th class="py-2 px-4 font-semibold">Teléfono</th>
+          <th class="py-2 px-4 font-semibold">Nota</th>
+          <th class="py-2 px-4 font-semibold text-right">Acción</th>
+        </tr></thead>
+        <tbody class="divide-y divide-slate-100">${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+// ---- P2: REGISTRAR PAGOS ----
+// ---- PANTALLA P2: REGISTRAR PAGO ----
+
+let _p2TorneoId = null; // torneo activo en p2
+
+function renderP2() {
+  document.getElementById('p2badge').innerHTML = roleTag('operador');
+  // Inicializar input de club con autocomplete
+  const clubSel = document.getElementById('clubSel');
+  if(clubSel) {
+    // Si hay un club pre-seleccionado, mostrar su nombre
+    if(S.selectedClubId) {
+      const c = S.clubes.find(x=>x.id===S.selectedClubId);
+      clubSel.value = c?.nombre || '';
+    } else {
+      clubSel.value = '';
+    }
+    clubACAttach(clubSel, (id)=>{ if(id) p2SelectClub(id); }, false);
+  }
+  // Ocultar torneos y detalle hasta que se elija club
+  document.getElementById('p2_torneo_row').classList.add('hidden');
+  document.getElementById('p2_detalle').classList.add('hidden');
+  _p2TorneoId = null;
+  if(S.selectedClubId) p2SelectClub(S.selectedClubId);
+}
+
+function p2SelectClub(id) {
+  S.selectedClubId = id;
+  if(!id) {
+    document.getElementById('p2_torneo_row').classList.add('hidden');
+    document.getElementById('p2_detalle').classList.add('hidden');
+    return;
+  }
+  // Torneos donde el club tiene al menos un equipo activo
+  const torneoIds = [...new Set(
+    S.equipos.filter(e=>e.clubId===id && e.estado==='activo').map(e=>e.torneoId)
+  )];
+  const torneos = torneoIds.map(tid=>S.torneos.find(t=>t.id===tid)).filter(Boolean);
+
+  const tSel = document.getElementById('torneoP2Sel');
+  tSel.innerHTML = '<option value="">— Selecciona un torneo —</option>' +
+    torneos.map(t=>`<option value="${t.id}">${t.nombre}${t.estado==='cerrado'?' (cerrado)':''}</option>`).join('');
+
+  document.getElementById('p2_torneo_row').classList.remove('hidden');
+  document.getElementById('p2_detalle').classList.add('hidden');
+
+  // Si hay solo un torneo, auto-seleccionar
+  if(torneos.length === 1) {
+    tSel.value = torneos[0].id;
+    p2SelectTorneo(torneos[0].id);
+  } else {
+    _p2TorneoId = null;
+  }
+}
+
+function p2SelectTorneo(torneoId) {
+  _p2TorneoId = torneoId;
+  if(!torneoId) { document.getElementById('p2_detalle').classList.add('hidden'); return; }
+  document.getElementById('p2_detalle').classList.remove('hidden');
+  p2RenderDetalle();
+}
+
+function p2RenderDetalle() {
+  const clubId   = S.selectedClubId;
+  const torneoId = _p2TorneoId;
+  const torneo   = S.torneos.find(t=>t.id===torneoId);
+  const equipos  = S.equipos.filter(e=>e.clubId===clubId && e.torneoId===torneoId && e.estado==='activo');
+  const soloInsc = (torneo?.esquema||'inscripcion_arbitraje')==='solo_inscripcion';
+
+  // Tabla categorías
+  document.getElementById('p2_cats_tbody').innerHTML = equipos.length>0
+    ? equipos.map(e=>{
+        const cat = catById(e.catId);
+        const tc  = torneo?.cats?.find(x=>x.catId===e.catId);
+        const nombre = e.nombre || clubById(clubId)?.nombre || '—';
+        return `<tr class="hover:bg-slate-50">
+          <td class="py-2 text-sm font-medium">${nombre}</td>
+          <td class="py-2 text-sm text-slate-600">${cat?.nombre||'—'}</td>
+          <td class="py-2 text-center"><span class="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">${tc?.modalidad||'—'}</span></td>
+          <td class="py-2 text-right mono font-bold text-blue-700">${fmt(e.inscripcion)}</td>
+        </tr>`;
+      }).join('')
+    : `<tr><td colspan="4" class="py-4 text-center text-slate-300 text-xs">Sin equipos activos en este torneo.</td></tr>`;
+
+  // KPIs
+  const totalInsc = equipos.reduce((s,e)=>s+(e.inscripcion||0),0);
+  const pagosClub = S.pagos.filter(p=>p.clubId===clubId && p.torneoId===torneoId && p.estado!=='rechazado');
+  const pagado    = pagosClub.reduce((s,p)=>s+p.monto,0);
+  const pendiente = Math.max(0, totalInsc - pagado);
+
+  document.getElementById('p2_total_insc').textContent = fmt(totalInsc);
+  document.getElementById('p2_pagado').textContent     = fmt(pagado);
+  const pendEl = document.getElementById('p2_pendiente');
+  const pendLb = document.getElementById('p2_pr_lbl');
+  pendEl.textContent = fmt(pendiente);
+  pendEl.className   = `font-bold mono ${pendiente>0?'text-rose-700':'text-emerald-700'}`;
+  pendLb.className   = `text-[10px] font-semibold uppercase mb-1 ${pendiente>0?'text-rose-500':'text-emerald-600'}`;
+
+  // Historial de pagos
+  const todosPagos = S.pagos.filter(p=>p.clubId===clubId && p.torneoId===torneoId);
+  const badgePago = st => st==='aprobado'
+    ? '<span class="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Aprobado</span>'
+    : st==='rechazado'
+    ? '<span class="text-[10px] font-bold bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full">Rechazado</span>'
+    : '<span class="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Pendiente</span>';
+
+  document.getElementById('p2_pagos_resumen').textContent =
+    `${todosPagos.length} pago(s) · aprobados: ${todosPagos.filter(p=>p.estado==='aprobado').length}`;
+
+  document.getElementById('p2_pagos_tbody').innerHTML = todosPagos.length>0
+    ? [...todosPagos].sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(p=>`
+        <tr class="hover:bg-slate-50">
+          <td class="py-2.5 text-xs text-slate-500 whitespace-nowrap">${p.fecha}</td>
+          <td class="py-2.5 text-xs font-medium">${p.medio}</td>
+          <td class="py-2.5 text-xs text-slate-400">${p.nroOp||'—'}${p.desc?' · '+p.desc:''}</td>
+          <td class="py-2.5 text-right mono font-bold text-sm">${fmt(p.monto)}</td>
+          <td class="py-2.5 text-center">${badgePago(p.estado)}</td>
+        </tr>`).join('')
+    : `<tr><td colspan="5" class="py-6 text-center text-slate-300 text-sm">Sin pagos registrados en este torneo.</td></tr>`;
+}
+
+// Compatibilidad: selectClub usado en abrirPagoDesdeEC y otros
+function selectClub(id) { p2SelectClub(id); }
+function renderClubSelector() {
+  const sel = document.getElementById('clubSel');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">— Selecciona un club —</option>' +
+    S.clubes.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('');
+  sel.value = S.selectedClubId||'';
+}
+
+// ---- VOUCHER ----
+function simUpload() {
+  S.voucherUploaded = true;
+  const fn = ['voucher_bcp.jpg','comprobante_yape.png','captura_pago.jpg'][Math.floor(Math.random()*3)];
+  document.getElementById('vname').textContent = fn;
+  document.getElementById('vzone').classList.add('hidden');
+  document.getElementById('vpreview').classList.remove('hidden');
+  document.getElementById('verr').classList.add('hidden');
+}
+function removeVoucher() {
+  S.voucherUploaded = false;
+  document.getElementById('vzone').classList.remove('hidden');
+  document.getElementById('vpreview').classList.add('hidden');
+}
+
+// ---- REGISTRAR PAGO ----
+function selMedio(medio, btn) {
+  S.medioSeleccionado = medio;
+  document.querySelectorAll('.medio-btn').forEach(b=>b.classList.remove('sel'));
+  btn.classList.add('sel');
+}
+function registrarPago() {
+  if(!S.voucherUploaded) { document.getElementById('verr').classList.remove('hidden'); return; }
+  const monto = parseFloat(document.getElementById('pMonto').value)||0;
+  if(monto<=0) { toast('El monto debe ser mayor a S/. 0','error'); return; }
+  if(!_p2TorneoId){ toast('Selecciona un torneo antes de registrar el pago.'); return; }
+  const nuevo = {
+    id: S.nextId++, torneoId: _p2TorneoId, clubId: S.selectedClubId, monto,
+    medio: S.medioSeleccionado,
+    fecha: document.getElementById('pFecha').value||today(),
+    nroOp: document.getElementById('pNroOp').value||'—',
+    desc: document.getElementById('pDesc').value||'',
+    op: ROLES[S.role]?.nombre||'Operador',
+    estado: 'pendiente', regEn: now(), procPor:null, procEn:null, motivo:null,
+  };
+  S.pagos.push(nuevo);
+  removeVoucher();
+  document.getElementById('pMonto').value = '500';
+  document.getElementById('pNroOp').value = '';
+  document.getElementById('pDesc').value = '';
+  p2RenderDetalle(); // refresca KPIs y pendiente
+  toast(`Pago de ${fmt(monto)} registrado y enviado a Tesorería ✓`,'success');
+  addNotif(`Pago de ${fmt(monto)} para ${clubById(S.selectedClubId)?.nombre} enviado a Tesorería.`,'info');
+}
+
+// ---- P3: APROBAR PAGOS ----
+function renderP3() {
+  document.getElementById('p3badge').innerHTML = roleTag('tesorero');
+
+  // ── KPIs del día por medio de pago ──────────────────────────────
+  const hoy = new Date().toISOString().slice(0,10); // YYYY-MM-DD
+  const pagosHoy = S.pagos.filter(p => p.fecha === hoy && p.estado !== 'rechazado');
+
+  // Fecha display
+  const fechaLabel = new Date().toLocaleDateString('es-PE',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('p3_fecha_label').textContent = `Pagos del día — ${fechaLabel}`;
+
+  // Agrupar por medio
+  const porMedio = {};
+  pagosHoy.forEach(p => {
+    if(!porMedio[p.medio]) porMedio[p.medio] = {count:0, total:0};
+    porMedio[p.medio].count++;
+    porMedio[p.medio].total += p.monto;
+  });
+
+  const medioIcon = {BCP:'🏦', Yape:'📲', Plin:'💜', Interbank:'🏦', BBVA:'🏦', Efectivo:'💵'};
+  const medioColor = {
+    BCP:'bg-blue-50 ring-blue-200 text-blue-700',
+    Yape:'bg-purple-50 ring-purple-200 text-purple-700',
+    Plin:'bg-violet-50 ring-violet-200 text-violet-700',
+    Efectivo:'bg-emerald-50 ring-emerald-200 text-emerald-700',
+  };
+
+  const totalHoy = pagosHoy.reduce((s,p)=>s+p.monto, 0);
+  const nPagosHoy = pagosHoy.length;
+
+  // Tarjeta resumen total + una tarjeta por medio
+  let kpiHtml = `
+    <div class="bg-[#18324F] text-white rounded-xl p-4 flex flex-col justify-between">
+      <p class="text-[11px] font-semibold uppercase tracking-wide opacity-70 mb-1">Total recaudado hoy</p>
+      <p class="text-2xl font-extrabold mono">${fmt(totalHoy)}</p>
+      <p class="text-[11px] opacity-60 mt-1">${nPagosHoy} pago${nPagosHoy!==1?'s':''} registrado${nPagosHoy!==1?'s':''}</p>
+    </div>`;
+
+  if(Object.keys(porMedio).length === 0) {
+    kpiHtml += `<div class="bg-slate-50 ring-1 ring-slate-200 rounded-xl p-4 flex items-center justify-center col-span-2">
+      <p class="text-xs text-slate-400">Sin pagos registrados hoy</p></div>`;
+  } else {
+    Object.entries(porMedio).forEach(([medio, d]) => {
+      const colorCls = medioColor[medio] || 'bg-slate-50 ring-slate-200 text-slate-700';
+      const icon = medioIcon[medio] || '💳';
+      kpiHtml += `<div class="ring-1 rounded-xl p-4 ${colorCls}">
+        <p class="text-[11px] font-semibold uppercase tracking-wide opacity-80 mb-1">${icon} ${medio}</p>
+        <p class="text-xl font-extrabold mono">${fmt(d.total)}</p>
+        <p class="text-[11px] opacity-60 mt-1">${d.count} pago${d.count!==1?'s':''}</p>
+      </div>`;
+    });
+  }
+  document.getElementById('kpiMedios').innerHTML = kpiHtml;
+
+  // ── KPIs de estado ───────────────────────────────────────────────
+  const montoPendiente = pendientes().reduce((s,p)=>s+p.monto, 0);
+  const montoAprHoy    = S.pagos.filter(p=>p.estado==='aprobado' && p.procEn?.slice(0,10)===hoy).reduce((s,p)=>s+p.monto, 0);
+  const montoRechHoy   = S.pagos.filter(p=>p.estado==='rechazado' && p.procEn?.slice(0,10)===hoy).reduce((s,p)=>s+p.monto, 0);
+  document.getElementById('kpiEstado').innerHTML = `
+    <div class="bg-amber-50 ring-1 ring-amber-200 rounded-xl p-4">
+      <p class="text-[11px] font-semibold text-amber-700 uppercase tracking-wide mb-1">Pendiente de aprobación</p>
+      <p class="text-2xl font-extrabold mono text-amber-800">${fmt(montoPendiente)}</p>
+      <p class="text-[11px] text-amber-500 mt-1">${pendientes().length} pago${pendientes().length!==1?'s':''} en espera</p>
+    </div>
+    <div class="bg-emerald-50 ring-1 ring-emerald-200 rounded-xl p-4">
+      <p class="text-[11px] font-semibold text-emerald-700 uppercase tracking-wide mb-1">Aprobado hoy</p>
+      <p class="text-2xl font-extrabold mono text-emerald-700">${fmt(montoAprHoy)}</p>
+      <p class="text-[11px] text-emerald-400 mt-1">${S.pagos.filter(p=>p.estado==='aprobado'&&p.procEn?.slice(0,10)===hoy).length} pago${S.pagos.filter(p=>p.estado==='aprobado'&&p.procEn?.slice(0,10)===hoy).length!==1?'s':''}</p>
+    </div>
+    <div class="bg-rose-50 ring-1 ring-rose-200 rounded-xl p-4">
+      <p class="text-[11px] font-semibold text-rose-700 uppercase tracking-wide mb-1">Rechazado hoy</p>
+      <p class="text-2xl font-extrabold mono text-rose-700">${fmt(montoRechHoy)}</p>
+      <p class="text-[11px] text-rose-300 mt-1">${S.pagos.filter(p=>p.estado==='rechazado'&&p.procEn?.slice(0,10)===hoy).length} pago${S.pagos.filter(p=>p.estado==='rechazado'&&p.procEn?.slice(0,10)===hoy).length!==1?'s':''}</p>
+    </div>`;
+
+  // ── Bandeja de pendientes ────────────────────────────────────────
+  const pends = pendientes();
+  document.getElementById('p3_nPend').textContent = pends.length || '';
+  document.getElementById('pendientesT').innerHTML = pends.length ? pends.map(p => {
+    const club   = clubById(p.clubId);
+    const torneo = S.torneos.find(t=>t.id===p.torneoId);
+    return `<tr class="hover:bg-slate-50">
+      <td class="py-3 px-4 mono text-xs text-slate-500">${p.fecha}</td>
+      <td class="py-3 px-4 font-medium">${club?.nombre||'—'}</td>
+      <td class="py-3 px-4 text-xs text-slate-400 max-w-[140px] truncate">${torneo?.nombre||'—'}</td>
+      <td class="py-3 px-4 mono font-semibold text-right">${fmt(p.monto)}</td>
+      <td class="py-3 px-4"><span class="bg-slate-100 text-slate-600 text-[11px] px-2 py-0.5 rounded font-medium">${p.medio}</span></td>
+      <td class="py-3 px-4 mono text-xs text-slate-500">${p.nroOp}</td>
+      <td class="py-3 px-4 text-slate-500 text-xs">${p.op}</td>
+      <td class="py-3 px-4 text-center"><button onclick="abrirVoucher(${p.id})" class="inline-flex items-center gap-1 text-xs font-semibold text-[#4F86C6] hover:underline">👁 Ver</button></td>
+    </tr>`;
+  }).join('')
+  : '<tr><td colspan="8" class="py-10 text-center text-slate-400 text-sm">Sin pagos pendientes de aprobación ✓</td></tr>';
+}
+
+function abrirVoucher(pagoId) {
+  S.selectedPagoId = pagoId;
+  const p = S.pagos.find(x=>x.id===pagoId);
+  const club = clubById(p.clubId);
+  document.getElementById('vmTitle').textContent = `Validación de Pago — ${club?.nombre}`;
+  document.getElementById('vmBanco').textContent = `${p.medio} — Comprobante de transferencia`;
+  document.getElementById('vmMonto').textContent = fmt(p.monto);
+  document.getElementById('vmFecha').textContent = p.fecha;
+  const saldo = saldoClub(p.clubId);
+  const medios = ['BCP','Yape','Plin','Interbank','BBVA','Efectivo','Otro'];
+  const medioOpts = medios.map(m=>`<option value="${m}" ${m===p.medio?'selected':''}>${m}</option>`).join('');
+  document.getElementById('vmFicha').innerHTML = [
+    ['Club', club?.nombre],
+    ['Monto reportado', `<span class="font-bold mono">${fmt(p.monto)}</span>`],
+    ['Fecha del pago', p.fecha],
+    ['N° de Operación', `<span class="mono">${p.nroOp}</span>`],
+    ['Descripción', p.desc||'—'],
+    ['Registrado por', `${p.op} (Operador)`],
+    ['Fecha de registro', p.regEn],
+    ['Saldo pendiente actual', `<span class="font-bold mono text-rose-600">${fmt(Math.max(0,saldo))}</span>`],
+  ].map(([k,v])=>`<div class="flex justify-between items-center py-1.5 border-b border-slate-100 text-sm"><span class="text-slate-500 shrink-0">${k}</span><span>${v}</span></div>`).join('')
+  + `<div class="flex justify-between items-center py-2 border-b border-slate-100 text-sm">
+      <span class="text-slate-500 shrink-0">Medio de pago</span>
+      <select id="vmMedioEdit" class="border border-slate-300 rounded-md px-2 py-1 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-200 font-medium">
+        ${medioOpts}
+      </select>
+    </div>`;
+  const canAprobar = ['organizador','tesorero'].includes(S.role);
+  document.getElementById('vmActions').innerHTML = canAprobar
+    ? `<button onclick="rechazarPago()" class="flex-1 flex items-center justify-center gap-1.5 border-2 border-rose-200 text-rose-600 font-semibold text-sm py-2.5 rounded-lg hover:bg-rose-50">✕ Rechazar Pago</button>
+       <button onclick="aprobarPago()" class="flex-1 flex items-center justify-center gap-1.5 bg-emerald-600 text-white font-semibold text-sm py-2.5 rounded-lg hover:bg-emerald-700">✓ Confirmar Abono</button>`
+    : `<p class="text-xs text-slate-400 w-full text-center">Solo el Tesorero u Organizador pueden aprobar o rechazar pagos.</p>`;
+  openModal('voucherModal');
+}
+
+function aprobarPago() {
+  const p = S.pagos.find(x=>x.id===S.selectedPagoId);
+  if(!p) return;
+  const medioSel = document.getElementById('vmMedioEdit')?.value;
+  if(medioSel) p.medio = medioSel;
+  p.estado='aprobado'; p.procPor=ROLES[S.role]?.nombre||'Tesorero'; p.procEn=now();
+  closeModal('voucherModal');
+  toast(`Pago de ${fmt(p.monto)} aprobado ✓`,'success');
+  addNotif(`✓ Tu pago de ${fmt(p.monto)} para ${clubById(p.clubId)?.nombre} fue APROBADO por ${p.procPor}.`,'success');
+  renderP3();
+}
+
+function rechazarPago() {
+  closeModal('voucherModal');
+  document.getElementById('rechazoMotivo').value='';
+  document.getElementById('rechazoErr').classList.add('hidden');
+  openModal('rechazoModal');
+}
+function confirmarRechazo() {
+  const motivo = document.getElementById('rechazoMotivo').value.trim();
+  if(!motivo) { document.getElementById('rechazoErr').classList.remove('hidden'); return; }
+  const p = S.pagos.find(x=>x.id===S.selectedPagoId);
+  if(!p) return;
+  const medioSel = document.getElementById('vmMedioEdit')?.value;
+  if(medioSel) p.medio = medioSel;
+  p.estado='rechazado'; p.procPor=ROLES[S.role]?.nombre||'Tesorero'; p.procEn=now(); p.motivo=motivo;
+  closeModal('rechazoModal');
+  toast(`Pago rechazado. El Operador fue notificado.`,'warn');
+  addNotif(`✕ Tu pago de ${fmt(p.monto)} para ${clubById(p.clubId)?.nombre} fue RECHAZADO. Motivo: ${motivo}`,'error');
+  renderP3();
+}
+
+// ---- P4: CLUBES HISTORIAL ----
+function verClub(id) { S.selectedClubId=id; showScreen('p4'); }
+function renderP4(id) {
+  const club = clubById(id);
+  if(!club) return;
+  S.selectedClubId = id;
+  document.getElementById('p4titulo').textContent = club.nombre;
+  const deuda=cargosClub(id), aprobado=abonadoClub(id), saldo=deuda-aprobado;
+  document.getElementById('p4kpis').innerHTML = `
+    <div class="bg-white rounded-xl border border-slate-200 p-4">
+      <div class="text-xs text-slate-500 mb-1">Saldo Actual</div>
+      <div class="text-3xl font-extrabold mono ${saldo>0?'text-rose-600':'text-emerald-600'}">${fmt(Math.abs(saldo))}</div>
+      <div class="text-[11px] mt-1 ${saldo>0?'text-rose-500':'text-emerald-600'}">${saldo>0?'Deuda pendiente':'Saldo a favor'}</div>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 p-4 lg:col-span-2 flex items-center gap-6 flex-wrap">
+      <div><div class="text-xs text-slate-500 mb-1">Torneos participados</div><div class="text-xl font-bold">1</div></div>
+      <div><div class="text-xs text-slate-500 mb-1">Total cargado</div><div class="text-xl font-bold mono">${fmt(deuda)}</div></div>
+      <div><div class="text-xs text-slate-500 mb-1">Total aprobado</div><div class="text-xl font-bold mono">${fmt(aprobado)}</div></div>
+    </div>`;
+  const pagosClub = S.pagos.filter(p=>p.clubId===id);
+  const equiposC = equiposByClub(id);
+  const rows = [
+    ...equiposC.map(e=>({fecha:e.id,tipo:'cargo',cat:catById(e.catId)?.nombre||'—',monto:e.monto,estado:'Generado',user:'Sistema'})),
+    ...pagosClub.map(p=>({fecha:p.fecha,tipo:'abono',cat:'Copa Apertura 2026',monto:p.monto,estado:p.estado,user:p.op,motivo:p.motivo})),
+  ].sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)));
+  document.getElementById('historialT').innerHTML = rows.map(r=>{
+    const isCargo = r.tipo==='cargo';
+    const tipoHtml = isCargo
+      ? '<span class="text-slate-500 font-semibold text-xs">○ Cargo</span>'
+      : r.estado==='rechazado'?'<span class="text-rose-500 font-semibold text-xs">● Abono</span>'
+      : '<span class="text-emerald-600 font-semibold text-xs">● Abono</span>';
+    const montoHtml = isCargo
+      ? `<span class="mono font-semibold">${fmt(r.monto)}</span>`
+      : r.estado==='rechazado'?`<span class="mono font-semibold text-rose-600">${fmt(r.monto)}</span>`
+      : `<span class="mono font-semibold text-emerald-700">+ ${fmt(r.monto)}</span>`;
+    return `<tr class="hover:bg-slate-50 ${r.estado==='rechazado'?'opacity-60':''}">
+      <td class="py-3 px-4 mono text-xs text-slate-500">${r.fecha}</td>
+      <td class="py-3 px-4">${tipoHtml}</td>
+      <td class="py-3 px-4 text-slate-600">${r.cat}</td>
+      <td class="py-3 px-4 text-right">${montoHtml}</td>
+      <td class="py-3 px-4 text-center">${isCargo?'<span class="text-[11px] text-slate-400">—</span>':badgeEstado(r.estado)}</td>
+      <td class="py-3 px-4 text-slate-500 text-xs">${r.user}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="6" class="py-8 text-center text-slate-400 text-sm">Sin movimientos.</td></tr>';
+}
+
+// ---- CxC ----
+let _cxcTorneoFilter = null;
+
+function setCxcTorneoFilter(torneoId) {
+  _cxcTorneoFilter = torneoId;
+  renderCxcTabla();
+  const bar = document.getElementById('cxcFiltroBar');
+  if(torneoId) {
+    const t = S.torneos.find(x=>x.id===torneoId);
+    document.getElementById('cxcFiltroNombre').textContent = t?.nombre || '';
+    bar.classList.remove('hidden');
+  } else {
+    bar.classList.add('hidden');
+  }
+}
+
+function renderCxc() {
+  _cxcTorneoFilter = null;
+  document.getElementById('cxcFiltroBar').classList.add('hidden');
+
+  // Total global
+  const totalGlobal = S.clubes.reduce((s,c)=>s+Math.max(0,saldoClub(c.id)), 0);
+
+  // Por cobrar por torneo
+  const torneoKpis = S.torneos.map(t => {
+    const f = torneoFinancials(t);
+    return {torneo: t, porRecaudar: f.porRecaudar || 0};
+  }).filter(x => x.porRecaudar > 0);
+
+  let kpiHtml = `<div class="grid gap-4" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr))">
+    <div class="bg-rose-600 text-white rounded-xl p-4 cursor-pointer hover:bg-rose-700 transition" onclick="setCxcTorneoFilter(null)">
+      <p class="text-[11px] font-semibold uppercase tracking-wide opacity-80 mb-1">Total por cobrar</p>
+      <p class="text-2xl font-extrabold mono">${fmt(totalGlobal)}</p>
+      <p class="text-[11px] opacity-60 mt-1">Todos los torneos</p>
+    </div>`;
+
+  torneoKpis.forEach(({torneo, porRecaudar}) => {
+    const badge = torneo.estado==='activo'
+      ? '<span class="text-[10px] bg-emerald-200 text-emerald-800 px-1.5 py-0.5 rounded font-semibold">Activo</span>'
+      : '<span class="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded font-semibold">Cerrado</span>';
+    kpiHtml += `<div class="bg-white ring-1 ring-rose-200 rounded-xl p-4 cursor-pointer hover:ring-rose-500 hover:shadow-md transition" onclick="setCxcTorneoFilter(${torneo.id})">
+      <div class="flex items-center gap-2 mb-2">${badge}</div>
+      <p class="text-xs font-semibold text-slate-600 truncate mb-1">${torneo.nombre}</p>
+      <p class="text-xl font-extrabold mono text-rose-700">${fmt(porRecaudar)}</p>
+      <p class="text-[11px] text-slate-400 mt-1">Por cobrar · click para filtrar</p>
+    </div>`;
+  });
+
+  if(torneoKpis.length === 0) {
+    kpiHtml += `<div class="bg-slate-50 ring-1 ring-slate-200 rounded-xl p-4 flex items-center justify-center">
+      <p class="text-xs text-slate-400">Sin saldos pendientes</p></div>`;
+  }
+
+  kpiHtml += `</div>`;
+  document.getElementById('cxcKpi').innerHTML = kpiHtml;
+  renderCxcTabla();
+}
+
+function renderCxcTabla() {
+  const tId = _cxcTorneoFilter;
+
+  // Función que calcula la deuda de un club (global o por torneo)
+  const deudaClub = (cId) => {
+    if(!tId) return saldoClub(cId);
+    const equipos  = S.equipos.filter(e=>e.clubId===cId&&e.torneoId===tId&&e.estado==='activo');
+    const totalInsc = equipos.reduce((s,e)=>s+(e.inscripcion||0), 0);
+    const pagado   = S.pagos.filter(p=>p.clubId===cId&&p.torneoId===tId&&p.estado==='aprobado').reduce((s,p)=>s+p.monto, 0);
+    return totalInsc - pagado;
+  };
+
+  const clubesFiltrados = S.clubes
+    .map(c => ({c, deuda: deudaClub(c.id)}))
+    .filter(({deuda}) => deuda > 0)
+    .sort((a,b) => b.deuda - a.deuda);
+
+  const labelDeuda = tId ? 'Deuda en el torneo' : 'Saldo consolidado';
+
+  document.getElementById('cxcT').innerHTML = clubesFiltrados.length
+    ? clubesFiltrados.map(({c, deuda}) =>
+        `<tr class="hover:bg-rose-50 cursor-pointer" onclick="abrirCxcClub(${c.id})">
+          <td class="py-3 px-4 font-semibold">${c.nombre}</td>
+          <td class="py-3 px-4 text-slate-500 text-xs">${c.provincia}</td>
+          <td class="py-3 px-4 text-right mono font-bold text-rose-600">${fmt(deuda)}</td>
+          <td class="py-3 px-4 text-center"><button onclick="event.stopPropagation();abrirCxcClub(${c.id})" class="text-xs font-semibold text-[#4F86C6] hover:underline">Ver detalle →</button></td>
+        </tr>`
+      ).join('')
+    : `<tr><td colspan="4" class="py-10 text-center text-slate-400 text-sm">No hay clubes con deuda pendiente ${tId?'en este torneo':''} ✓</td></tr>`;
+}
+
+function abrirCxcClub(clubId) {
+  const club = clubById(clubId);
+  document.getElementById('cxcm_club').textContent = club?.nombre || '—';
+
+  // Torneos donde el club tiene equipos activos
+  const torneoIds = [...new Set(S.equipos.filter(e=>e.clubId===clubId&&e.estado==='activo').map(e=>e.torneoId))];
+
+  // Calcular deuda total real
+  let totalDeuda = 0;
+  const seccionesHtml = torneoIds.map(tId => {
+    const torneo   = S.torneos.find(t=>t.id===tId);
+    const esquema  = torneo?.esquema || 'inscripcion_arbitraje';
+    const equipos  = S.equipos.filter(e=>e.clubId===clubId&&e.torneoId===tId&&e.estado==='activo');
+    const totalInsc = equipos.reduce((s,e)=>s+(e.inscripcion||0), 0);
+    const pagado   = S.pagos.filter(p=>p.clubId===clubId&&p.torneoId===tId&&p.estado==='aprobado').reduce((s,p)=>s+p.monto, 0);
+    const deuda    = totalInsc - pagado;
+    if(deuda <= 0) return ''; // sin deuda en este torneo
+    totalDeuda += deuda;
+
+    const badge = torneo?.estado==='activo'
+      ? '<span class="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-semibold">Activo</span>'
+      : '<span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-semibold">Cerrado</span>';
+
+    const filas = equipos.map(e=>{
+      const cat = catById(e.catId);
+      const label = e.nombre ? `${cat?.nombre||''} · ${e.nombre}` : (cat?.nombre||'—');
+      const tc = torneo?.cats?.find(x=>x.catId===e.catId);
+      const mod = tc?.modalidad || '';
+      return `<tr class="hover:bg-slate-50">
+        <td class="py-2 px-3 text-sm">${label}</td>
+        <td class="py-2 px-3 text-xs text-slate-400 text-center">${mod}</td>
+        <td class="py-2 px-3 text-right mono text-sm">${fmt(e.inscripcion||0)}</td>
+      </tr>`;
+    }).join('');
+
+    return `<div class="bg-white rounded-xl border border-rose-100 overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+        <div class="flex items-center gap-2">${badge}<span class="font-semibold text-sm text-slate-700">${torneo?.nombre||'Torneo'}</span><span class="text-[11px] text-slate-400">${torneo?.label||''}</span></div>
+        <button onclick="pagoDesdeCC(${clubId},${tId})" class="text-xs font-semibold text-white bg-[#18324F] px-3 py-1.5 rounded-lg hover:bg-[#0f253d] transition">+ Registrar pago</button>
+      </div>
+      <table class="w-full text-sm">
+        <thead><tr class="text-left text-[10px] text-slate-400 uppercase border-b border-slate-100">
+          <th class="py-1.5 px-3 font-semibold">Categoría / Equipo</th>
+          <th class="py-1.5 px-3 font-semibold text-center">Mod.</th>
+          <th class="py-1.5 px-3 font-semibold text-right">Inscripción</th>
+        </tr></thead>
+        <tbody class="divide-y divide-slate-100">${filas}</tbody>
+        <tfoot class="border-t border-slate-200 bg-slate-50">
+          <tr>
+            <td colspan="2" class="py-2 px-3 text-xs text-slate-500 font-semibold">Total inscripción</td>
+            <td class="py-2 px-3 text-right mono text-sm font-semibold">${fmt(totalInsc)}</td>
+          </tr>
+          <tr>
+            <td colspan="2" class="py-2 px-3 text-xs text-emerald-600 font-semibold">Pagado (aprobado)</td>
+            <td class="py-2 px-3 text-right mono text-sm text-emerald-600 font-semibold">− ${fmt(pagado)}</td>
+          </tr>
+          <tr class="bg-rose-50">
+            <td colspan="2" class="py-2 px-3 text-xs text-rose-700 font-bold">Deuda pendiente</td>
+            <td class="py-2 px-3 text-right mono text-sm text-rose-700 font-extrabold">${fmt(deuda)}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>`;
+  }).filter(Boolean).join('');
+
+  document.getElementById('cxcm_total').textContent = fmt(totalDeuda);
+  document.getElementById('cxcm_body').innerHTML = seccionesHtml ||
+    '<p class="text-slate-400 text-sm text-center py-6">Este club no tiene deuda activa.</p>';
+  openModal('cxcClubModal');
+}
+
+// ---- ACCIONES DESDE MODALS ----
+function crearCategoria() {
+  const nombre = document.getElementById('catNombre').value.trim();
+  const aforo = parseInt(document.getElementById('catAforo').value)||8;
+  const fechas = parseInt(document.getElementById('catFechas').value)||6;
+  if(!nombre){toast('El nombre de la categoría es obligatorio.','error');return;}
+  S.categorias.push({id:S.nextId++,nombre,aforo,fechas});
+  closeModal('catModal');
+  document.getElementById('catNombre').value='';
+  document.getElementById('catAforo').value='';
+  document.getElementById('catFechas').value='';
+  renderCatGrid(); renderEquiposGlobal();
+  toast(`Categoría "${nombre}" creada ✓`,'success');
+}
+
+function crearInteresado() {
+  const clubId     = _iClubId || null;
+  const clubNombre = document.getElementById('iClubInput').value.trim();
+  const delegado   = document.getElementById('iDelegado').value.trim();
+  const tel        = document.getElementById('iTel').value.trim();
+  const nota       = document.getElementById('iNota').value.trim();
+  const catIds     = [...document.querySelectorAll('.icat-check:checked')].map(x=>parseInt(x.value));
+  const nombre     = clubId ? (S.clubes.find(c=>c.id===clubId)?.nombre||clubNombre) : clubNombre;
+  if(!nombre){ toast('El nombre del club es obligatorio.','error'); return; }
+  if(!catIds.length){ toast('Selecciona al menos una categoría.','error'); return; }
+  const ya = S.prospectos.find(p=>p.torneoId===S.torneoSelId &&
+    (clubId ? p.clubId===clubId : (p.clubNombre||'').toLowerCase()===nombre.toLowerCase()));
+  if(ya){ toast(`${nombre} ya está en la lista de interesados.`,'error'); return; }
+  S.prospectos.push({id:S.nextId++, torneoId:S.torneoSelId, clubId, clubNombre:nombre, catIds, delegado, telefono:tel, nota});
+  closeModal('interesadoModal');
+  renderP1b();
+  toast(`${nombre} añadido como interesado ✓`, 'success');
+}
+
+function eliminarProspecto(id) {
+  S.prospectos = S.prospectos.filter(x=>x.id!==id);
+  renderP1b();
+  toast('Interesado eliminado.','success');
+}
+
+let _ciProspectoId = null;
+
+function confirmarInscripcion(prospectoId) {
+  const p = S.prospectos.find(x=>x.id===prospectoId);
+  if(!p) return;
+  _ciProspectoId = prospectoId;
+  const torneo = S.torneos.find(t=>t.id===p.torneoId);
+  const esquema = torneo?.esquema||'inscripcion_arbitraje';
+  const mostrarArb = esquema==='inscripcion_arbitraje';
+
+  document.getElementById('ci_torneo_label').textContent = torneo?.nombre||'Torneo';
+  document.getElementById('ci_club_nombre').textContent = p.clubId ? (S.clubes.find(c=>c.id===p.clubId)?.nombre||p.clubNombre) : p.clubNombre;
+  document.getElementById('ci_arb_col').classList.toggle('hidden', !mostrarArb);
+  document.getElementById('ci_fechas_col').classList.toggle('hidden', !mostrarArb);
+
+  // Valores por defecto de cada categoría del torneo
+  const tbody = document.getElementById('ci_cats_tbody');
+  tbody.innerHTML = (p.catIds||[]).map(catId=>{
+    const cat = catById(catId);
+    const tc  = torneo?.cats?.find(x=>x.catId===catId);
+    const defInsc = tc?.inscripcion || 0;
+    const defArb  = tc?.arbitraje  || 0;
+    const defFec  = cat?.fechas    || 6;
+    const mod     = tc?.modalidad  || '';
+    const aforo   = cat ? cat.aforo - equiposByCat(catId).length : null;
+    const afoTag  = aforo!==null && aforo<=0
+      ? `<span class="text-[10px] font-bold text-rose-500 ml-1">Aforo lleno</span>`
+      : aforo!==null && aforo<=2
+        ? `<span class="text-[10px] text-amber-500 ml-1">(${aforo} cupo${aforo===1?'':'s'})</span>` : '';
+    return `<tr data-cat="${catId}">
+      <td class="py-2.5 pr-3 font-medium">${cat?.nombre||catId}${afoTag}</td>
+      <td class="py-2.5 px-2 text-center text-xs text-slate-400">${mod}</td>
+      <td class="py-2.5 px-2 text-right">
+        <input type="number" min="0" step="0.01" value="${defInsc}" data-field="inscripcion"
+          class="w-24 border border-slate-200 rounded px-2 py-1 text-right text-sm mono outline-none focus:ring-2 focus:ring-blue-200">
+      </td>
+      <td class="py-2.5 px-2 text-right ${mostrarArb?'':'hidden'}">
+        <input type="number" min="0" step="0.01" value="${defArb}" data-field="arbitraje"
+          class="w-24 border border-slate-200 rounded px-2 py-1 text-right text-sm mono outline-none focus:ring-2 focus:ring-blue-200">
+      </td>
+      <td class="py-2.5 pl-2 text-right ${mostrarArb?'':'hidden'}">
+        <input type="number" min="1" step="1" value="${defFec}" data-field="fechas"
+          class="w-16 border border-slate-200 rounded px-2 py-1 text-right text-sm mono outline-none focus:ring-2 focus:ring-blue-200">
+      </td>
+    </tr>`;
+  }).join('');
+
+  openModal('confirmarInscripcionModal');
+}
+
+function doConfirmarInscripcion() {
+  const p = S.prospectos.find(x=>x.id===_ciProspectoId);
+  if(!p) return;
+  const torneoId = p.torneoId;
+
+  // Crear club si es nuevo
+  let club = p.clubId ? S.clubes.find(c=>c.id===p.clubId)
+    : S.clubes.find(c=>c.nombre.toLowerCase()===(p.clubNombre||'').toLowerCase());
+  if(!club){
+    club = {id:S.nextId++, nombre:p.clubNombre, delegado:p.delegado, telefono:p.telefono, provincia:'Lima'};
+    S.clubes.push(club);
+  }
+
+  // Leer precios por fila
+  let inscritos = 0;
+  document.querySelectorAll('#ci_cats_tbody tr[data-cat]').forEach(row=>{
+    const catId = parseInt(row.dataset.cat);
+    const cat   = catById(catId);
+    const count = equiposByCat(catId).length;
+    if(cat && count>=cat.aforo){ toast(`${cat?.nombre}: aforo completo, omitido.`,'error'); return; }
+    const ya = S.equipos.find(e=>e.torneoId===torneoId&&e.clubId===club.id&&e.catId===catId&&e.estado==='activo');
+    if(ya) return;
+    const insc   = parseFloat(row.querySelector('[data-field="inscripcion"]').value)||0;
+    const arb    = parseFloat(row.querySelector('[data-field="arbitraje"]').value)||0;
+    const fechas = parseInt(row.querySelector('[data-field="fechas"]')?.value)||cat?.fechas||6;
+    const monto  = insc + arb * fechas;
+    S.equipos.push({id:S.nextId++, torneoId, clubId:club.id, catId, nombre:'', inscripcion:insc, arbitraje:arb, fechas, monto, estado:'activo'});
+    inscritos++;
+  });
+
+  S.prospectos = S.prospectos.filter(x=>x.id!==_ciProspectoId);
+  _ciProspectoId = null;
+  closeModal('confirmarInscripcionModal');
+  renderP1b(); renderCatGrid(); renderEquiposGlobal();
+  if(inscritos>0) toast(`${club.nombre} inscrito en ${inscritos} categoría(s) ✓`,'success');
+}
+
+function crearClub() {
+  const nombre = document.getElementById('ncNombre').value.trim();
+  if(!nombre){toast('El nombre del club es obligatorio.','error');return;}
+  const nuevo = {id:S.nextId++,nombre,delegado:document.getElementById('ncDelegado').value.trim(),telefono:document.getElementById('ncTel').value.trim(),provincia:document.getElementById('ncProv').value.trim()||'Lima'};
+  S.clubes.push(nuevo);
+  closeModal('nuevoClubModal');
+  renderClubSelector();
+  selectClub(nuevo.id);
+  const _csEl = document.getElementById('clubSel'); if(_csEl) _csEl.value = nuevo.nombre;
+  ['ncNombre','ncDelegado','ncTel'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('ncProv').value='Lima';
+  toast(`Club "${nombre}" creado ✓`,'success');
+}
+
+function calcMontoTotal() {
+  const t = S.torneos.find(x=>x.id===S.torneoSelId);
+  const insc   = parseFloat(document.getElementById('acInsc').value)  || 0;
+  const arb    = parseFloat(document.getElementById('acArb').value)   || 0;
+  const fechas = parseFloat(document.getElementById('acFechas').value)|| 0;
+  const total  = (t?.esquema==='solo_inscripcion') ? insc : insc + arb * fechas;
+  if(total > 0) document.getElementById('acMonto').value = total.toFixed(2);
+}
+
+// Contexto activo del modal Estado de Cuenta
+let _ecClubId = null, _ecTorneoId = null;
+
+function renderEstadoCuenta() {
+  const club   = S.clubes.find(c=>c.id===_ecClubId);
+  const torneo = S.torneos.find(t=>t.id===_ecTorneoId);
+  if(!club||!torneo) return;
+
+  const esquema  = torneo.esquema||'inscripcion_arbitraje';
+  const soloInsc = esquema==='solo_inscripcion';
+  const canEdit  = ['organizador','operador'].includes(S.role);
+
+  // Solo equipos activos
+  const equipos   = S.equipos.filter(e=>e.clubId===_ecClubId && e.torneoId===_ecTorneoId && e.estado==='activo');
+  const totalInsc = equipos.reduce((s,e)=>s+(e.inscripcion||0), 0);
+  const pagosClub = S.pagos.filter(p=>p.clubId===_ecClubId && p.torneoId===_ecTorneoId);
+  const recaudado = pagosClub.filter(p=>p.estado!=='rechazado').reduce((s,p)=>s+p.monto, 0);
+  const pendiente = Math.max(0, totalInsc - recaudado);
+
+  // Header
+  document.getElementById('ec_torneo_label').textContent = torneo.nombre;
+  document.getElementById('ec_club_nombre').textContent  = club.nombre;
+  document.getElementById('ec_club_detalle').textContent =
+    `RUC/DNI: ${club.ruc||'—'}  ·  Contacto: ${club.contacto||'—'}  ·  ${equipos.length} equipo(s) activo(s)`;
+
+  // KPIs
+  document.getElementById('ec_total_insc').textContent = fmt(totalInsc);
+  document.getElementById('ec_recaudado').textContent  = fmt(recaudado);
+  const prEl = document.getElementById('ec_por_recaudar');
+  const prLb = document.getElementById('ec_pr_label');
+  prEl.textContent = fmt(pendiente);
+  prEl.className   = `font-bold mono text-base ${pendiente>0?'text-rose-700':'text-emerald-700'}`;
+  prLb.className   = `text-[10px] uppercase font-semibold mb-1 ${pendiente>0?'text-rose-500':'text-emerald-600'}`;
+
+  // Botones según rol
+  document.getElementById('ec_btn_pago').style.display = canEdit ? '' : 'none';
+  document.getElementById('ec_btn_cat').style.display  = canEdit ? '' : 'none';
+
+  // ---- Tabla categorías activas ----
+  document.getElementById('ec_cats_tbody').innerHTML = equipos.length>0 ? equipos.map(e=>{
+    const cat = S.categorias.find(c=>c.id===e.catId);
+    const tc  = torneo.cats?.find(x=>x.catId===e.catId);
+    const nombreEquipo = e.nombre || club.nombre;
+    const arbCell = soloInsc
+      ? `<td class="py-2 text-right text-slate-300 text-xs">N/A</td>`
+      : `<td class="py-2 text-right">
+           ${canEdit
+             ? `<input type="number" value="${e.arbitraje||0}" min="0" step="0.50"
+                  onchange="ecEditarMonto(${e.id},'arbitraje',this.value)"
+                  class="w-20 border border-slate-200 rounded px-2 py-1 text-xs mono text-right outline-none focus:ring-2 focus:ring-blue-200">`
+             : `<span class="mono text-xs">${fmt(e.arbitraje)}</span>`}
+         </td>`;
+    return `<tr class="hover:bg-slate-50">
+      <td class="py-2 pr-2">
+        ${canEdit
+          ? `<input type="text" value="${e.nombre||''}" placeholder="${club.nombre}"
+               onchange="ecEditarMonto(${e.id},'nombre',this.value)"
+               class="w-full border border-slate-200 rounded px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-blue-200">`
+          : `<span class="text-sm font-medium">${nombreEquipo}</span>`}
+      </td>
+      <td class="py-2 text-sm font-medium text-slate-700">${cat?.nombre||'—'}</td>
+      <td class="py-2 text-center">
+        <span class="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">${tc?.modalidad||'—'}</span>
+      </td>
+      <td class="py-2 text-right">
+        ${canEdit
+          ? `<input type="number" value="${e.inscripcion||0}" min="0" step="0.50"
+               onchange="ecEditarMonto(${e.id},'inscripcion',this.value)"
+               class="w-24 border border-slate-200 rounded px-2 py-1 text-xs mono text-right outline-none focus:ring-2 focus:ring-blue-200">`
+          : `<span class="mono font-bold text-blue-700">${fmt(e.inscripcion)}</span>`}
+      </td>
+      ${arbCell}
+      <td class="py-2 text-center">
+        <button onclick="ecInactivar(${e.id})" title="Inactivar equipo"
+          class="text-slate-300 hover:text-rose-400 text-xs px-1">✕</button>
+      </td>
+    </tr>`;
+  }).join('')
+  : `<tr><td colspan="6" class="py-6 text-center text-slate-300 text-sm">Sin categorías activas inscritas.</td></tr>`;
+
+  // ---- Tabla pagos ----
+  const badgePago = st => st==='aprobado'
+    ? '<span class="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Aprobado</span>'
+    : st==='rechazado'
+    ? '<span class="text-[10px] font-bold bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full">Rechazado</span>'
+    : '<span class="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Pendiente</span>';
+
+  document.getElementById('ec_pagos_resumen').textContent =
+    `${pagosClub.length} pago(s) · aprobados: ${pagosClub.filter(p=>p.estado==='aprobado').length}`;
+
+  document.getElementById('ec_pagos_tbody').innerHTML = pagosClub.length>0
+    ? [...pagosClub].sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(p=>`
+        <tr class="hover:bg-slate-50">
+          <td class="py-2.5 text-xs text-slate-500 whitespace-nowrap">${p.fecha}</td>
+          <td class="py-2.5 text-xs font-medium">${p.medio}</td>
+          <td class="py-2.5 text-xs text-slate-400">${p.nroOp||'—'}${p.desc?' · '+p.desc:''}</td>
+          <td class="py-2.5 text-right mono font-bold text-sm">${fmt(p.monto)}</td>
+          <td class="py-2.5 text-center">${badgePago(p.estado)}</td>
+        </tr>`).join('')
+    : `<tr><td colspan="5" class="py-6 text-center text-slate-300 text-sm">Sin pagos registrados.</td></tr>`;
+}
+
+function openEstadoCuenta(clubId, torneoId) {
+  _ecClubId = clubId; _ecTorneoId = torneoId;
+  renderEstadoCuenta();
+  openModal('estadoCuentaModal');
+}
+
+function ecEditarMonto(equipoId, campo, valor) {
+  const e = S.equipos.find(x=>x.id===equipoId);
+  if(!e) return;
+  if(campo==='nombre') {
+    e.nombre = valor.trim();
+  } else {
+    e[campo] = parseFloat(valor)||0;
+    // Recalcular monto total del equipo
+    e.monto = (e.inscripcion||0) + (e.arbitraje||0)*(e.fechas||0);
+  }
+  // Refrescar solo los KPIs y totales sin cerrar el modal
+  const torneo    = S.torneos.find(t=>t.id===_ecTorneoId);
+  const equipos   = S.equipos.filter(x=>x.clubId===_ecClubId && x.torneoId===_ecTorneoId && x.estado==='activo');
+  const totalInsc = equipos.reduce((s,x)=>s+(x.inscripcion||0), 0);
+  const pagosClub = S.pagos.filter(p=>p.clubId===_ecClubId && p.torneoId===_ecTorneoId);
+  const recaudado = pagosClub.filter(p=>p.estado==='aprobado').reduce((s,p)=>s+p.monto,0);
+  const pendiente = Math.max(0, totalInsc - recaudado);
+  document.getElementById('ec_total_insc').textContent = fmt(totalInsc);
+  document.getElementById('ec_recaudado').textContent  = fmt(recaudado);
+  const prEl = document.getElementById('ec_por_recaudar');
+  prEl.textContent = fmt(pendiente);
+  prEl.className   = `font-bold mono text-base ${pendiente>0?'text-rose-700':'text-emerald-700'}`;
+}
+
+function ecInactivar(equipoId) {
+  const e = S.equipos.find(x=>x.id===equipoId);
+  if(!e) return;
+  if(!confirm('¿Inactivar este equipo? Se conserva el historial de pagos.')) return;
+  e.estado = 'inactivo';
+  renderEstadoCuenta();
+  toast('Equipo inactivado.');
+}
+
+function abrirAgregarCatEC() {
+  closeModal('estadoCuentaModal');
+  openAddEquipo(null, _ecClubId);
+}
+
+function pagoDesdeCC(clubId, torneoId) {
+  S.selectedClubId = clubId;
+  closeModal('cxcClubModal');
+  showScreen('p2');
+  setTimeout(()=>{
+    const clubSel = document.getElementById('clubSel');
+    if(clubSel){ const c=S.clubes.find(x=>x.id===clubId); clubSel.value=c?.nombre||''; p2SelectClub(clubId); }
+    setTimeout(()=>{
+      const tSel = document.getElementById('torneoP2Sel');
+      if(tSel){ tSel.value = torneoId; p2SelectTorneo(torneoId); }
+    }, 50);
+  }, 50);
+}
+
+function abrirPagoDesdeEC() {
+  S.selectedClubId = _ecClubId;
+  closeModal('estadoCuentaModal');
+  showScreen('p2');
+  setTimeout(()=>{
+    const clubSel = document.getElementById('clubSel');
+    if(clubSel){ const c=S.clubes.find(x=>x.id===_ecClubId); clubSel.value=c?.nombre||''; p2SelectClub(_ecClubId); }
+    // Auto-seleccionar el torneo del EC
+    setTimeout(()=>{
+      const tSel = document.getElementById('torneoP2Sel');
+      if(tSel){ tSel.value = _ecTorneoId; p2SelectTorneo(_ecTorneoId); }
+    }, 50);
+  }, 80);
+}
+
+let _addEquipoFromEC = false;
+function openAddEquipo(preselCatId, preselClubId) {
+  _addEquipoFromEC = !!preselClubId;
+  const t = S.torneos.find(x=>x.id===S.torneoSelId);
+
+  // Inicializar input de club con autocomplete
+  const clubSel = document.getElementById('acClub');
+  _acClubId = preselClubId || null;
+  clubSel.value = preselClubId ? (S.clubes.find(c=>c.id===preselClubId)?.nombre||'') : '';
+  clubSel.disabled = !!preselClubId;
+  if(!preselClubId) clubACAttach(clubSel, (id,c)=>{ _acClubId=id; if(id) acOnClubChange(); }, false);
+
+  // Limpiar nombre equipo
+  document.getElementById('acNombreEquipo').value = '';
+
+  // Poblar selector de categorías del torneo
+  const catSel = document.getElementById('acCat');
+  const cats = (t?.cats||[]).map(tc=>S.categorias.find(c=>c.id===tc.catId)).filter(Boolean);
+  catSel.innerHTML = cats.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('');
+  if(preselCatId) catSel.value = preselCatId;
+
+  // Mostrar/ocultar campos de arbitraje según esquema del torneo
+  const soloInsc = (t?.esquema==='solo_inscripcion');
+  const arbRow = document.getElementById('acArbRow');
+  if(arbRow) arbRow.style.display = soloInsc ? 'none' : '';
+
+  // Pre-rellenar montos sugeridos
+  const efectivaCatId = parseInt(preselCatId) || cats[0]?.id;
+  const tc = t?.cats?.find(x=>x.catId===efectivaCatId);
+  if(tc) {
+    document.getElementById('acInsc').value   = tc.inscripcion||'';
+    document.getElementById('acArb').value    = soloInsc ? '' : (tc.arbitraje||'');
+    document.getElementById('acFechas').value = soloInsc ? '' : (tc.fechas||'');
+  }
+  document.getElementById('acMonto').value = '';
+  calcMontoTotal();
+  openModal('addCatModal');
+}
+
+function acOnClubChange() { /* placeholder para futura lógica */ }
+
+function acOnCatChange() {
+  const t = S.torneos.find(x=>x.id===S.torneoSelId);
+  const catId = parseInt(document.getElementById('acCat').value);
+  const tc = t?.cats?.find(x=>x.catId===catId);
+  const soloInsc = (t?.esquema==='solo_inscripcion');
+  if(tc) {
+    document.getElementById('acInsc').value   = tc.inscripcion||'';
+    document.getElementById('acArb').value    = soloInsc ? '' : (tc.arbitraje||'');
+    document.getElementById('acFechas').value = soloInsc ? '' : (tc.fechas||'');
+    calcMontoTotal();
+  }
+}
+
+let _acClubId = null;
+
+function addCategoria() {
+  const clubId = _acClubId || parseInt(document.getElementById('acClub').value);
+  const catId  = parseInt(document.getElementById('acCat').value);
+  const nombre = (document.getElementById('acNombreEquipo').value||'').trim();
+  const monto  = parseFloat(document.getElementById('acMonto').value)||0;
+  const insc   = parseFloat(document.getElementById('acInsc').value)||0;
+  const arb    = parseFloat(document.getElementById('acArb').value)||0;
+  const fechas = parseInt(document.getElementById('acFechas').value)||6;
+  if(!clubId){ toast('Selecciona un club.'); return; }
+  if(insc<=0){ toast('El monto de inscripción es obligatorio.'); return; }
+  const torneoId = S.torneoSelId;
+  // Permitir dos equipos del mismo club en la misma categoría si tienen diferente nombre
+  const existe = S.equipos.find(e=>
+    e.torneoId===torneoId && e.clubId===clubId && e.catId===catId &&
+    e.estado==='activo' && (e.nombre||'')===(nombre||'')
+  );
+  if(existe){ toast('Ya existe un equipo con ese nombre en esta categoría. Asigna un nombre diferente (ej. "Equipo B").'); return; }
+  S.equipos.push({id:S.nextId++,torneoId,clubId,catId,nombre,inscripcion:insc,arbitraje:arb,fechas,monto:monto||insc,estado:'activo'});
+  document.getElementById('acClub').disabled = false;
+  closeModal('addCatModal');
+  // Siempre refrescar el detalle del torneo para que la nueva categoría aparezca
+  renderP1Detalle();
+  // Si venía del Estado de Cuenta, reabrirlo encima
+  if(_addEquipoFromEC && _ecClubId && _ecTorneoId) {
+    setTimeout(()=>{ openEstadoCuenta(_ecClubId, _ecTorneoId); }, 100);
+  }
+  const club = clubById(clubId);
+  toast(`${nombre||club?.nombre} inscrito en ${catById(catId)?.nombre} ✓`);
+}
+
+// ---- INIT ----
+document.getElementById('pFecha') && (document.getElementById('pFecha').value = today());
+
+// ---- CLUB AUTOCOMPLETE ────────────────────────────────────────────────────
+// Dropdown flotante compartido por todos los campos de club
+let _cac = { el: null, cb: null, allowNew: false, selId: null };
+
+function clubACAttach(inputEl, onSelect, allowNew = false) {
+  _cac.el = inputEl;
+  _cac.cb = onSelect;
+  _cac.allowNew = allowNew;
+  _cac.selId = null;
+}
+
+function clubACFilter(el) {
+  if (_cac.el !== el) return;
+  _cac.selId = null;
+  const q = el.value.trim().toLowerCase();
+  const matches = S.clubes.filter(c => !q || c.nombre.toLowerCase().includes(q)).slice(0, 12);
+  const drop = document.getElementById('clubACDrop');
+  const r = el.getBoundingClientRect();
+  drop.style.top    = (r.bottom + window.scrollY + 2) + 'px';
+  drop.style.left   = (r.left + window.scrollX) + 'px';
+  drop.style.width  = r.width + 'px';
+
+  const hi = t => q ? t.replace(new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi'),
+    '<mark class="bg-yellow-100 not-italic">$1</mark>') : t;
+
+  let html = matches.map(c =>
+    `<div class="px-3 py-2.5 hover:bg-blue-50 cursor-pointer text-sm flex justify-between items-center gap-2"
+          onmousedown="clubACPick(${c.id})">
+       <span class="font-medium">${hi(c.nombre)}</span>
+       <span class="text-[11px] text-slate-400 shrink-0">${c.provincia||''}</span>
+     </div>`
+  ).join('');
+
+  if (!matches.length && !_cac.allowNew) { drop.classList.add('hidden'); return; }
+
+  if (_cac.allowNew) {
+    const newLabel = el.value.trim()
+      ? `+ Registrar "<b>${el.value.trim()}</b>" como nuevo club`
+      : '+ Registrar nuevo club';
+    html += `<div class="px-3 py-2.5 text-sm text-[#4F86C6] font-semibold border-t border-slate-100 hover:bg-blue-50 cursor-pointer"
+                  onmousedown="clubACPickNew()">${newLabel}</div>`;
+  }
+
+  drop.innerHTML = html || `<div class="px-3 py-3 text-xs text-slate-400 text-center">Sin resultados</div>`;
+  drop.classList.remove('hidden');
+}
+
+function clubACPick(id) {
+  const club = S.clubes.find(c => c.id === id);
+  _cac.selId = id;
+  if (_cac.el) _cac.el.value = club?.nombre || '';
+  document.getElementById('clubACDrop').classList.add('hidden');
+  if (_cac.cb) _cac.cb(id, club);
+}
+
+function clubACPickNew() {
+  _cac.selId = null;
+  document.getElementById('clubACDrop').classList.add('hidden');
+  if (_cac.cb) _cac.cb(null, { nombre: _cac.el?.value.trim() || '' });
+}
+
+function clubACBlur(el) {
+  setTimeout(() => {
+    if (_cac.el === el) document.getElementById('clubACDrop').classList.add('hidden');
+  }, 150);
+}
+</script>
+
+<!-- Dropdown flotante de autocomplete de clubs -->
+<div id="clubACDrop" class="hidden fixed z-[300] bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden max-h-56 overflow-y-auto text-sm" style="min-width:200px"></div>
+
+</body>
+</html>
