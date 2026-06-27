@@ -603,8 +603,23 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
 <!-- ===================== APP SHELL ===================== -->
 <div id="appShell" class="flex min-h-screen hidden">
 
+  <!-- Mobile top bar -->
+  <div class="md:hidden fixed top-0 left-0 right-0 z-50 bg-[#18324F] flex items-center justify-between px-4 py-3 shadow-lg">
+    <div class="flex items-center gap-2">
+      <div class="w-7 h-7 rounded-lg bg-[#4F86C6] flex items-center justify-center font-extrabold text-sm text-white">L</div>
+      <span class="text-white font-bold text-sm">Liguify ERP</span>
+    </div>
+    <button onclick="toggleMobileMenu()" class="p-2 rounded-lg hover:bg-white/10 transition text-white">
+      <svg id="menuIconOpen" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      <svg id="menuIconClose" class="w-6 h-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+  </div>
+
+  <!-- Sidebar overlay (mobile) -->
+  <div id="sidebarOverlay" class="md:hidden hidden fixed inset-0 z-40 bg-slate-900/60" onclick="closeMobileMenu()"></div>
+
   <!-- Sidebar -->
-  <div class="w-64 bg-[#18324F] text-white flex flex-col sticky top-0 h-screen shrink-0 z-30">
+  <div id="mainSidebar" class="w-64 bg-[#18324F] text-white flex flex-col fixed md:sticky top-0 h-screen shrink-0 z-40 md:z-30 transition-transform duration-200 -translate-x-full md:translate-x-0">
     <div class="flex items-center gap-3 px-5 py-4 border-b border-white/10">
       <div class="w-8 h-8 rounded-lg bg-[#4F86C6] flex items-center justify-center font-extrabold text-sm shrink-0">L</div>
       <div class="font-bold text-sm">Liguify ERP</div>
@@ -638,7 +653,7 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
 
   <!-- Notif panel -->
   <div id="notifOverlay" class="hidden fixed inset-0 z-40" onclick="closeNotifOutside(event)">
-    <div class="absolute left-64 top-0 bottom-0 w-80 bg-white shadow-2xl flex flex-col border-r border-slate-200">
+    <div class="absolute left-0 md:left-64 top-0 bottom-0 w-full md:w-80 bg-white shadow-2xl flex flex-col border-r border-slate-200">
       <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200 shrink-0">
         <h3 class="font-bold text-sm text-slate-800">Notificaciones</h3>
         <button onclick="clearNotifs()" class="text-xs text-blue-600 hover:underline">Limpiar todo</button>
@@ -648,8 +663,8 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
   </div>
 
   <!-- Main -->
-  <div class="flex-1 min-w-0 overflow-auto">
-    <div class="max-w-[1400px] mx-auto p-6">
+  <div class="flex-1 min-w-0 overflow-auto md:ml-0 pt-14 md:pt-0">
+    <div class="max-w-[1400px] mx-auto p-4 md:p-6">
 
       <!-- P1: Torneos (dashboard) -->
       <div id="p1" class="screen">
@@ -1799,6 +1814,25 @@ function renderNotifList() {
       <p class="text-[10px] text-slate-400 mt-0.5">${n.ts}</p>
     </div>`).join('');
 }
+function toggleMobileMenu() {
+  const sb = document.getElementById('mainSidebar');
+  const ov = document.getElementById('sidebarOverlay');
+  const ico = document.getElementById('menuIconOpen');
+  const icx = document.getElementById('menuIconClose');
+  const open = sb.classList.contains('-translate-x-full');
+  sb.classList.toggle('-translate-x-full', !open);
+  ov.classList.toggle('hidden', !open);
+  ico.classList.toggle('hidden', open);
+  icx.classList.toggle('hidden', !open);
+}
+function closeMobileMenu() {
+  const sb = document.getElementById('mainSidebar');
+  const ov = document.getElementById('sidebarOverlay');
+  sb.classList.add('-translate-x-full');
+  ov.classList.add('hidden');
+  document.getElementById('menuIconOpen').classList.remove('hidden');
+  document.getElementById('menuIconClose').classList.add('hidden');
+}
 function toggleNotif() { document.getElementById('notifOverlay').classList.toggle('hidden'); renderNotifList(); }
 function closeNotifOutside(e) { if(e.target===document.getElementById('notifOverlay')) document.getElementById('notifOverlay').classList.add('hidden'); }
 function clearNotifs() { S.notifications=[]; document.getElementById('nbadge').classList.add('hidden'); renderNotifList(); }
@@ -2398,6 +2432,7 @@ function showScreen(id) {
   el.classList.add('active','fade-in');
   highlightNav(id);
   window.scrollTo({top:0,behavior:'instant'});
+  closeMobileMenu();
   if(TORNEO_VIEWS[id]) renderP1View(TORNEO_VIEWS[id]);
   else renderScreen(id);
 }
