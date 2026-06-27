@@ -866,7 +866,7 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
               <span class="text-2xl mb-2">📤</span>
               <p class="text-xs font-medium">Arrastra la imagen aquí</p>
               <p class="text-[11px]">o haz clic para seleccionar</p>
-              <input type="file" id="vfileInput" accept="image/*,application/pdf" class="hidden" onchange="onVoucherSelected(this)">
+              <input type="file" id="vfileInput" accept="image/*,application/pdf" class="hidden">
             </label>
             <div id="vpreview" class="hidden flex items-center gap-2 mt-2 bg-slate-50 rounded-lg p-2">
               <div class="w-9 h-9 rounded bg-slate-200 flex items-center justify-center text-[10px] text-slate-500 shrink-0">IMG</div>
@@ -4900,6 +4900,12 @@ function renderTestPanel(results){
 if (location.search.includes('test')) {
   window.addEventListener('load', ()=> setTimeout(runTests, 200));
 }
+
+// Voucher file input — wired via JS to avoid onchange issues in production
+window.addEventListener('load', () => {
+  const vfi = document.getElementById('vfileInput');
+  if(vfi) vfi.addEventListener('change', function(){ onVoucherSelected(this); });
+});
 </script>
 
 <!-- Dropdown flotante de autocomplete de clubs -->
