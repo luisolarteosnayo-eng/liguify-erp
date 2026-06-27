@@ -862,11 +862,12 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
             <label class="block text-xs font-semibold text-slate-600 mb-1">Descripción</label>
             <input type="text" id="pDesc" placeholder="Ej. Adelanto inscripción Cat. 2016" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs mb-4 outline-none focus:ring-2 focus:ring-blue-200">
             <label class="block text-xs font-semibold text-slate-600 mb-2">Voucher <span class="text-rose-500">— obligatorio</span></label>
-            <div id="vzone" onclick="simUpload()" class="border-2 border-dashed border-slate-300 rounded-lg p-5 flex flex-col items-center text-center text-slate-400 hover:border-blue-300 hover:bg-blue-50/30 cursor-pointer transition">
+            <label id="vzone" class="border-2 border-dashed border-slate-300 rounded-lg p-5 flex flex-col items-center text-center text-slate-400 hover:border-blue-300 hover:bg-blue-50/30 cursor-pointer transition">
               <span class="text-2xl mb-2">📤</span>
               <p class="text-xs font-medium">Arrastra la imagen aquí</p>
               <p class="text-[11px]">o haz clic para seleccionar</p>
-            </div>
+              <input type="file" id="vfileInput" accept="image/*,application/pdf" class="hidden" onchange="onVoucherSelected(this)">
+            </label>
             <div id="vpreview" class="hidden flex items-center gap-2 mt-2 bg-slate-50 rounded-lg p-2">
               <div class="w-9 h-9 rounded bg-slate-200 flex items-center justify-center text-[10px] text-slate-500 shrink-0">IMG</div>
               <span class="text-xs flex-1 truncate" id="vname">voucher.jpg</span>
@@ -3370,18 +3371,35 @@ function renderClubSelector() {
 }
 
 // ---- VOUCHER ----
-function simUpload() {
+let _voucherFile = null;
+
+function onVoucherSelected(input) {
+  const file = input.files[0];
+  if(!file) return;
+  _voucherFile = file;
   S.voucherUploaded = true;
-  const fn = ['voucher_bcp.jpg','comprobante_yape.png','captura_pago.jpg'][Math.floor(Math.random()*3)];
-  document.getElementById('vname').textContent = fn;
+  document.getElementById('vname').textContent = file.name;
   document.getElementById('vzone').classList.add('hidden');
   document.getElementById('vpreview').classList.remove('hidden');
   document.getElementById('verr').classList.add('hidden');
+  // Preview de imagen
+  if(file.type.startsWith('image/')){
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = document.querySelector('#vpreview .w-9');
+      if(img) { img.style.backgroundImage=`url(${e.target.result})`; img.style.backgroundSize='cover'; img.textContent=''; }
+    };
+    reader.readAsDataURL(file);
+  }
 }
+
 function removeVoucher() {
+  _voucherFile = null;
   S.voucherUploaded = false;
   document.getElementById('vzone').classList.remove('hidden');
   document.getElementById('vpreview').classList.add('hidden');
+  const input = document.getElementById('vfileInput');
+  if(input) input.value = '';
 }
 
 // ---- REGISTRAR PAGO ----
@@ -3407,13 +3425,14 @@ function selMedio(medio, btn) {
   document.querySelectorAll('.medio-btn').forEach(b=>b.classList.remove('sel'));
   btn.classList.add('sel');
 }
-function registrarPago() {
+async function registrarPago() {
   if(!S.selectedClubId){ toast('Selecciona un club antes de registrar el pago.','error'); return; }
   if(!_p2TorneoId){ toast('Selecciona un torneo antes de registrar el pago.','error'); return; }
   const monto = parseFloat(document.getElementById('pMonto').value)||0;
   if(monto<=0) { toast('El monto debe ser mayor a S/. 0','error'); return; }
-  if(!S.medioSeleccionado){ toast('Selecciona un medio de pago. Si no hay ninguno, habilítalo en Configuración → Medios de Pago.','error'); return; }
+  if(!S.medioSeleccionado){ toast('Selecciona un medio de pago.','error'); return; }
   if(!S.voucherUploaded) { document.getElementById('verr').classList.remove('hidden'); return; }
+
   const nuevo = {
     id: S.nextId++, torneoId: _p2TorneoId, clubId: S.selectedClubId, monto,
     medio: S.medioSeleccionado,
@@ -3423,6 +3442,7 @@ function registrarPago() {
     op: S.usuarioActual?.nombre||ROLES[S.role]?.nombre||'Operador',
     estado: 'pendiente', regEn: now(), procPor:null, procEn:null, motivo:null,
     orgId: S.organizacionActual?.id||1,
+    voucherUrl: null,
   };
   S.pagos.push(nuevo);
   removeVoucher();
@@ -3432,11 +3452,27 @@ function registrarPago() {
   p2RenderDetalle();
   toast(`Pago de ${fmt(monto)} registrado y enviado a Tesorería ✓`,'success');
   addNotif(`Pago de ${fmt(monto)} para ${clubById(S.selectedClubId)?.nombre} enviado a Tesorería.`,'info');
+
   if(sbOn()){
-    SB().data.registrarPago({torneo_id:nuevo.torneoId,club_id:nuevo.clubId,monto:nuevo.monto,medio:nuevo.medio,fecha:nuevo.fecha,nro_op:nuevo.nroOp,descripcion:nuevo.desc,org_id:myOrgId()})
-      .then(p=>{ nuevo.id=p.id; })
-      .catch(e=>toast('⚠ Error al guardar pago: '+e.message,'error'));
+    try {
+      // 1. Subir voucher a Storage
+      let voucherUrl = null;
+      if(_voucherFile){
+        voucherUrl = await SB().data.subirVoucher(_voucherFile, myOrgId());
+        nuevo.voucherUrl = voucherUrl;
+      }
+      // 2. Guardar pago con voucher_url
+      const p = await SB().data.registrarPago({
+        torneo_id: nuevo.torneoId, club_id: nuevo.clubId, monto: nuevo.monto,
+        medio: nuevo.medio, fecha: nuevo.fecha, nro_op: nuevo.nroOp,
+        descripcion: nuevo.desc, voucher_url: voucherUrl, org_id: myOrgId()
+      });
+      nuevo.id = p.id;
+    } catch(e){
+      toast('⚠ Error al guardar pago: '+e.message,'error');
+    }
   }
+  _voucherFile = null;
 }
 
 // ---- P3: APROBAR PAGOS ----
