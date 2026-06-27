@@ -3458,8 +3458,13 @@ async function registrarPago() {
       // 1. Subir voucher a Storage
       let voucherUrl = null;
       if(_voucherFile){
+        console.log('[voucher] archivo:', _voucherFile.name, _voucherFile.type, _voucherFile.size);
+        console.log('[voucher] orgId:', myOrgId());
         voucherUrl = await SB().data.subirVoucher(_voucherFile, myOrgId());
+        console.log('[voucher] url:', voucherUrl);
         nuevo.voucherUrl = voucherUrl;
+      } else {
+        console.log('[voucher] _voucherFile es null');
       }
       // 2. Guardar pago con voucher_url
       const p = await SB().data.registrarPago({
