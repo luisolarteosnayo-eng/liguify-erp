@@ -3444,6 +3444,7 @@ async function registrarPago() {
     orgId: S.organizacionActual?.id||1,
     voucherUrl: null,
   };
+  const fileToUpload = _voucherFile; // guardar antes de removeVoucher()
   S.pagos.push(nuevo);
   removeVoucher();
   document.getElementById('pMonto').value = '500';
@@ -3453,19 +3454,13 @@ async function registrarPago() {
   toast(`Pago de ${fmt(monto)} registrado y enviado a Tesorería ✓`,'success');
   addNotif(`Pago de ${fmt(monto)} para ${clubById(S.selectedClubId)?.nombre} enviado a Tesorería.`,'info');
 
-  console.log('[pago] sbOn:', sbOn(), '| SB:', !!SB(), '| configurado:', SB()?.configurado);
   if(sbOn()){
     try {
       // 1. Subir voucher a Storage
       let voucherUrl = null;
-      if(_voucherFile){
-        console.log('[voucher] archivo:', _voucherFile.name, _voucherFile.type, _voucherFile.size);
-        console.log('[voucher] orgId:', myOrgId());
-        voucherUrl = await SB().data.subirVoucher(_voucherFile, myOrgId());
-        console.log('[voucher] url:', voucherUrl);
+      if(fileToUpload){
+        voucherUrl = await SB().data.subirVoucher(fileToUpload, myOrgId());
         nuevo.voucherUrl = voucherUrl;
-      } else {
-        console.log('[voucher] _voucherFile es null');
       }
       // 2. Guardar pago con voucher_url
       const p = await SB().data.registrarPago({
