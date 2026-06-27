@@ -2194,7 +2194,7 @@ function renderSeguridad() {
       <td class="py-3 px-4 text-center">
         ${esSelf
           ? `<span class="text-sm font-semibold">${rolIcon[u.rol]||''} ${rolLabel[u.rol]||'—'}</span>`
-          : `<select onchange="cambiarRol(${u.id},this.value)" class="border border-slate-200 rounded-lg px-2 py-1 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-200">
+          : `<select id="selRol_${u.id}" class="border border-slate-200 rounded-lg px-2 py-1 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-200">
               <option value="">— Sin perfil —</option>${rolOpts}
              </select>`
         }
@@ -2202,9 +2202,12 @@ function renderSeguridad() {
       <td class="py-3 px-4 text-center">${estadoBadge}</td>
       <td class="py-3 px-4 text-center">
         ${esSelf ? '<span class="text-xs text-slate-300">—</span>'
-          : `<button onclick="toggleActivo(${u.id})" class="text-xs font-semibold ${u.activo?'text-rose-500 hover:text-rose-700':'text-emerald-600 hover:text-emerald-800'} hover:underline">
-              ${u.activo?'Desactivar':'Activar'}
-             </button>`
+          : `<div class="flex items-center justify-center gap-2">
+              <button onclick="cambiarRol('${u.id}', document.getElementById('selRol_${u.id}').value)" class="text-xs font-semibold text-white bg-[#18324F] px-2.5 py-1 rounded-lg hover:bg-[#0f253d]">Guardar</button>
+              <button onclick="toggleActivo('${u.id}')" class="text-xs font-semibold ${u.activo?'text-rose-500 hover:text-rose-700':'text-emerald-600 hover:text-emerald-800'} hover:underline">
+                ${u.activo?'Desactivar':'Activar'}
+              </button>
+             </div>`
         }
       </td>
     </tr>`;
