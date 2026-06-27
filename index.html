@@ -335,6 +335,24 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
 </div>
 
 <!-- ===================== ONBOARDING — Paso 2: Datos de organización ===================== -->
+<!-- Pantalla de espera para usuarios invitados sin org asignada -->
+<div id="waitingScreen" class="min-h-screen bg-[#18324F] items-center justify-center p-4" style="display:none">
+  <div class="w-full max-w-sm text-center">
+    <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#4F86C6] mb-5 shadow-xl">
+      <span class="text-white font-extrabold text-2xl">L</span>
+    </div>
+    <h1 class="text-white text-xl font-bold mb-2">Acceso pendiente de activación</h1>
+    <p class="text-blue-200 text-sm mb-1">Tu cuenta fue creada correctamente.</p>
+    <p class="text-blue-300 text-xs mb-6">El administrador de tu organización debe asignarte un rol. Una vez activado, recarga esta página.</p>
+    <div class="bg-white/10 rounded-xl px-4 py-3 mb-6">
+      <p class="text-blue-200 text-xs mb-0.5">Cuenta registrada como</p>
+      <p id="waitingEmail" class="text-white font-semibold text-sm"></p>
+    </div>
+    <button onclick="location.reload()" class="w-full bg-[#4F86C6] hover:bg-[#3a70b0] text-white font-semibold py-3 rounded-xl transition mb-3">Recargar y verificar acceso</button>
+    <button onclick="sbLogout()" class="w-full text-blue-300 hover:text-white text-sm py-2 transition">Cerrar sesión</button>
+  </div>
+</div>
+
 <div id="onboardingScreen" class="min-h-screen bg-[#18324F] items-start justify-center p-4 pt-10" style="display:none">
   <div class="w-full max-w-lg">
     <div class="text-center mb-6">
@@ -995,7 +1013,10 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
       <div id="p_seguridad" class="screen">
         <div class="flex items-center justify-between mb-1">
           <h1 class="text-xl font-bold">Seguridad — Usuarios del Sistema</h1>
-          <button onclick="openModal('invitarUsuarioModal')" class="flex items-center gap-2 bg-[#18324F] text-white text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-[#0f253d] transition shadow-sm">+ Invitar usuario</button>
+          <div class="flex gap-2">
+            <button onclick="generarLinkInvitacion()" class="flex items-center gap-2 border border-[#18324F] text-[#18324F] text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-slate-50 transition shadow-sm">🔗 Generar link</button>
+            <button onclick="openModal('invitarUsuarioModal')" class="flex items-center gap-2 bg-[#18324F] text-white text-sm font-semibold px-4 py-2.5 rounded-lg hover:bg-[#0f253d] transition shadow-sm">+ Asignar usuario</button>
+          </div>
         </div>
         <p class="text-xs text-slate-500 mb-5">El Organizador asigna y modifica el perfil de acceso de cada usuario.</p>
         <div id="segKpis" class="grid grid-cols-4 gap-4 mb-6"></div>
@@ -1802,7 +1823,7 @@ const PLANES = {
   plus:   { torneos: -1, equipos: -1, precio: 150,  label: 'Plus',   color: 'text-emerald-600' },
 };
 
-const ALL_SCREENS = ['landingScreen','registerScreen','onboardingScreen','planesScreen','loginScreen','appShell','adminScreen'];
+const ALL_SCREENS = ['landingScreen','registerScreen','onboardingScreen','planesScreen','loginScreen','appShell','adminScreen','waitingScreen'];
 function _hideAll() { ALL_SCREENS.forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; }); }
 
 function showLanding() {
@@ -2235,6 +2256,54 @@ async function toggleActivo(userId) {
     const { error } = await SB().client.from('profiles').update({activo: u.activo}).eq('id', userId);
     if(error) toast('⚠ Error al guardar: '+error.message,'error');
   }
+}
+
+async function generarLinkInvitacion() {
+  if(!sbOn()){ toast('Conecta Supabase para generar links.','warn'); return; }
+  // Modal pequeño para elegir rol
+  const rol = await new Promise(resolve => {
+    const div = document.createElement('div');
+    div.className = 'fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60';
+    div.innerHTML = `
+      <div class="bg-white rounded-xl shadow-2xl p-6 w-80 fade-in">
+        <h3 class="font-bold text-base mb-1">Generar link de invitación</h3>
+        <p class="text-xs text-slate-500 mb-4">El link expira en 7 días y es de un solo uso.</p>
+        <label class="block text-xs font-semibold text-slate-600 mb-2">Rol del invitado</label>
+        <div class="grid grid-cols-3 gap-2 mb-5">
+          <label class="cursor-pointer"><input type="radio" name="glRol" value="organizador" class="sr-only peer">
+            <div class="border-2 border-slate-200 rounded-xl p-2 text-center peer-checked:border-[#4F86C6] peer-checked:bg-blue-50 transition">
+              <div class="text-lg">👑</div><div class="text-[10px] font-semibold">Organizador</div></div></label>
+          <label class="cursor-pointer"><input type="radio" name="glRol" value="operador" class="sr-only peer" checked>
+            <div class="border-2 border-[#4F86C6] bg-blue-50 rounded-xl p-2 text-center peer-checked:border-[#4F86C6] peer-checked:bg-blue-50 transition">
+              <div class="text-lg">📋</div><div class="text-[10px] font-semibold">Operador</div></div></label>
+          <label class="cursor-pointer"><input type="radio" name="glRol" value="tesorero" class="sr-only peer">
+            <div class="border-2 border-slate-200 rounded-xl p-2 text-center peer-checked:border-[#4F86C6] peer-checked:bg-blue-50 transition">
+              <div class="text-lg">💰</div><div class="text-[10px] font-semibold">Tesorero</div></div></label>
+        </div>
+        <div class="flex justify-end gap-2">
+          <button id="glCancel" class="text-sm text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">Cancelar</button>
+          <button id="glOk" class="text-sm font-semibold text-white bg-[#18324F] px-4 py-2 rounded-lg hover:bg-[#0f253d]">Generar</button>
+        </div>
+      </div>`;
+    document.body.appendChild(div);
+    div.querySelector('#glCancel').onclick = () => { document.body.removeChild(div); resolve(null); };
+    div.querySelector('#glOk').onclick = () => {
+      const r = div.querySelector('input[name="glRol"]:checked')?.value || 'operador';
+      document.body.removeChild(div); resolve(r);
+    };
+  });
+  if(!rol) return;
+
+  try {
+    const user = await SB().auth.getUser();
+    const { data, error } = await SB().client.from('invitaciones')
+      .insert({ org_id: myOrgId(), rol, created_by: user?.id })
+      .select('token').single();
+    if(error) throw error;
+    const link = `${window.location.origin}${window.location.pathname}?invite=${data.token}`;
+    await navigator.clipboard.writeText(link);
+    toast('Link copiado al portapapeles ✓ (expira en 7 días)','success');
+  } catch(e){ toast('⚠ '+e.message,'error'); }
 }
 
 async function asignarUsuarioPorEmail() {
@@ -4654,6 +4723,28 @@ async function sbRouteAfterLogin(){
   let prof;
   try { prof = await SB().getProfile(); } catch(e){ console.error(e); }
   if(!prof){ toast('No se pudo cargar tu perfil.','error'); return; }
+
+  // Activar invitación pendiente si existe
+  const invToken = new URLSearchParams(window.location.search).get('invite')
+    || sessionStorage.getItem('pendingInvite');
+  if(invToken && (!prof.org_id || prof.pendiente)){
+    try {
+      const { data: inv, error: invErr } = await SB().client.rpc('activar_invitacion', { p_token: invToken });
+      if(invErr) throw invErr;
+      if(inv?.ok){
+        sessionStorage.removeItem('pendingInvite');
+        // Limpiar ?invite= de la URL sin recargar
+        const url = new URL(window.location.href);
+        url.searchParams.delete('invite');
+        history.replaceState({}, '', url.toString());
+        prof = await SB().getProfile(); // recargar perfil ya actualizado
+        toast('Bienvenido a Liguify ✓','success');
+      } else {
+        toast('⚠ '+(inv?.error||'Invitación inválida'),'error');
+      }
+    } catch(e){ toast('⚠ Error al activar invitación: '+e.message,'error'); }
+  }
+
   try { await sbHydrate(); } catch(e){ console.error(e); toast('Error cargando datos de la organización.','error'); }
   const u = _mapUser(prof);
   S.usuarioActual = u;
@@ -4664,7 +4755,21 @@ async function sbRouteAfterLogin(){
     renderAdminDashboard();
     return;
   }
-  if(!u.rol || u.pendiente || !u.orgId){     // necesita completar onboarding
+  if(!u.rol || !u.orgId){
+    // Usuario sin org: mostrar pantalla de espera en vez de onboarding
+    _regEmail=u.email; _hideAll();
+    const ws = document.getElementById('waitingScreen');
+    if(ws){
+      ws.style.display='flex';
+      const we = document.getElementById('waitingEmail'); if(we) we.textContent=u.email;
+    } else {
+      // fallback: onboarding si no existe pantalla de espera
+      document.getElementById('onboardingScreen').style.display='flex';
+      const ob=document.getElementById('obEmailDisplay'); if(ob) ob.textContent=u.email;
+    }
+    return;
+  }
+  if(u.pendiente){
     _regEmail=u.email; _hideAll();
     document.getElementById('onboardingScreen').style.display='flex';
     const ob=document.getElementById('obEmailDisplay'); if(ob) ob.textContent=u.email;
@@ -4699,10 +4804,13 @@ async function sbSignupStep1(){
 }
 
 async function sbLoginGoogle(){
-  // Google OAuth requiere activarlo en Supabase → Authentication → Providers → Google.
-  // Hasta entonces, mostramos un aviso claro en lugar del error técnico de Supabase.
   try {
-    const {error}=await SB().auth.signInGoogle(window.location.href);
+    // Conservar token de invitación a través del redirect OAuth
+    const invToken = new URLSearchParams(window.location.search).get('invite')
+      || sessionStorage.getItem('pendingInvite');
+    if(invToken) sessionStorage.setItem('pendingInvite', invToken);
+    const redirectTo = window.location.origin + window.location.pathname + (invToken ? '?invite='+invToken : '');
+    const {error}=await SB().auth.signInGoogle(redirectTo);
     if(error){
       if(error.message?.toLowerCase().includes('unsupported provider') || error.status===400){
         toast('⚠ Google no está habilitado aún. Usa correo y contraseña por ahora.','warn');
