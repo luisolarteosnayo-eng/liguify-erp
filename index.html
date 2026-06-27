@@ -3453,6 +3453,7 @@ async function registrarPago() {
   toast(`Pago de ${fmt(monto)} registrado y enviado a Tesorería ✓`,'success');
   addNotif(`Pago de ${fmt(monto)} para ${clubById(S.selectedClubId)?.nombre} enviado a Tesorería.`,'info');
 
+  console.log('[pago] sbOn:', sbOn(), '| SB:', !!SB(), '| configurado:', SB()?.configurado);
   if(sbOn()){
     try {
       // 1. Subir voucher a Storage
