@@ -277,6 +277,71 @@ create trigger on_auth_user_created
   for each row execute function public.handle_new_user();
 
 -- ============================================================================
+--  MÓDULO ACADEMIA (Fase 1)
+-- ============================================================================
+
+create table if not exists public.ac_sedes (
+  id                bigint generated always as identity primary key,
+  nombre            text not null,
+  direccion         text,
+  ciudad            text not null default 'Lima',
+  telefono_coord    text,
+  google_maps_url   text,
+  org_id            bigint not null references public.organizaciones(id) on delete cascade,
+  created_at        timestamptz not null default now()
+);
+
+create table if not exists public.ac_tracks (
+  id                    bigint generated always as identity primary key,
+  sede_id               bigint not null references public.ac_sedes(id) on delete cascade,
+  nombre_track          text not null,
+  linea_negocio         text not null default 'academia'
+                          check (linea_negocio in ('academia','alto_rendimiento','arqueros')),
+  capacidad_maxima      int not null default 20,
+  mensualidad_sugerida  numeric(10,2) not null default 0,
+  clases_mensuales      int not null default 8,
+  costo_cancha          numeric(10,2) not null default 0,
+  costo_profesores      numeric(10,2) not null default 0,
+  org_id                bigint not null references public.organizaciones(id) on delete cascade,
+  created_at            timestamptz not null default now()
+);
+
+create table if not exists public.ac_alumnos (
+  id                   bigint generated always as identity primary key,
+  sede_id              bigint references public.ac_sedes(id) on delete set null,
+  track_id             bigint references public.ac_tracks(id) on delete set null,
+  nombre               text not null,
+  apellido             text not null,
+  fecha_nacimiento     date not null,
+  categoria_inmutable  int not null,           -- año de nacimiento, inmutable
+  tutor_nombre         text not null,
+  tutor_telefono       text not null,
+  tutor_email          text,                   -- nullable; se completa en onboarding familiar
+  estado               text not null default 'activo'
+                         check (estado in ('activo','inactivo')),
+  org_id               bigint not null references public.organizaciones(id) on delete cascade,
+  created_at           timestamptz not null default now()
+);
+
+-- RLS para tablas de academia
+do $$
+declare t text;
+begin
+  foreach t in array array['ac_sedes','ac_tracks','ac_alumnos'] loop
+    execute format($f$
+      alter table public.%1$s enable row level security;
+      drop policy if exists %1$s_select on public.%1$s;
+      create policy %1$s_select on public.%1$s for select
+        using ( is_platform_admin() or org_id = current_org_id() );
+      drop policy if exists %1$s_all on public.%1$s;
+      create policy %1$s_all on public.%1$s for all
+        using ( is_platform_admin() or org_id = current_org_id() )
+        with check ( is_platform_admin() or org_id = current_org_id() );
+    $f$, t);
+  end loop;
+end $$;
+
+-- ============================================================================
 --  FIN. Siguiente paso: marcar tu usuario como Admin de Plataforma
 --  (ver SETUP.md, paso 6) y configurar Storage para vouchers.
 -- ============================================================================
