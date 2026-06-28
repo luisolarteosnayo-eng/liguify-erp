@@ -1678,10 +1678,24 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
           </div>
 
           <!-- TOTAL EGRESOS -->
-          <div class="bg-white rounded-xl border-2 border-rose-200 overflow-hidden">
-            <div class="flex justify-between items-center px-4 py-2.5 bg-rose-50">
-              <span class="text-sm font-bold text-rose-700">TOTAL EGRESOS</span>
-              <span class="text-sm font-bold text-rose-700" id="ifTotalEgresos">S/ 0</span>
+          <div class="bg-rose-600 rounded-xl border border-rose-500 overflow-hidden">
+            <div class="text-white text-center text-xs font-bold py-1.5 tracking-wide">TOTAL EGRESOS</div>
+            <div class="p-3 bg-white/90">
+              <table class="w-full text-xs">
+                <thead><tr class="text-[10px] text-slate-400 uppercase border-b border-slate-100">
+                  <th class="text-left py-1 font-semibold">Concepto</th>
+                  <th class="text-right py-1 font-semibold">Banco</th>
+                  <th class="text-right py-1 font-semibold">Efectivo</th>
+                  <th class="text-right py-1 font-semibold">Total</th>
+                </tr></thead>
+                <tbody id="ifEgresosResumenBody"></tbody>
+                <tfoot>
+                  <tr class="border-t-2 border-rose-300">
+                    <td colspan="3" class="pt-1.5 text-sm font-bold text-rose-800">TOTAL</td>
+                    <td class="pt-1.5 text-right text-sm font-bold text-rose-700" id="ifTotalEgresos">S/ 0</td>
+                  </tr>
+                </tfoot>
+              </table>
             </div>
           </div>
 
@@ -3298,17 +3312,50 @@ function recalcIF() {
   document.getElementById('ifIngPos').textContent      = 'S/ '+((entMedio['POS']||0)+(arbMedio['POS']||0)).toFixed(0);
   document.getElementById('ifTotalIngresos').textContent = 'S/ '+totalIng.toFixed(0);
 
-  // Egresos banco
-  let totalBanco = 0;
-  document.querySelectorAll('[data-seccion="banco"].if-egreso').forEach(inp => totalBanco += n(inp.value));
-  document.querySelectorAll('#ifBancoExtras .if-egreso-extra').forEach(inp => totalBanco += n(inp.value));
+  // Egresos — recopilar filas con banco/efectivo por concepto
+  const egRows = [];   // [{concepto, banco, efectivo}]
 
-  // Egresos efectivo
-  let totalEfec = 0;
-  document.querySelectorAll('[data-seccion="efectivo"].if-egreso').forEach(inp => totalEfec += n(inp.value));
-  document.querySelectorAll('#ifEfectivoExtras .if-egreso-extra').forEach(inp => totalEfec += n(inp.value));
+  document.querySelectorAll('[data-seccion="banco"].if-egreso').forEach(inp => {
+    const v = n(inp.value);
+    egRows.push({ concepto: inp.dataset.item, banco: v, efectivo: 0 });
+  });
+  document.querySelectorAll('#ifBancoExtras > div').forEach(div => {
+    const concepto = div.querySelector('.if-extra-label')?.value.trim() || '—';
+    const v = n(div.querySelector('.if-egreso-extra')?.value);
+    egRows.push({ concepto, banco: v, efectivo: 0 });
+  });
+  document.querySelectorAll('[data-seccion="efectivo"].if-egreso').forEach(inp => {
+    const v = n(inp.value);
+    // Si el concepto ya existe en banco (ej. Arbitraje), sumar en esa fila
+    const existing = egRows.find(r => r.concepto === inp.dataset.item);
+    if(existing) existing.efectivo = v;
+    else egRows.push({ concepto: inp.dataset.item, banco: 0, efectivo: v });
+  });
+  document.querySelectorAll('#ifEfectivoExtras > div').forEach(div => {
+    const concepto = div.querySelector('.if-extra-label')?.value.trim() || '—';
+    const v = n(div.querySelector('.if-egreso-extra')?.value);
+    const existing = egRows.find(r => r.concepto === concepto);
+    if(existing) existing.efectivo += v;
+    else egRows.push({ concepto, banco: 0, efectivo: v });
+  });
+
+  // Renderizar tabla resumen egresos
+  const tbody = document.getElementById('ifEgresosResumenBody');
+  if(tbody) {
+    tbody.innerHTML = egRows.filter(r => r.banco || r.efectivo).map(r => {
+      const tot = r.banco + r.efectivo;
+      return `<tr class="border-t border-slate-50">
+        <td class="py-1 text-slate-500">${r.concepto}</td>
+        <td class="py-1 text-right">${r.banco ? r.banco.toFixed(0) : '—'}</td>
+        <td class="py-1 text-right">${r.efectivo ? r.efectivo.toFixed(0) : '—'}</td>
+        <td class="py-1 text-right font-semibold">S/ ${tot.toFixed(0)}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  let totalBanco = egRows.reduce((s,r)=>s+r.banco, 0);
+  let totalEfec  = egRows.reduce((s,r)=>s+r.efectivo, 0);
   document.getElementById('ifTotalEgEfectivo').textContent = 'S/ '+totalEfec.toFixed(0);
-
   const totalEg = totalBanco + totalEfec;
   document.getElementById('ifTotalEgresos').textContent = 'S/ '+totalEg.toFixed(0);
 
