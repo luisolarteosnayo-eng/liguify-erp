@@ -1531,95 +1531,194 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
 </div>
 
 <!-- ingresosFechaModal -->
-<div id="ingresosFechaModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60">
-  <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col fade-in">
-    <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
-      <div>
-        <h3 class="font-bold text-base" id="ifTorneoNombre">Ingresos por Fecha</h3>
-        <p class="text-xs text-slate-400 mt-0.5">Registra ingresos y gastos de cada fecha del torneo</p>
+<div id="ingresosFechaModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/60">
+  <div class="bg-slate-100 rounded-xl shadow-2xl w-full max-w-4xl max-h-[95vh] flex flex-col fade-in">
+    <!-- Header -->
+    <div class="flex items-center justify-between px-5 py-3 bg-[#18324F] rounded-t-xl shrink-0">
+      <div class="flex items-center gap-3 flex-wrap">
+        <span class="text-white font-bold text-sm" id="ifTorneoNombre">Ingresos por Fecha</span>
+        <select id="ifNumFecha" onchange="cargarIngresosFecha()" class="border-0 rounded-lg px-3 py-1 text-sm outline-none bg-white/20 text-white font-semibold focus:bg-white/30"></select>
+        <button onclick="agregarNuevaFechaIF()" class="text-xs font-semibold text-blue-200 hover:text-white border border-white/30 px-2.5 py-1 rounded-lg hover:bg-white/10 transition">+ Nueva fecha</button>
       </div>
-      <button onclick="closeModal('ingresosFechaModal')" class="text-slate-400 hover:text-slate-600 p-1">
+      <button onclick="closeModal('ingresosFechaModal')" class="text-white/60 hover:text-white p-1">
         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
-    <!-- Selector de fecha -->
-    <div class="px-6 py-3 border-b border-slate-100 shrink-0 flex items-center gap-3 flex-wrap">
-      <div class="flex items-center gap-2">
-        <label class="text-xs font-semibold text-slate-600">Fecha N°</label>
-        <select id="ifNumFecha" onchange="cargarIngresosFecha()" class="border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 bg-white"></select>
-      </div>
-      <button onclick="agregarNuevaFechaIF()" class="text-xs font-semibold text-[#18324F] border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition">+ Nueva fecha</button>
-      <div id="ifFechaKpis" class="ml-auto flex gap-3 text-xs font-bold">
-        <span class="text-emerald-600">Ingresos: <span id="ifTotalIng">S/.0.00</span></span>
-        <span class="text-rose-500">Gastos: <span id="ifTotalGas">S/.0.00</span></span>
-        <span class="text-slate-700">Neto: <span id="ifNeto">S/.0.00</span></span>
-      </div>
-    </div>
-    <div class="overflow-y-auto flex-1 px-6 py-4">
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-        <!-- Ingresos -->
-        <div>
-          <h4 class="text-xs font-bold text-emerald-700 uppercase tracking-wide mb-3">Ingresos</h4>
-          <div class="space-y-2" id="ifIngresosWrap">
-            <div class="if-row flex items-center gap-2" data-tipo="ingreso" data-nombre="Taquilla">
-              <span class="text-xs text-slate-600 w-28 shrink-0">Taquilla</span>
-              <input type="number" min="0" step="0.01" placeholder="0.00" class="if-monto flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-emerald-200" oninput="recalcIF()">
+
+    <div class="overflow-y-auto flex-1 p-4 space-y-4">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+        <!-- ===== INGRESOS ===== -->
+        <div class="space-y-3">
+          <div class="bg-emerald-600 text-white text-center text-xs font-bold py-2 rounded-lg tracking-widest uppercase">Ingresos</div>
+
+          <!-- ENTRADAS -->
+          <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div class="bg-yellow-300 text-slate-800 text-center text-xs font-bold py-1.5 tracking-wide">ENTRADAS</div>
+            <table class="w-full text-xs">
+              <thead><tr class="bg-yellow-100 text-slate-700 font-semibold">
+                <th class="py-1.5 px-3 text-left">Detalle</th>
+                <th class="py-1.5 px-2 text-right">Precio</th>
+                <th class="py-1.5 px-2 text-right">Cantidad</th>
+                <th class="py-1.5 px-2 text-right">Total</th>
+              </tr></thead>
+              <tbody id="ifEntradasBody">
+                <tr class="if-entrada-row border-t border-slate-100">
+                  <td class="px-3 py-1 text-slate-600">Tickets</td>
+                  <td class="px-2 py-1"><input type="number" min="0" step="0.01" placeholder="0" class="if-precio w-16 text-right border border-slate-200 rounded px-1 py-0.5 outline-none focus:ring-1 focus:ring-emerald-300 text-xs" oninput="recalcEntrada(this)"></td>
+                  <td class="px-2 py-1"><input type="number" min="0" step="1" placeholder="0" class="if-cantidad w-16 text-right border border-slate-200 rounded px-1 py-0.5 outline-none focus:ring-1 focus:ring-emerald-300 text-xs" oninput="recalcEntrada(this)"></td>
+                  <td class="px-2 py-1 text-right font-semibold if-total-entrada text-slate-700">0</td>
+                </tr>
+                <tr class="if-entrada-row border-t border-slate-100">
+                  <td class="px-3 py-1 text-slate-600">Estacionamiento (50%)</td>
+                  <td class="px-2 py-1"><input type="number" min="0" step="0.01" placeholder="0" class="if-precio w-16 text-right border border-slate-200 rounded px-1 py-0.5 outline-none focus:ring-1 focus:ring-emerald-300 text-xs" oninput="recalcEntrada(this)"></td>
+                  <td class="px-2 py-1"><input type="number" min="0" step="1" placeholder="0" class="if-cantidad w-16 text-right border border-slate-200 rounded px-1 py-0.5 outline-none focus:ring-1 focus:ring-emerald-300 text-xs" oninput="recalcEntrada(this)"></td>
+                  <td class="px-2 py-1 text-right font-semibold if-total-entrada text-slate-700">0</td>
+                </tr>
+                <tr class="if-entrada-row border-t border-slate-100">
+                  <td class="px-3 py-1 text-slate-600">Estacionamiento (100%)</td>
+                  <td class="px-2 py-1"><input type="number" min="0" step="0.01" placeholder="0" class="if-precio w-16 text-right border border-slate-200 rounded px-1 py-0.5 outline-none focus:ring-1 focus:ring-emerald-300 text-xs" oninput="recalcEntrada(this)"></td>
+                  <td class="px-2 py-1"><input type="number" min="0" step="1" placeholder="0" class="if-cantidad w-16 text-right border border-slate-200 rounded px-1 py-0.5 outline-none focus:ring-1 focus:ring-emerald-300 text-xs" oninput="recalcEntrada(this)"></td>
+                  <td class="px-2 py-1 text-right font-semibold if-total-entrada text-slate-700">0</td>
+                </tr>
+                <tr id="ifEntradasExtras"></tr>
+              </tbody>
+              <tfoot>
+                <tr class="border-t-2 border-slate-200 bg-yellow-50">
+                  <td colspan="3" class="px-3 py-1.5 text-xs font-bold text-slate-700">TOTAL VENTA</td>
+                  <td class="px-2 py-1.5 text-right font-bold text-emerald-700" id="ifTotalVenta">S/ 0</td>
+                </tr>
+              </tfoot>
+            </table>
+            <!-- Detalle pagos entradas -->
+            <div class="border-t border-slate-100 p-3">
+              <div class="bg-yellow-200 text-slate-700 text-[10px] font-bold py-1 px-2 rounded mb-2 text-center">Detalle Pagos Entradas</div>
+              <div class="space-y-1" id="ifPagosEntradasWrap">
+                <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-24 shrink-0">Efectivo</span><input type="number" min="0" step="0.01" placeholder="0" data-seccion="entradas" data-medio="Efectivo" class="if-pago-medio flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-emerald-300" oninput="recalcIF()"></div>
+                <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-24 shrink-0">YAPE</span><input type="number" min="0" step="0.01" placeholder="0" data-seccion="entradas" data-medio="YAPE" class="if-pago-medio flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-emerald-300" oninput="recalcIF()"></div>
+                <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-24 shrink-0">PLIN</span><input type="number" min="0" step="0.01" placeholder="0" data-seccion="entradas" data-medio="PLIN" class="if-pago-medio flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-emerald-300" oninput="recalcIF()"></div>
+                <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-24 shrink-0">POS</span><input type="number" min="0" step="0.01" placeholder="0" data-seccion="entradas" data-medio="POS" class="if-pago-medio flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-emerald-300" oninput="recalcIF()"></div>
+              </div>
             </div>
-            <div class="if-row flex items-center gap-2" data-tipo="ingreso" data-nombre="Cochera">
-              <span class="text-xs text-slate-600 w-28 shrink-0">Cochera</span>
-              <input type="number" min="0" step="0.01" placeholder="0.00" class="if-monto flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-emerald-200" oninput="recalcIF()">
+          </div>
+
+          <!-- ARBITRAJE -->
+          <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div class="bg-yellow-300 text-slate-800 text-center text-xs font-bold py-1.5 tracking-wide">ARBITRAJE</div>
+            <div class="p-3 space-y-1">
+              <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-24 shrink-0">Efectivo</span><input type="number" min="0" step="0.01" placeholder="0" data-seccion="arbitraje" data-medio="Efectivo" class="if-pago-medio flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-emerald-300" oninput="recalcIF()"></div>
+              <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-24 shrink-0">YAPE</span><input type="number" min="0" step="0.01" placeholder="0" data-seccion="arbitraje" data-medio="YAPE" class="if-pago-medio flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-emerald-300" oninput="recalcIF()"></div>
+              <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-24 shrink-0">POS</span><input type="number" min="0" step="0.01" placeholder="0" data-seccion="arbitraje" data-medio="POS" class="if-pago-medio flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-emerald-300" oninput="recalcIF()"></div>
+              <div class="flex justify-between border-t border-slate-100 pt-1 mt-1">
+                <span class="text-xs font-bold text-slate-600">TOTAL</span>
+                <span class="text-xs font-bold text-emerald-700" id="ifTotalArbitraje">S/ 0</span>
+              </div>
             </div>
-            <div class="if-row flex items-center gap-2" data-tipo="ingreso" data-nombre="Arbitraje/Campo">
-              <span class="text-xs text-slate-600 w-28 shrink-0">Arbitraje/Campo</span>
-              <input type="number" min="0" step="0.01" placeholder="0.00" class="if-monto flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-emerald-200" oninput="recalcIF()">
+          </div>
+
+          <!-- TALES -->
+          <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div class="bg-yellow-300 text-slate-800 text-center text-xs font-bold py-1.5 tracking-wide">TALES</div>
+            <div class="p-3 space-y-1">
+              <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-24 shrink-0">Efectivo</span><input type="number" min="0" step="0.01" placeholder="0" data-seccion="tales" data-medio="Efectivo" class="if-pago-medio flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-emerald-300" oninput="recalcIF()"></div>
+              <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-24 shrink-0">YAPE</span><input type="number" min="0" step="0.01" placeholder="0" data-seccion="tales" data-medio="YAPE" class="if-pago-medio flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-emerald-300" oninput="recalcIF()"></div>
+              <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-24 shrink-0">PLIN</span><input type="number" min="0" step="0.01" placeholder="0" data-seccion="tales" data-medio="PLIN" class="if-pago-medio flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-emerald-300" oninput="recalcIF()"></div>
+              <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-24 shrink-0">POS</span><input type="number" min="0" step="0.01" placeholder="0" data-seccion="tales" data-medio="POS" class="if-pago-medio flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-emerald-300" oninput="recalcIF()"></div>
+              <div class="flex justify-between border-t border-slate-100 pt-1 mt-1">
+                <span class="text-xs font-bold text-slate-600">TOTAL</span>
+                <span class="text-xs font-bold text-emerald-700" id="ifTotalTales">S/ 0</span>
+              </div>
             </div>
-            <div id="ifIngExtras"></div>
-            <button onclick="addIfExtra('ingreso')" class="text-xs text-emerald-600 hover:text-emerald-800 hover:underline mt-1">+ Otro ingreso</button>
+          </div>
+
+          <!-- TOTAL INGRESOS -->
+          <div class="bg-emerald-600 rounded-xl border border-emerald-500 overflow-hidden">
+            <div class="text-white text-center text-xs font-bold py-1.5 tracking-wide">TOTAL INGRESOS</div>
+            <div class="p-3 space-y-1 bg-white/90">
+              <div class="flex justify-between text-xs"><span class="text-slate-500">Efectivo</span><span class="font-semibold" id="ifIngEfectivo">S/ 0</span></div>
+              <div class="flex justify-between text-xs"><span class="text-slate-500">YAPE</span><span class="font-semibold" id="ifIngYape">S/ 0</span></div>
+              <div class="flex justify-between text-xs"><span class="text-slate-500">PLIN</span><span class="font-semibold" id="ifIngPlin">S/ 0</span></div>
+              <div class="flex justify-between text-xs"><span class="text-slate-500">POS</span><span class="font-semibold" id="ifIngPos">S/ 0</span></div>
+              <div class="flex justify-between border-t-2 border-emerald-300 pt-1 mt-1">
+                <span class="text-sm font-bold text-emerald-800">TOTAL</span>
+                <span class="text-sm font-bold text-emerald-700" id="ifTotalIngresos">S/ 0</span>
+              </div>
+            </div>
           </div>
         </div>
-        <!-- Gastos -->
-        <div>
-          <h4 class="text-xs font-bold text-rose-600 uppercase tracking-wide mb-3">Gastos</h4>
-          <div class="space-y-2" id="ifGastosWrap">
-            <div class="if-row flex items-center gap-2" data-tipo="gasto" data-nombre="Cancha">
-              <span class="text-xs text-slate-600 w-28 shrink-0">Cancha</span>
-              <input type="number" min="0" step="0.01" placeholder="0.00" class="if-monto flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-rose-200" oninput="recalcIF()">
+
+        <!-- ===== EGRESOS + INSCRIPCIONES + UTILIDAD ===== -->
+        <div class="space-y-3">
+          <div class="bg-rose-600 text-white text-center text-xs font-bold py-2 rounded-lg tracking-widest uppercase">Egresos</div>
+
+          <!-- BANCO -->
+          <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div class="bg-yellow-300 text-slate-800 text-center text-xs font-bold py-1.5 tracking-wide">BANCO</div>
+            <div class="p-3 space-y-1">
+              <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-24 shrink-0">Cancha</span><input type="number" min="0" step="0.01" placeholder="0" data-seccion="banco" data-item="Cancha" class="if-egreso flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-rose-300" oninput="recalcIF()"></div>
+              <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-24 shrink-0">Transmisión</span><input type="number" min="0" step="0.01" placeholder="0" data-seccion="banco" data-item="Transmisión" class="if-egreso flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-rose-300" oninput="recalcIF()"></div>
+              <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-24 shrink-0">Ambulancia</span><input type="number" min="0" step="0.01" placeholder="0" data-seccion="banco" data-item="Ambulancia" class="if-egreso flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-rose-300" oninput="recalcIF()"></div>
+              <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-24 shrink-0">Arbitraje</span><input type="number" min="0" step="0.01" placeholder="0" data-seccion="banco" data-item="Arbitraje" class="if-egreso flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-rose-300" oninput="recalcIF()"></div>
+              <div id="ifBancoExtras"></div>
+              <button onclick="addIfEgresoExtra('banco')" class="text-[10px] text-slate-400 hover:text-slate-600 hover:underline">+ Agregar</button>
             </div>
-            <div class="if-row flex items-center gap-2" data-tipo="gasto" data-nombre="Árbitros">
-              <span class="text-xs text-slate-600 w-28 shrink-0">Árbitros</span>
-              <input type="number" min="0" step="0.01" placeholder="0.00" class="if-monto flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-rose-200" oninput="recalcIF()">
+          </div>
+
+          <!-- EFECTIVO -->
+          <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div class="bg-yellow-300 text-slate-800 text-center text-xs font-bold py-1.5 tracking-wide">EFECTIVO</div>
+            <div class="p-3 space-y-1">
+              <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-24 shrink-0">Arbitraje</span><input type="number" min="0" step="0.01" placeholder="0" data-seccion="efectivo" data-item="Arbitraje" class="if-egreso flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-rose-300" oninput="recalcIF()"></div>
+              <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-24 shrink-0">Personal</span><input type="number" min="0" step="0.01" placeholder="0" data-seccion="efectivo" data-item="Personal" class="if-egreso flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-rose-300" oninput="recalcIF()"></div>
+              <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-24 shrink-0">Tales</span><input type="number" min="0" step="0.01" placeholder="0" data-seccion="efectivo" data-item="Tales" class="if-egreso flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-rose-300" oninput="recalcIF()"></div>
+              <div id="ifEfectivoExtras"></div>
+              <button onclick="addIfEgresoExtra('efectivo')" class="text-[10px] text-slate-400 hover:text-slate-600 hover:underline">+ Agregar</button>
+              <div class="flex justify-between border-t border-slate-100 pt-1 mt-1">
+                <span class="text-xs font-bold text-slate-600">TOTAL EGRESO EFECTIVO</span>
+                <span class="text-xs font-bold text-rose-600" id="ifTotalEgEfectivo">S/ 0</span>
+              </div>
             </div>
-            <div class="if-row flex items-center gap-2" data-tipo="gasto" data-nombre="Personal">
-              <span class="text-xs text-slate-600 w-28 shrink-0">Personal</span>
-              <input type="number" min="0" step="0.01" placeholder="0.00" class="if-monto flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-rose-200" oninput="recalcIF()">
+          </div>
+
+          <!-- TOTAL EGRESOS -->
+          <div class="bg-white rounded-xl border-2 border-rose-200 overflow-hidden">
+            <div class="flex justify-between items-center px-4 py-2.5 bg-rose-50">
+              <span class="text-sm font-bold text-rose-700">TOTAL EGRESOS</span>
+              <span class="text-sm font-bold text-rose-700" id="ifTotalEgresos">S/ 0</span>
             </div>
-            <div class="if-row flex items-center gap-2" data-tipo="gasto" data-nombre="Ambulancia">
-              <span class="text-xs text-slate-600 w-28 shrink-0">Ambulancia</span>
-              <input type="number" min="0" step="0.01" placeholder="0.00" class="if-monto flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-rose-200" oninput="recalcIF()">
+          </div>
+
+          <!-- INSCRIPCIONES -->
+          <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div class="bg-yellow-300 text-slate-800 text-center text-xs font-bold py-1.5 tracking-wide">INSCRIPCIONES</div>
+            <div class="p-3 space-y-1">
+              <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-24 shrink-0">Banco</span><input type="number" min="0" step="0.01" placeholder="0" id="ifInscBanco" class="flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-blue-300" oninput="recalcIF()"></div>
+              <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-24 shrink-0">Efectivo</span><input type="number" min="0" step="0.01" placeholder="0" id="ifInscEfectivo" class="flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-blue-300" oninput="recalcIF()"></div>
+              <div class="flex justify-between border-t border-slate-100 pt-1 mt-1">
+                <span class="text-xs font-bold text-slate-600">TOTAL</span>
+                <span class="text-xs font-bold text-blue-700" id="ifTotalInsc">S/ 0</span>
+              </div>
             </div>
-            <div class="if-row flex items-center gap-2" data-tipo="gasto" data-nombre="Transmisión">
-              <span class="text-xs text-slate-600 w-28 shrink-0">Transmisión</span>
-              <input type="number" min="0" step="0.01" placeholder="0.00" class="if-monto flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-rose-200" oninput="recalcIF()">
+          </div>
+
+          <!-- UTILIDAD -->
+          <div class="bg-[#18324F] rounded-xl overflow-hidden">
+            <div class="text-white text-center text-xs font-bold py-1.5 tracking-wide">UTILIDAD</div>
+            <div class="p-3 space-y-1.5">
+              <div class="flex justify-between text-xs"><span class="text-blue-200">Total Ingresos</span><span class="text-white font-semibold" id="ifUtilIngreso">S/ 0</span></div>
+              <div class="flex justify-between text-xs"><span class="text-blue-200">Total Egresos</span><span class="text-white font-semibold" id="ifUtilEgreso">S/ 0</span></div>
+              <div class="flex justify-between border-t border-white/20 pt-1.5 mt-1">
+                <span class="text-sm font-bold text-white">UTILIDAD</span>
+                <span class="text-sm font-bold" id="ifUtilidad">S/ 0</span>
+              </div>
             </div>
-            <div class="if-row flex items-center gap-2" data-tipo="gasto" data-nombre="Video">
-              <span class="text-xs text-slate-600 w-28 shrink-0">Video</span>
-              <input type="number" min="0" step="0.01" placeholder="0.00" class="if-monto flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-rose-200" oninput="recalcIF()">
-            </div>
-            <div class="if-row flex items-center gap-2" data-tipo="gasto" data-nombre="Foto">
-              <span class="text-xs text-slate-600 w-28 shrink-0">Foto</span>
-              <input type="number" min="0" step="0.01" placeholder="0.00" class="if-monto flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-rose-200" oninput="recalcIF()">
-            </div>
-            <div class="if-row flex items-center gap-2" data-tipo="gasto" data-nombre="Paramédicos">
-              <span class="text-xs text-slate-600 w-28 shrink-0">Paramédicos</span>
-              <input type="number" min="0" step="0.01" placeholder="0.00" class="if-monto flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-rose-200" oninput="recalcIF()">
-            </div>
-            <div id="ifGasExtras"></div>
-            <button onclick="addIfExtra('gasto')" class="text-xs text-rose-500 hover:text-rose-700 hover:underline mt-1">+ Otro gasto</button>
           </div>
         </div>
       </div>
     </div>
-    <div class="px-6 py-4 border-t border-slate-100 shrink-0 flex justify-end gap-2">
+
+    <!-- Footer -->
+    <div class="px-5 py-3 border-t border-slate-200 shrink-0 flex justify-end gap-2 bg-white rounded-b-xl">
       <button onclick="closeModal('ingresosFechaModal')" class="text-sm text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">Cerrar</button>
       <button onclick="guardarIngresosFecha()" class="text-sm font-semibold text-white bg-[#18324F] px-5 py-2 rounded-lg hover:bg-[#0f253d] transition">Guardar fecha</button>
     </div>
@@ -3049,22 +3148,33 @@ function renderP1Detalle() {
 
 // ---- INGRESOS POR FECHA ----
 let _ifTorneoId = null;
-let _ifData = {};   // { [torneoId]: { [nFecha]: { items: [{tipo,nombre,monto}] } } }
+// { [torneoId]: { [nFecha]: { entradas, pagosEntradas, arbitraje, tales, banco, efectivo, inscripciones, bancoExtras, efectivoExtras } } }
+let _ifData = {};
+
+function _ifBlankFecha() {
+  return {
+    entradas: {},       // { 'Tickets': {precio,cantidad}, ... }
+    pagosEntradas: {},  // { 'Efectivo': monto, ... }
+    arbitraje: {},
+    tales: {},
+    banco: {},
+    efectivo: {},
+    inscripciones: {},
+    bancoExtras: [],    // [{item, monto}]
+    efectivoExtras: []
+  };
+}
 
 function abrirIngresosFecha(torneoId) {
   _ifTorneoId = torneoId;
   if(!_ifData[torneoId]) _ifData[torneoId] = {};
   const t = myTorneos().find(x=>+x.id===+torneoId);
   document.getElementById('ifTorneoNombre').textContent = t?.nombre || 'Ingresos por Fecha';
-
-  // Poblar selector de fechas
   const fechas = Object.keys(_ifData[torneoId]).map(Number).sort((a,b)=>a-b);
-  if(!fechas.length) { _ifData[torneoId][1] = { items: [] }; fechas.push(1); }
+  if(!fechas.length) { _ifData[torneoId][1] = _ifBlankFecha(); fechas.push(1); }
   const sel = document.getElementById('ifNumFecha');
   sel.innerHTML = fechas.map(n=>`<option value="${n}">Fecha ${n}</option>`).join('');
   sel.value = fechas[fechas.length-1];
-
-  limpiarFormIF();
   cargarIngresosFecha();
   openModal('ingresosFechaModal');
 }
@@ -3073,87 +3183,194 @@ function agregarNuevaFechaIF() {
   if(!_ifTorneoId) return;
   const fechas = Object.keys(_ifData[_ifTorneoId]).map(Number);
   const nuevo = Math.max(0, ...fechas) + 1;
-  _ifData[_ifTorneoId][nuevo] = { items: [] };
+  _ifData[_ifTorneoId][nuevo] = _ifBlankFecha();
   const sel = document.getElementById('ifNumFecha');
   const opt = document.createElement('option');
   opt.value = nuevo; opt.textContent = `Fecha ${nuevo}`;
-  sel.appendChild(opt);
-  sel.value = nuevo;
-  limpiarFormIF();
+  sel.appendChild(opt); sel.value = nuevo;
+  _ifLimpiarForm();
   recalcIF();
 }
 
-function limpiarFormIF() {
-  document.querySelectorAll('#ingresosFechaModal .if-monto').forEach(i=>i.value='');
-  document.getElementById('ifIngExtras').innerHTML = '';
-  document.getElementById('ifGasExtras').innerHTML = '';
-  recalcIF();
+function _ifLimpiarForm() {
+  document.querySelectorAll('#ingresosFechaModal input[type=number], #ingresosFechaModal input[type=text]').forEach(i=>i.value='');
+  document.querySelectorAll('.if-entrada-row .if-total-entrada').forEach(el=>el.textContent='0');
+  document.getElementById('ifBancoExtras').innerHTML = '';
+  document.getElementById('ifEfectivoExtras').innerHTML = '';
 }
 
 function cargarIngresosFecha() {
   const n = +document.getElementById('ifNumFecha').value;
-  if(!_ifTorneoId || !_ifData[_ifTorneoId]?.[n]) { limpiarFormIF(); return; }
-  const items = _ifData[_ifTorneoId][n].items || [];
-  // Limpiar extras
-  document.getElementById('ifIngExtras').innerHTML = '';
-  document.getElementById('ifGasExtras').innerHTML = '';
-  // Resetear fijos
-  document.querySelectorAll('#ingresosFechaModal .if-monto').forEach(i=>i.value='');
-  // Cargar valores
-  items.forEach(item => {
-    const rows = document.querySelectorAll(`#ingresosFechaModal .if-row[data-nombre="${item.nombre}"]`);
-    if(rows.length) {
-      rows[0].querySelector('.if-monto').value = item.monto || '';
-    } else {
-      // Es un extra
-      addIfExtra(item.tipo, item.nombre, item.monto);
-    }
+  const d = _ifData[_ifTorneoId]?.[n];
+  _ifLimpiarForm();
+  if(!d) { recalcIF(); return; }
+
+  // Entradas (Precio × Cantidad por detalle)
+  const entLabels = ['Tickets','Estacionamiento (50%)','Estacionamiento (100%)'];
+  document.querySelectorAll('#ifEntradasBody .if-entrada-row').forEach((row, i) => {
+    const label = entLabels[i];
+    const e = d.entradas?.[label] || {};
+    row.querySelector('.if-precio').value    = e.precio    || '';
+    row.querySelector('.if-cantidad').value  = e.cantidad  || '';
+    row.querySelector('.if-total-entrada').textContent = e.precio && e.cantidad ? (e.precio * e.cantidad) : 0;
   });
+
+  // Pagos entradas
+  document.querySelectorAll('[data-seccion="entradas"].if-pago-medio').forEach(inp => {
+    inp.value = d.pagosEntradas?.[inp.dataset.medio] || '';
+  });
+
+  // Arbitraje
+  document.querySelectorAll('[data-seccion="arbitraje"].if-pago-medio').forEach(inp => {
+    inp.value = d.arbitraje?.[inp.dataset.medio] || '';
+  });
+
+  // Tales
+  document.querySelectorAll('[data-seccion="tales"].if-pago-medio').forEach(inp => {
+    inp.value = d.tales?.[inp.dataset.medio] || '';
+  });
+
+  // Banco fijos
+  document.querySelectorAll('[data-seccion="banco"].if-egreso').forEach(inp => {
+    inp.value = d.banco?.[inp.dataset.item] || '';
+  });
+  // Banco extras
+  document.getElementById('ifBancoExtras').innerHTML = '';
+  (d.bancoExtras||[]).forEach(x => addIfEgresoExtra('banco', x.item, x.monto));
+
+  // Efectivo fijos
+  document.querySelectorAll('[data-seccion="efectivo"].if-egreso').forEach(inp => {
+    inp.value = d.efectivo?.[inp.dataset.item] || '';
+  });
+  // Efectivo extras
+  document.getElementById('ifEfectivoExtras').innerHTML = '';
+  (d.efectivoExtras||[]).forEach(x => addIfEgresoExtra('efectivo', x.item, x.monto));
+
+  // Inscripciones
+  document.getElementById('ifInscBanco').value    = d.inscripciones?.banco    || '';
+  document.getElementById('ifInscEfectivo').value = d.inscripciones?.efectivo || '';
+
   recalcIF();
 }
 
-function addIfExtra(tipo, nombre='', monto='') {
-  const wrap = document.getElementById(tipo==='ingreso' ? 'ifIngExtras' : 'ifGasExtras');
-  const ring = tipo==='ingreso' ? 'focus:ring-emerald-200' : 'focus:ring-rose-200';
-  const div = document.createElement('div');
-  div.className = 'if-row flex items-center gap-2';
-  div.dataset.tipo = tipo;
-  div.dataset.nombre = nombre;
-  div.innerHTML = `
-    <input type="text" placeholder="Concepto" value="${nombre}" class="if-extra-nombre w-28 shrink-0 border border-slate-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-blue-200" oninput="this.closest('.if-row').dataset.nombre=this.value">
-    <input type="number" min="0" step="0.01" placeholder="0.00" value="${monto}" class="if-monto flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none ${ring}" oninput="recalcIF()">
-    <button onclick="this.closest('.if-row').remove();recalcIF()" class="text-slate-300 hover:text-rose-500 shrink-0">✕</button>`;
-  wrap.appendChild(div);
+function recalcEntrada(input) {
+  const row = input.closest('.if-entrada-row');
+  const precio   = parseFloat(row.querySelector('.if-precio').value)   || 0;
+  const cantidad = parseFloat(row.querySelector('.if-cantidad').value)  || 0;
+  row.querySelector('.if-total-entrada').textContent = (precio * cantidad).toFixed(0);
+  recalcIF();
 }
 
 function recalcIF() {
-  let ing = 0, gas = 0;
-  document.querySelectorAll('#ingresosFechaModal .if-row').forEach(row => {
-    const v = parseFloat(row.querySelector('.if-monto')?.value) || 0;
-    if(row.dataset.tipo==='ingreso') ing += v;
-    else gas += v;
+  const n = v => parseFloat(v) || 0;
+
+  // Total venta entradas
+  let totalVenta = 0;
+  document.querySelectorAll('#ifEntradasBody .if-entrada-row').forEach(row => {
+    totalVenta += (n(row.querySelector('.if-precio').value)) * (n(row.querySelector('.if-cantidad').value));
   });
-  document.getElementById('ifTotalIng').textContent = 'S/.'+ing.toFixed(2);
-  document.getElementById('ifTotalGas').textContent = 'S/.'+gas.toFixed(2);
-  const neto = ing - gas;
-  const el = document.getElementById('ifNeto');
-  el.textContent = 'S/.'+ Math.abs(neto).toFixed(2) + (neto < 0 ? ' ⚠' : '');
-  el.className = neto >= 0 ? 'text-slate-700 font-bold' : 'text-rose-600 font-bold';
+  document.getElementById('ifTotalVenta').textContent = 'S/ '+totalVenta.toFixed(0);
+
+  // Por medio: suma entradas + arbitraje + tales
+  const medios = ['Efectivo','YAPE','PLIN','POS'];
+  const byMedio = {};
+  medios.forEach(m => byMedio[m] = 0);
+
+  document.querySelectorAll('[data-seccion="entradas"].if-pago-medio').forEach(inp => {
+    byMedio[inp.dataset.medio] = (byMedio[inp.dataset.medio]||0) + n(inp.value);
+  });
+
+  let totalArb = 0;
+  document.querySelectorAll('[data-seccion="arbitraje"].if-pago-medio').forEach(inp => {
+    const v = n(inp.value); totalArb += v;
+    byMedio[inp.dataset.medio] = (byMedio[inp.dataset.medio]||0) + v;
+  });
+  document.getElementById('ifTotalArbitraje').textContent = 'S/ '+totalArb.toFixed(0);
+
+  let totalTales = 0;
+  document.querySelectorAll('[data-seccion="tales"].if-pago-medio').forEach(inp => {
+    const v = n(inp.value); totalTales += v;
+    byMedio[inp.dataset.medio] = (byMedio[inp.dataset.medio]||0) + v;
+  });
+  document.getElementById('ifTotalTales').textContent = 'S/ '+totalTales.toFixed(0);
+
+  const totalIng = Object.values(byMedio).reduce((s,v)=>s+v,0);
+  document.getElementById('ifIngEfectivo').textContent = 'S/ '+byMedio['Efectivo'].toFixed(0);
+  document.getElementById('ifIngYape').textContent     = 'S/ '+(byMedio['YAPE']||0).toFixed(0);
+  document.getElementById('ifIngPlin').textContent     = 'S/ '+(byMedio['PLIN']||0).toFixed(0);
+  document.getElementById('ifIngPos').textContent      = 'S/ '+(byMedio['POS']||0).toFixed(0);
+  document.getElementById('ifTotalIngresos').textContent = 'S/ '+totalIng.toFixed(0);
+
+  // Egresos banco
+  let totalBanco = 0;
+  document.querySelectorAll('[data-seccion="banco"].if-egreso').forEach(inp => totalBanco += n(inp.value));
+  document.querySelectorAll('#ifBancoExtras .if-egreso-extra').forEach(inp => totalBanco += n(inp.value));
+
+  // Egresos efectivo
+  let totalEfec = 0;
+  document.querySelectorAll('[data-seccion="efectivo"].if-egreso').forEach(inp => totalEfec += n(inp.value));
+  document.querySelectorAll('#ifEfectivoExtras .if-egreso-extra').forEach(inp => totalEfec += n(inp.value));
+  document.getElementById('ifTotalEgEfectivo').textContent = 'S/ '+totalEfec.toFixed(0);
+
+  const totalEg = totalBanco + totalEfec;
+  document.getElementById('ifTotalEgresos').textContent = 'S/ '+totalEg.toFixed(0);
+
+  // Inscripciones
+  const totalInsc = n(document.getElementById('ifInscBanco').value) + n(document.getElementById('ifInscEfectivo').value);
+  document.getElementById('ifTotalInsc').textContent = 'S/ '+totalInsc.toFixed(0);
+
+  // Utilidad
+  const utilidad = totalIng - totalEg;
+  document.getElementById('ifUtilIngreso').textContent = 'S/ '+totalIng.toFixed(0);
+  document.getElementById('ifUtilEgreso').textContent  = 'S/ '+totalEg.toFixed(0);
+  const utilEl = document.getElementById('ifUtilidad');
+  utilEl.textContent = 'S/ '+Math.abs(utilidad).toFixed(0) + (utilidad < 0 ? ' ⚠' : '');
+  utilEl.className = utilidad >= 0 ? 'text-sm font-bold text-emerald-300' : 'text-sm font-bold text-rose-300';
+}
+
+function addIfEgresoExtra(seccion, item='', monto='') {
+  const wrap = document.getElementById(seccion==='banco' ? 'ifBancoExtras' : 'ifEfectivoExtras');
+  const div = document.createElement('div');
+  div.className = 'flex items-center gap-2 mt-1';
+  div.innerHTML = `
+    <input type="text" placeholder="Concepto" value="${item}" class="if-extra-label w-24 shrink-0 border border-slate-200 rounded px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-rose-300">
+    <input type="number" min="0" step="0.01" placeholder="0" value="${monto}" class="if-egreso-extra flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-rose-300" oninput="recalcIF()">
+    <button onclick="this.closest('div').remove();recalcIF()" class="text-slate-300 hover:text-rose-500 text-xs shrink-0">✕</button>`;
+  wrap.appendChild(div);
 }
 
 function guardarIngresosFecha() {
   const n = +document.getElementById('ifNumFecha').value;
   if(!_ifTorneoId) return;
-  if(!_ifData[_ifTorneoId]) _ifData[_ifTorneoId] = {};
-  const items = [];
-  document.querySelectorAll('#ingresosFechaModal .if-row').forEach(row => {
-    const nombre = row.dataset.nombre;
-    const monto  = parseFloat(row.querySelector('.if-monto')?.value) || 0;
-    const tipo   = row.dataset.tipo;
-    if(nombre) items.push({ tipo, nombre, monto });
+  const d = _ifBlankFecha();
+  const num = v => parseFloat(v) || 0;
+
+  // Entradas
+  const entLabels = ['Tickets','Estacionamiento (50%)','Estacionamiento (100%)'];
+  document.querySelectorAll('#ifEntradasBody .if-entrada-row').forEach((row, i) => {
+    d.entradas[entLabels[i]] = { precio: num(row.querySelector('.if-precio').value), cantidad: num(row.querySelector('.if-cantidad').value) };
   });
-  _ifData[_ifTorneoId][n] = { items };
-  recalcIF();
+  document.querySelectorAll('[data-seccion="entradas"].if-pago-medio').forEach(inp => { d.pagosEntradas[inp.dataset.medio] = num(inp.value); });
+  document.querySelectorAll('[data-seccion="arbitraje"].if-pago-medio').forEach(inp => { d.arbitraje[inp.dataset.medio] = num(inp.value); });
+  document.querySelectorAll('[data-seccion="tales"].if-pago-medio').forEach(inp => { d.tales[inp.dataset.medio] = num(inp.value); });
+  document.querySelectorAll('[data-seccion="banco"].if-egreso').forEach(inp => { d.banco[inp.dataset.item] = num(inp.value); });
+  document.querySelectorAll('[data-seccion="efectivo"].if-egreso').forEach(inp => { d.efectivo[inp.dataset.item] = num(inp.value); });
+
+  // Extras banco
+  document.querySelectorAll('#ifBancoExtras > div').forEach(div => {
+    const item = div.querySelector('.if-extra-label').value.trim();
+    const monto = num(div.querySelector('.if-egreso-extra').value);
+    if(item) d.bancoExtras.push({item, monto});
+  });
+  // Extras efectivo
+  document.querySelectorAll('#ifEfectivoExtras > div').forEach(div => {
+    const item = div.querySelector('.if-extra-label').value.trim();
+    const monto = num(div.querySelector('.if-egreso-extra').value);
+    if(item) d.efectivoExtras.push({item, monto});
+  });
+
+  d.inscripciones = { banco: num(document.getElementById('ifInscBanco').value), efectivo: num(document.getElementById('ifInscEfectivo').value) };
+  _ifData[_ifTorneoId][n] = d;
   toast(`Fecha ${n} guardada ✓`, 'success');
 }
 
