@@ -719,6 +719,74 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
         <div id="cfgMediosList" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"></div>
       </div>
 
+      <!-- ==================== ACADEMIA ==================== -->
+
+      <!-- Dashboard Academia -->
+      <div id="p_ac_dashboard" class="screen">
+        <div class="flex items-start justify-between mb-5 gap-4">
+          <div>
+            <h1 class="text-xl font-bold mb-1">Academia · Dashboard</h1>
+            <p class="text-sm text-slate-400">Resumen general de la academia deportiva.</p>
+          </div>
+        </div>
+        <div id="acDashboardContent"></div>
+      </div>
+
+      <!-- Sedes -->
+      <div id="p_ac_sedes" class="screen">
+        <div class="flex items-start justify-between mb-5 gap-4">
+          <div>
+            <h1 class="text-xl font-bold mb-1">Sedes</h1>
+            <p class="text-sm text-slate-400">Complejos deportivos donde opera la academia.</p>
+          </div>
+          <button onclick="abrirModalSede()" class="flex items-center gap-2 bg-[#18324F] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#0f253d] transition shadow-sm shrink-0">+ Nueva Sede</button>
+        </div>
+        <div id="acSedesList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      </div>
+
+      <!-- Tracks -->
+      <div id="p_ac_tracks" class="screen">
+        <div class="flex items-start justify-between mb-5 gap-4">
+          <div>
+            <h1 class="text-xl font-bold mb-1">Tracks</h1>
+            <p class="text-sm text-slate-400">Grupos operativos por categoría / edad y sede.</p>
+          </div>
+          <button onclick="abrirModalTrack()" class="flex items-center gap-2 bg-[#18324F] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#0f253d] transition shadow-sm shrink-0">+ Nuevo Track</button>
+        </div>
+        <div class="mb-4 flex gap-2 flex-wrap">
+          <select id="acTrackFiltroSede" onchange="renderAcTracks()" class="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-200">
+            <option value="">Todas las sedes</option>
+          </select>
+        </div>
+        <div id="acTracksList"></div>
+      </div>
+
+      <!-- Alumnos -->
+      <div id="p_ac_alumnos" class="screen">
+        <div class="flex items-start justify-between mb-5 gap-4">
+          <div>
+            <h1 class="text-xl font-bold mb-1">Alumnos</h1>
+            <p class="text-sm text-slate-400">Gestión de alumnos inscritos en la academia.</p>
+          </div>
+          <button onclick="abrirModalAlumno()" class="flex items-center gap-2 bg-[#18324F] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#0f253d] transition shadow-sm shrink-0">+ Nuevo Alumno</button>
+        </div>
+        <div class="mb-4 flex gap-2 flex-wrap">
+          <select id="acAlumnoFiltroSede" onchange="renderAcAlumnos()" class="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-200">
+            <option value="">Todas las sedes</option>
+          </select>
+          <select id="acAlumnoFiltroTrack" onchange="renderAcAlumnos()" class="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-200">
+            <option value="">Todos los tracks</option>
+          </select>
+          <select id="acAlumnoFiltroEstado" onchange="renderAcAlumnos()" class="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-200">
+            <option value="">Todos los estados</option>
+            <option value="activo">Activo</option>
+            <option value="inactivo">Inactivo / Baja</option>
+          </select>
+          <input id="acAlumnoBuscar" oninput="renderAcAlumnos()" type="text" placeholder="Buscar alumno…" class="border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200 min-w-[180px]">
+        </div>
+        <div id="acAlumnosList" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"></div>
+      </div>
+
       <!-- P: Nuevo Torneo -->
       <div id="p_nuevo_torneo" class="screen">
         <div class="flex items-center gap-3 mb-5">
@@ -1644,6 +1712,140 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
   </div>
 </div>
 
+<!-- ===================== ACADEMIA MODALS ===================== -->
+
+<!-- Modal: Nueva / Editar Sede -->
+<div id="acSedeModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 fade-in">
+    <h3 id="acSedeModalTitle" class="font-bold text-base mb-4">Nueva Sede</h3>
+    <input type="hidden" id="acSedeEditId">
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Nombre de la sede *</label>
+    <input type="text" id="acSedeNombre" placeholder="Ej. Sede San Miguel" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 outline-none focus:ring-2 focus:ring-blue-200">
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Dirección</label>
+    <input type="text" id="acSedeDireccion" placeholder="Ej. Av. La Mar 120" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 outline-none focus:ring-2 focus:ring-blue-200">
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Ciudad</label>
+    <input type="text" id="acSedeCiudad" placeholder="Ej. Lima" value="Lima" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 outline-none focus:ring-2 focus:ring-blue-200">
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Teléfono coordinador</label>
+    <input type="text" id="acSedeTel" placeholder="Ej. 987 123 456" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-4 outline-none focus:ring-2 focus:ring-blue-200">
+    <div class="flex justify-end gap-2">
+      <button onclick="closeModal('acSedeModal')" class="text-sm font-medium text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">Cancelar</button>
+      <button onclick="guardarSede()" class="text-sm font-semibold text-white bg-[#18324F] px-4 py-2 rounded-lg hover:bg-[#0f253d]">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Nuevo / Editar Track -->
+<div id="acTrackModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 fade-in">
+    <h3 id="acTrackModalTitle" class="font-bold text-base mb-4">Nuevo Track</h3>
+    <input type="hidden" id="acTrackEditId">
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Sede *</label>
+        <select id="acTrackSede" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-200"></select>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Línea de negocio *</label>
+        <select id="acTrackLinea" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-200">
+          <option value="academia">Academia Regular</option>
+          <option value="alto_rendimiento">Alto Rendimiento</option>
+          <option value="arqueros">Especialización Arqueros</option>
+        </select>
+      </div>
+    </div>
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Nombre del track *</label>
+    <input type="text" id="acTrackNombre" placeholder="Ej. 2020-2019 · CPE 6pm" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 outline-none focus:ring-2 focus:ring-blue-200">
+    <div class="grid grid-cols-3 gap-3 mb-3">
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Aforo máximo</label>
+        <input type="number" id="acTrackAforo" value="20" min="1" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Mensualidad S/.</label>
+        <input type="number" id="acTrackMensualidad" value="220" min="0" step="0.01" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Clases / mes</label>
+        <input type="number" id="acTrackClases" value="8" min="1" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+    </div>
+    <p class="text-xs font-semibold text-slate-500 mb-2 mt-1">Costos operativos (para cálculo de break-even)</p>
+    <div class="grid grid-cols-2 gap-3 mb-4">
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Costo cancha / mes S/.</label>
+        <input type="number" id="acTrackCostoCancha" value="0" min="0" step="0.01" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Costo profesores / mes S/.</label>
+        <input type="number" id="acTrackCostoProf" value="0" min="0" step="0.01" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+    </div>
+    <div class="flex justify-end gap-2">
+      <button onclick="closeModal('acTrackModal')" class="text-sm font-medium text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">Cancelar</button>
+      <button onclick="guardarTrack()" class="text-sm font-semibold text-white bg-[#18324F] px-4 py-2 rounded-lg hover:bg-[#0f253d]">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Nuevo / Editar Alumno -->
+<div id="acAlumnoModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 fade-in">
+    <h3 id="acAlumnoModalTitle" class="font-bold text-base mb-4">Nuevo Alumno</h3>
+    <input type="hidden" id="acAlumnoEditId">
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Nombre *</label>
+        <input type="text" id="acAlumnoNombre" placeholder="Nombre" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Apellido *</label>
+        <input type="text" id="acAlumnoApellido" placeholder="Apellido" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+    </div>
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha de nacimiento *</label>
+        <input type="date" id="acAlumnoFechaNac" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Categoría (año)</label>
+        <input type="text" id="acAlumnoCategoria" readonly class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm bg-slate-50 text-slate-500 cursor-not-allowed">
+      </div>
+    </div>
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Sede *</label>
+        <select id="acAlumnoSede" onchange="actualizarTracksAlumnoModal()" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-200"></select>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Track</label>
+        <select id="acAlumnoTrack" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-200"></select>
+      </div>
+    </div>
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Nombre del tutor *</label>
+        <input type="text" id="acAlumnoTutorNombre" placeholder="Nombre del padre / tutor" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Teléfono del tutor *</label>
+        <input type="text" id="acAlumnoTutorTel" placeholder="987 000 000" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+    </div>
+    <div class="mb-4">
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Estado</label>
+      <select id="acAlumnoEstado" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-200">
+        <option value="activo">Activo</option>
+        <option value="inactivo">Inactivo / Baja</option>
+      </select>
+    </div>
+    <div class="flex justify-end gap-2">
+      <button onclick="closeModal('acAlumnoModal')" class="text-sm font-medium text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">Cancelar</button>
+      <button onclick="guardarAlumno()" class="text-sm font-semibold text-white bg-[#18324F] px-4 py-2 rounded-lg hover:bg-[#0f253d]">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===================== JS ===================== -->
 <script>
 // ---- STATE ----
@@ -1774,6 +1976,24 @@ const S = {
     {id:6,torneoId:1,clubId:null,clubNombre:'Defensores La Molina',catIds:[5],delegado:'Luis Bravo',telefono:'978 663 029',nota:'Interesado solo si hay descuento grupal.'},
   ],
   notifications: [],
+
+  // ---- ACADEMIA ----
+  ac_sedes: [
+    {id:1, nombre:'Sede San Miguel', direccion:'Av. La Mar 120', ciudad:'Lima', telefonoCoord:'987 123 456', orgId:1},
+    {id:2, nombre:'Sede Surco',      direccion:'Av. Caminos del Inca 300', ciudad:'Lima', telefonoCoord:'987 654 321', orgId:1},
+  ],
+  ac_tracks: [
+    {id:1, sedeId:1, nombreTrack:'2020-2019', lineaNegocio:'academia',         capacidadMaxima:20, mensualidadSugerida:220, clasesMensuales:8,  costoCancha:500, costoProfesores:600, orgId:1},
+    {id:2, sedeId:1, nombreTrack:'2017-2016', lineaNegocio:'academia',         capacidadMaxima:20, mensualidadSugerida:200, clasesMensuales:8,  costoCancha:500, costoProfesores:600, orgId:1},
+    {id:3, sedeId:2, nombreTrack:'CPE 6pm',   lineaNegocio:'alto_rendimiento', capacidadMaxima:15, mensualidadSugerida:350, clasesMensuales:12, costoCancha:800, costoProfesores:900, orgId:1},
+  ],
+  ac_alumnos: [
+    {id:1, sedeId:1, trackId:1, nombre:'Mateo',    apellido:'García',  fechaNacimiento:'2020-03-15', categoriaInmutable:2020, tutorNombre:'Juan García',   tutorTelefono:'987 001 001', estado:'activo',   orgId:1},
+    {id:2, sedeId:1, trackId:1, nombre:'Lucía',    apellido:'Torres',  fechaNacimiento:'2019-07-22', categoriaInmutable:2019, tutorNombre:'Rosa Torres',   tutorTelefono:'987 002 002', estado:'activo',   orgId:1},
+    {id:3, sedeId:1, trackId:2, nombre:'Santiago', apellido:'López',   fechaNacimiento:'2017-11-05', categoriaInmutable:2017, tutorNombre:'Pedro López',   tutorTelefono:'987 003 003', estado:'activo',   orgId:1},
+    {id:4, sedeId:2, trackId:3, nombre:'Valentina',apellido:'Ríos',    fechaNacimiento:'2016-02-18', categoriaInmutable:2016, tutorNombre:'Carmen Ríos',   tutorTelefono:'987 004 004', estado:'inactivo', orgId:1},
+    {id:5, sedeId:1, trackId:1, nombre:'Diego',    apellido:'Paredes', fechaNacimiento:'2020-09-30', categoriaInmutable:2020, tutorNombre:'Mario Paredes', tutorTelefono:'987 005 005', estado:'activo',   orgId:1},
+  ],
 };
 
 const ROLES = {
@@ -1794,6 +2014,13 @@ const MENU = [
       {id:'p2',label:'Registrar Pagos',roles:['organizador','operador']},
       {id:'p3',label:'Aprobar Pagos',roles:['organizador','tesorero']},
       {id:'p_rep_pagos',label:'Reporte de Pagos',roles:['organizador','tesorero']},
+    ]},
+  {id:'__academia',label:'Academia',icon:'🎓',roles:['organizador','operador','tesorero'],noScreen:true,
+    children:[
+      {id:'p_ac_dashboard',label:'Dashboard',  roles:['organizador','tesorero']},
+      {id:'p_ac_sedes',   label:'Sedes',       roles:['organizador']},
+      {id:'p_ac_tracks',  label:'Tracks',      roles:['organizador','operador']},
+      {id:'p_ac_alumnos', label:'Alumnos',     roles:['organizador','operador']},
     ]},
   {id:'p_cxc',label:'Cuentas por Cobrar',icon:'📊',roles:['organizador','tesorero']},
   {id:'p_seguridad',label:'Seguridad',icon:'🔐',roles:['organizador']},
@@ -2652,6 +2879,11 @@ function renderScreen(id) {
   else if(id==='p_rep_pagos') initRepPagos();
   else if(id==='p_seguridad') renderSeguridad();
   else if(id==='p_cfg_medios') renderCfgMedios();
+  // Academia
+  else if(id==='p_ac_dashboard') renderAcDashboard();
+  else if(id==='p_ac_sedes')     renderAcSedes();
+  else if(id==='p_ac_tracks')    renderAcTracks();
+  else if(id==='p_ac_alumnos')   renderAcAlumnos();
 }
 
 // ---- P1: TORNEOS (dashboard) ----
@@ -5290,6 +5522,517 @@ function renderTestPanel(results){
         <button onclick="document.getElementById('__testPanel').remove()" style="font-size:14px;color:#94a3b8">✕</button>
       </div>
     </div>${body}`;
+}
+
+// ============================================================
+// ACADEMIA — helpers
+// ============================================================
+const myAcSedes   = () => S.ac_sedes.filter(s => s.orgId === myOrgId());
+const myAcTracks  = () => S.ac_tracks.filter(t => t.orgId === myOrgId());
+const myAcAlumnos = () => S.ac_alumnos.filter(a => a.orgId === myOrgId());
+
+const lineaLabel = l => ({academia:'Academia Regular', alto_rendimiento:'Alto Rendimiento', arqueros:'Esp. Arqueros'}[l] || l);
+const lineaColor = l => ({academia:'bg-blue-100 text-blue-700', alto_rendimiento:'bg-violet-100 text-violet-700', arqueros:'bg-amber-100 text-amber-700'}[l] || 'bg-slate-100 text-slate-600');
+
+function acSedeNombre(id) { return myAcSedes().find(s => s.id === id)?.nombre || '—'; }
+function acTrackNombre(id) { return myAcTracks().find(t => t.id === id)?.nombreTrack || '—'; }
+
+function alumnosBySede(sedeId) { return myAcAlumnos().filter(a => a.sedeId === sedeId); }
+function alumnosByTrack(trackId) { return myAcAlumnos().filter(a => a.trackId === trackId); }
+function tracksBySede(sedeId) { return myAcTracks().filter(t => t.sedeId === sedeId); }
+
+// ============================================================
+// ACADEMIA — Dashboard
+// ============================================================
+function renderAcDashboard() {
+  const sedes   = myAcSedes();
+  const tracks  = myAcTracks();
+  const alumnos = myAcAlumnos();
+  const activos = alumnos.filter(a => a.estado === 'activo').length;
+  const bajas   = alumnos.filter(a => a.estado === 'inactivo').length;
+
+  const trackCards = tracks.map(t => {
+    const sede      = sedes.find(s => s.id === t.sedeId);
+    const inscritos = alumnosByTrack(t.id).filter(a => a.estado === 'activo').length;
+    const costoTotal = (t.costoCancha || 0) + (t.costoProfesores || 0);
+    const breakEven  = costoTotal > 0 ? Math.ceil(costoTotal / (t.mensualidadSugerida || 1)) : null;
+    const ingresosReales = inscritos * (t.mensualidadSugerida || 0);
+    const utilidad   = ingresosReales - costoTotal;
+    const rentable   = breakEven !== null ? inscritos >= breakEven : true;
+    const pct        = Math.min(100, Math.round(inscritos / (t.capacidadMaxima || 1) * 100));
+
+    const barColor = rentable ? 'bg-emerald-500' : (breakEven && inscritos >= breakEven * 0.7 ? 'bg-amber-400' : 'bg-rose-400');
+    const estadoTag = breakEven === null
+      ? '<span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-semibold">Sin costos</span>'
+      : rentable
+        ? '<span class="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-semibold">✓ Rentable</span>'
+        : '<span class="text-[10px] bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full font-semibold">⚠ Pérdida</span>';
+
+    return `<div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+      <div class="flex items-start justify-between mb-2">
+        <div>
+          <p class="font-bold text-sm text-slate-800">${t.nombreTrack}</p>
+          <p class="text-[11px] text-slate-400">${sede?.nombre || '—'}</p>
+        </div>
+        <div class="flex flex-col items-end gap-1">
+          <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full ${lineaColor(t.lineaNegocio)}">${lineaLabel(t.lineaNegocio)}</span>
+          ${estadoTag}
+        </div>
+      </div>
+      <div class="flex items-center gap-2 mb-2">
+        <div class="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+          <div class="${barColor} h-full rounded-full transition-all" style="width:${pct}%"></div>
+        </div>
+        <span class="text-xs font-semibold text-slate-600 whitespace-nowrap">${inscritos}/${t.capacidadMaxima}</span>
+      </div>
+      <div class="grid grid-cols-3 gap-2 text-center mt-3">
+        <div class="bg-slate-50 rounded-lg p-2">
+          <p class="text-[10px] text-slate-400">Mensualidad</p>
+          <p class="text-xs font-bold text-slate-700">S/ ${(t.mensualidadSugerida||0).toFixed(0)}</p>
+        </div>
+        <div class="bg-slate-50 rounded-lg p-2">
+          <p class="text-[10px] text-slate-400">Break-even</p>
+          <p class="text-xs font-bold text-slate-700">${breakEven !== null ? breakEven + ' alumnos' : '—'}</p>
+        </div>
+        <div class="bg-slate-50 rounded-lg p-2">
+          <p class="text-[10px] text-slate-400">Utilidad neta</p>
+          <p class="text-xs font-bold ${utilidad >= 0 ? 'text-emerald-600' : 'text-rose-600'}">${costoTotal > 0 ? 'S/ ' + utilidad.toFixed(0) : '—'}</p>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('acDashboardContent').innerHTML = `
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 text-center">
+        <p class="text-2xl font-extrabold text-[#18324F]">${sedes.length}</p>
+        <p class="text-xs text-slate-500 mt-0.5">Sedes</p>
+      </div>
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 text-center">
+        <p class="text-2xl font-extrabold text-[#18324F]">${tracks.length}</p>
+        <p class="text-xs text-slate-500 mt-0.5">Tracks activos</p>
+      </div>
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 text-center">
+        <p class="text-2xl font-extrabold text-emerald-600">${activos}</p>
+        <p class="text-xs text-slate-500 mt-0.5">Alumnos activos</p>
+      </div>
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 text-center">
+        <p class="text-2xl font-extrabold text-slate-400">${bajas}</p>
+        <p class="text-xs text-slate-500 mt-0.5">Bajas</p>
+      </div>
+    </div>
+    <h2 class="text-sm font-bold text-slate-700 mb-3">Estado por Track</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      ${trackCards || '<p class="text-sm text-slate-400 col-span-3">Sin tracks registrados. <button onclick="showScreen(\'p_ac_tracks\')" class="text-blue-600 underline">Crear uno</button></p>'}
+    </div>`;
+}
+
+// ============================================================
+// ACADEMIA — Sedes
+// ============================================================
+function renderAcSedes() {
+  const sedes = myAcSedes();
+  const el    = document.getElementById('acSedesList');
+  if (!sedes.length) {
+    el.innerHTML = '<p class="text-sm text-slate-400 col-span-3">Sin sedes registradas aún.</p>';
+    return;
+  }
+  el.innerHTML = sedes.map(s => {
+    const tracks  = tracksBySede(s.id).length;
+    const alumnos = alumnosBySede(s.id).filter(a => a.estado === 'activo').length;
+    return `<div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+      <div class="flex items-start justify-between mb-3">
+        <div>
+          <p class="font-bold text-sm text-slate-800">${s.nombre}</p>
+          <p class="text-[11px] text-slate-400">${s.ciudad}</p>
+        </div>
+        <div class="flex gap-1.5">
+          <button onclick="editarSede(${s.id})" class="text-xs text-slate-400 hover:text-slate-700 border border-slate-200 rounded-lg px-2.5 py-1 hover:bg-slate-50 transition">✏️</button>
+          <button onclick="eliminarSede(${s.id})" class="text-xs text-slate-400 hover:text-rose-600 border border-slate-200 rounded-lg px-2.5 py-1 hover:bg-rose-50 transition">🗑</button>
+        </div>
+      </div>
+      ${s.direccion ? `<p class="text-xs text-slate-500 mb-2">📍 ${s.direccion}</p>` : ''}
+      ${s.telefonoCoord ? `<p class="text-xs text-slate-500 mb-2">📞 ${s.telefonoCoord}</p>` : ''}
+      <div class="flex gap-3 mt-3 pt-3 border-t border-slate-100">
+        <span class="text-xs text-slate-500"><span class="font-bold text-slate-700">${tracks}</span> track(s)</span>
+        <span class="text-xs text-slate-500"><span class="font-bold text-emerald-600">${alumnos}</span> alumno(s)</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function abrirModalSede() {
+  document.getElementById('acSedeModalTitle').textContent = 'Nueva Sede';
+  document.getElementById('acSedeEditId').value = '';
+  ['acSedeNombre','acSedeDireccion','acSedeTel'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('acSedeCiudad').value = 'Lima';
+  openModal('acSedeModal');
+}
+
+function editarSede(id) {
+  const s = myAcSedes().find(x => x.id === id);
+  if (!s) return;
+  document.getElementById('acSedeModalTitle').textContent = 'Editar Sede';
+  document.getElementById('acSedeEditId').value = id;
+  document.getElementById('acSedeNombre').value    = s.nombre;
+  document.getElementById('acSedeDireccion').value = s.direccion || '';
+  document.getElementById('acSedeCiudad').value    = s.ciudad || 'Lima';
+  document.getElementById('acSedeTel').value       = s.telefonoCoord || '';
+  openModal('acSedeModal');
+}
+
+function guardarSede() {
+  const nombre = document.getElementById('acSedeNombre').value.trim();
+  if (!nombre) { toast('El nombre de la sede es obligatorio.', 'error'); return; }
+  const editId = document.getElementById('acSedeEditId').value;
+  const data = {
+    nombre,
+    direccion:     document.getElementById('acSedeDireccion').value.trim(),
+    ciudad:        document.getElementById('acSedeCiudad').value.trim() || 'Lima',
+    telefonoCoord: document.getElementById('acSedeTel').value.trim(),
+    orgId: myOrgId(),
+  };
+  if (editId) {
+    const s = S.ac_sedes.find(x => x.id === +editId);
+    if (s) Object.assign(s, data);
+    toast(`Sede "${nombre}" actualizada ✓`);
+  } else {
+    S.ac_sedes.push({ id: S.nextId++, ...data });
+    toast(`Sede "${nombre}" creada ✓`);
+  }
+  closeModal('acSedeModal');
+  renderAcSedes();
+}
+
+function eliminarSede(id) {
+  const s = S.ac_sedes.find(x => x.id === id);
+  if (!s) return;
+  const tieneTracksOAlumnos = myAcTracks().some(t => t.sedeId === id) || myAcAlumnos().some(a => a.sedeId === id);
+  if (tieneTracksOAlumnos) { toast('No se puede eliminar: tiene tracks o alumnos asociados.', 'error'); return; }
+  S.ac_sedes = S.ac_sedes.filter(x => x.id !== id);
+  renderAcSedes();
+  toast('Sede eliminada.');
+}
+
+// ============================================================
+// ACADEMIA — Tracks
+// ============================================================
+function renderAcTracks() {
+  const sedeId = parseInt(document.getElementById('acTrackFiltroSede')?.value) || 0;
+  const sedes  = myAcSedes();
+
+  // Poblar filtro de sedes
+  const sel = document.getElementById('acTrackFiltroSede');
+  if (sel) {
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">Todas las sedes</option>' +
+      sedes.map(s => `<option value="${s.id}" ${s.id==cur?'selected':''}>${s.nombre}</option>`).join('');
+  }
+
+  let tracks = myAcTracks();
+  if (sedeId) tracks = tracks.filter(t => t.sedeId === sedeId);
+
+  const el = document.getElementById('acTracksList');
+  if (!tracks.length) {
+    el.innerHTML = '<p class="text-sm text-slate-400">Sin tracks. Crea el primero con el botón de arriba.</p>';
+    return;
+  }
+
+  el.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">` +
+    tracks.map(t => {
+      const inscritos  = alumnosByTrack(t.id).filter(a => a.estado === 'activo').length;
+      const costoTotal = (t.costoCancha || 0) + (t.costoProfesores || 0);
+      const breakEven  = costoTotal > 0 ? Math.ceil(costoTotal / (t.mensualidadSugerida || 1)) : null;
+      const utilidad   = inscritos * (t.mensualidadSugerida || 0) - costoTotal;
+      const rentable   = breakEven !== null ? inscritos >= breakEven : null;
+      const pct        = Math.min(100, Math.round(inscritos / (t.capacidadMaxima || 1) * 100));
+      const barColor   = rentable === null ? 'bg-slate-300' : rentable ? 'bg-emerald-500' : (pct >= 70 ? 'bg-amber-400' : 'bg-rose-400');
+
+      return `<div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+        <div class="flex items-start justify-between mb-2">
+          <div>
+            <p class="font-bold text-sm">${t.nombreTrack}</p>
+            <p class="text-[11px] text-slate-400">${acSedeNombre(t.sedeId)}</p>
+          </div>
+          <div class="flex gap-1.5 shrink-0">
+            <button onclick="editarTrack(${t.id})" class="text-xs text-slate-400 hover:text-slate-700 border border-slate-200 rounded-lg px-2.5 py-1 hover:bg-slate-50">✏️</button>
+            <button onclick="eliminarTrack(${t.id})" class="text-xs text-slate-400 hover:text-rose-600 border border-slate-200 rounded-lg px-2.5 py-1 hover:bg-rose-50">🗑</button>
+          </div>
+        </div>
+        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full ${lineaColor(t.lineaNegocio)}">${lineaLabel(t.lineaNegocio)}</span>
+        <div class="flex items-center gap-2 mt-3 mb-1">
+          <div class="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+            <div class="${barColor} h-full rounded-full" style="width:${pct}%"></div>
+          </div>
+          <span class="text-xs font-semibold text-slate-600">${inscritos}/${t.capacidadMaxima}</span>
+        </div>
+        <div class="grid grid-cols-2 gap-2 mt-3 text-center">
+          <div class="bg-slate-50 rounded-lg p-2">
+            <p class="text-[10px] text-slate-400">Mensualidad</p>
+            <p class="text-xs font-bold">S/ ${(t.mensualidadSugerida||0).toFixed(0)}</p>
+          </div>
+          <div class="bg-slate-50 rounded-lg p-2">
+            <p class="text-[10px] text-slate-400">Break-even</p>
+            <p class="text-xs font-bold">${breakEven !== null ? breakEven + ' al.' : '—'}</p>
+          </div>
+          <div class="bg-slate-50 rounded-lg p-2">
+            <p class="text-[10px] text-slate-400">Costo total</p>
+            <p class="text-xs font-bold text-slate-600">${costoTotal > 0 ? 'S/ ' + costoTotal.toFixed(0) : '—'}</p>
+          </div>
+          <div class="bg-slate-50 rounded-lg p-2">
+            <p class="text-[10px] text-slate-400">Utilidad</p>
+            <p class="text-xs font-bold ${utilidad >= 0 ? 'text-emerald-600' : 'text-rose-600'}">${costoTotal > 0 ? 'S/ ' + utilidad.toFixed(0) : '—'}</p>
+          </div>
+        </div>
+      </div>`;
+    }).join('') + '</div>';
+}
+
+function abrirModalTrack() {
+  document.getElementById('acTrackModalTitle').textContent = 'Nuevo Track';
+  document.getElementById('acTrackEditId').value = '';
+  document.getElementById('acTrackNombre').value = '';
+  document.getElementById('acTrackAforo').value = 20;
+  document.getElementById('acTrackMensualidad').value = 220;
+  document.getElementById('acTrackClases').value = 8;
+  document.getElementById('acTrackCostoCancha').value = 0;
+  document.getElementById('acTrackCostoProf').value = 0;
+  document.getElementById('acTrackLinea').value = 'academia';
+  poblarSelectSedes('acTrackSede', 0);
+  openModal('acTrackModal');
+}
+
+function editarTrack(id) {
+  const t = myAcTracks().find(x => x.id === id);
+  if (!t) return;
+  document.getElementById('acTrackModalTitle').textContent = 'Editar Track';
+  document.getElementById('acTrackEditId').value = id;
+  document.getElementById('acTrackNombre').value = t.nombreTrack;
+  document.getElementById('acTrackAforo').value = t.capacidadMaxima;
+  document.getElementById('acTrackMensualidad').value = t.mensualidadSugerida;
+  document.getElementById('acTrackClases').value = t.clasesMensuales;
+  document.getElementById('acTrackCostoCancha').value = t.costoCancha || 0;
+  document.getElementById('acTrackCostoProf').value = t.costoProfesores || 0;
+  document.getElementById('acTrackLinea').value = t.lineaNegocio || 'academia';
+  poblarSelectSedes('acTrackSede', t.sedeId);
+  openModal('acTrackModal');
+}
+
+function guardarTrack() {
+  const nombre = document.getElementById('acTrackNombre').value.trim();
+  const sedeId = parseInt(document.getElementById('acTrackSede').value);
+  if (!nombre) { toast('El nombre del track es obligatorio.', 'error'); return; }
+  if (!sedeId) { toast('Selecciona una sede.', 'error'); return; }
+  const editId = document.getElementById('acTrackEditId').value;
+  const data = {
+    sedeId,
+    nombreTrack:       nombre,
+    lineaNegocio:      document.getElementById('acTrackLinea').value,
+    capacidadMaxima:   parseInt(document.getElementById('acTrackAforo').value) || 20,
+    mensualidadSugerida: parseFloat(document.getElementById('acTrackMensualidad').value) || 0,
+    clasesMensuales:   parseInt(document.getElementById('acTrackClases').value) || 8,
+    costoCancha:       parseFloat(document.getElementById('acTrackCostoCancha').value) || 0,
+    costoProfesores:   parseFloat(document.getElementById('acTrackCostoProf').value) || 0,
+    orgId: myOrgId(),
+  };
+  if (editId) {
+    const t = S.ac_tracks.find(x => x.id === +editId);
+    if (t) Object.assign(t, data);
+    toast(`Track "${nombre}" actualizado ✓`);
+  } else {
+    S.ac_tracks.push({ id: S.nextId++, ...data });
+    toast(`Track "${nombre}" creado ✓`);
+  }
+  closeModal('acTrackModal');
+  renderAcTracks();
+}
+
+function eliminarTrack(id) {
+  if (myAcAlumnos().some(a => a.trackId === id)) {
+    toast('No se puede eliminar: tiene alumnos asignados.', 'error'); return;
+  }
+  S.ac_tracks = S.ac_tracks.filter(x => x.id !== id);
+  renderAcTracks();
+  toast('Track eliminado.');
+}
+
+// ============================================================
+// ACADEMIA — Alumnos
+// ============================================================
+function renderAcAlumnos() {
+  const sedes  = myAcSedes();
+  const tracks = myAcTracks();
+
+  // Poblar filtros
+  const fSede = document.getElementById('acAlumnoFiltroSede');
+  if (fSede) {
+    const cur = fSede.value;
+    fSede.innerHTML = '<option value="">Todas las sedes</option>' +
+      sedes.map(s => `<option value="${s.id}" ${s.id==cur?'selected':''}>${s.nombre}</option>`).join('');
+  }
+  const fTrack = document.getElementById('acAlumnoFiltroTrack');
+  if (fTrack) {
+    const cur = fTrack.value;
+    fTrack.innerHTML = '<option value="">Todos los tracks</option>' +
+      tracks.map(t => `<option value="${t.id}" ${t.id==cur?'selected':''}>${t.nombreTrack} (${acSedeNombre(t.sedeId)})</option>`).join('');
+  }
+
+  const sedeId  = parseInt(fSede?.value) || 0;
+  const trackId = parseInt(fTrack?.value) || 0;
+  const estado  = document.getElementById('acAlumnoFiltroEstado')?.value || '';
+  const buscar  = (document.getElementById('acAlumnoBuscar')?.value || '').toLowerCase();
+
+  let lista = myAcAlumnos();
+  if (sedeId)  lista = lista.filter(a => a.sedeId === sedeId);
+  if (trackId) lista = lista.filter(a => a.trackId === trackId);
+  if (estado)  lista = lista.filter(a => a.estado === estado);
+  if (buscar)  lista = lista.filter(a =>
+    (a.nombre + ' ' + a.apellido + ' ' + (a.tutorNombre||'')).toLowerCase().includes(buscar));
+
+  const el = document.getElementById('acAlumnosList');
+  if (!lista.length) {
+    el.innerHTML = '<p class="text-sm text-slate-400 p-6">No hay alumnos que coincidan con los filtros.</p>';
+    return;
+  }
+
+  el.innerHTML = `<table class="w-full text-sm">
+    <thead>
+      <tr class="border-b border-slate-100">
+        <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wide px-4 py-3">Alumno</th>
+        <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wide px-4 py-3 hidden sm:table-cell">Categoría</th>
+        <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wide px-4 py-3 hidden md:table-cell">Track / Sede</th>
+        <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wide px-4 py-3 hidden lg:table-cell">Tutor</th>
+        <th class="text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wide px-4 py-3">Estado</th>
+        <th class="px-4 py-3"></th>
+      </tr>
+    </thead>
+    <tbody>
+      ${lista.map(a => `
+      <tr class="border-b border-slate-50 hover:bg-slate-50 transition">
+        <td class="px-4 py-3">
+          <p class="font-semibold text-slate-800">${a.nombre} ${a.apellido}</p>
+          <p class="text-[11px] text-slate-400">${a.fechaNacimiento}</p>
+        </td>
+        <td class="px-4 py-3 hidden sm:table-cell">
+          <span class="text-xs font-bold text-slate-600">${a.categoriaInmutable}</span>
+        </td>
+        <td class="px-4 py-3 hidden md:table-cell">
+          <p class="text-xs font-medium text-slate-700">${acTrackNombre(a.trackId)}</p>
+          <p class="text-[11px] text-slate-400">${acSedeNombre(a.sedeId)}</p>
+        </td>
+        <td class="px-4 py-3 hidden lg:table-cell">
+          <p class="text-xs text-slate-700">${a.tutorNombre || '—'}</p>
+          <p class="text-[11px] text-slate-400">${a.tutorTelefono || ''}</p>
+        </td>
+        <td class="px-4 py-3">
+          ${a.estado === 'activo'
+            ? '<span class="text-[11px] font-semibold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Activo</span>'
+            : '<span class="text-[11px] font-semibold bg-slate-200 text-slate-500 px-2 py-0.5 rounded-full">Baja</span>'}
+        </td>
+        <td class="px-4 py-3 text-right">
+          <button onclick="editarAlumno(${a.id})" class="text-xs text-slate-400 hover:text-slate-700 border border-slate-200 rounded-lg px-2.5 py-1 hover:bg-slate-50 transition">✏️</button>
+        </td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+function abrirModalAlumno() {
+  document.getElementById('acAlumnoModalTitle').textContent = 'Nuevo Alumno';
+  document.getElementById('acAlumnoEditId').value = '';
+  ['acAlumnoNombre','acAlumnoApellido','acAlumnoTutorNombre','acAlumnoTutorTel'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('acAlumnoFechaNac').value = '';
+  document.getElementById('acAlumnoCategoria').value = '';
+  document.getElementById('acAlumnoEstado').value = 'activo';
+  poblarSelectSedes('acAlumnoSede', 0);
+  actualizarTracksAlumnoModal();
+
+  // auto-calcular categoría al cambiar fecha
+  const fn = document.getElementById('acAlumnoFechaNac');
+  fn.oninput = () => {
+    const yr = fn.value ? new Date(fn.value).getFullYear() : '';
+    document.getElementById('acAlumnoCategoria').value = yr || '';
+  };
+  openModal('acAlumnoModal');
+}
+
+function editarAlumno(id) {
+  const a = myAcAlumnos().find(x => x.id === id);
+  if (!a) return;
+  document.getElementById('acAlumnoModalTitle').textContent = 'Editar Alumno';
+  document.getElementById('acAlumnoEditId').value = id;
+  document.getElementById('acAlumnoNombre').value       = a.nombre;
+  document.getElementById('acAlumnoApellido').value     = a.apellido;
+  document.getElementById('acAlumnoFechaNac').value     = a.fechaNacimiento;
+  document.getElementById('acAlumnoCategoria').value    = a.categoriaInmutable;
+  document.getElementById('acAlumnoTutorNombre').value  = a.tutorNombre || '';
+  document.getElementById('acAlumnoTutorTel').value     = a.tutorTelefono || '';
+  document.getElementById('acAlumnoEstado').value       = a.estado;
+  poblarSelectSedes('acAlumnoSede', a.sedeId);
+  actualizarTracksAlumnoModal(a.trackId);
+
+  const fn = document.getElementById('acAlumnoFechaNac');
+  fn.oninput = () => {
+    const yr = fn.value ? new Date(fn.value).getFullYear() : '';
+    document.getElementById('acAlumnoCategoria').value = yr || '';
+  };
+  openModal('acAlumnoModal');
+}
+
+function guardarAlumno() {
+  const nombre   = document.getElementById('acAlumnoNombre').value.trim();
+  const apellido = document.getElementById('acAlumnoApellido').value.trim();
+  const fechaNac = document.getElementById('acAlumnoFechaNac').value;
+  const tutorNombre = document.getElementById('acAlumnoTutorNombre').value.trim();
+  const tutorTel    = document.getElementById('acAlumnoTutorTel').value.trim();
+  if (!nombre || !apellido)   { toast('Nombre y apellido son obligatorios.', 'error'); return; }
+  if (!fechaNac)              { toast('La fecha de nacimiento es obligatoria.', 'error'); return; }
+  if (!tutorNombre || !tutorTel) { toast('Nombre y teléfono del tutor son obligatorios.', 'error'); return; }
+
+  const sedeId  = parseInt(document.getElementById('acAlumnoSede').value) || null;
+  const trackId = parseInt(document.getElementById('acAlumnoTrack').value) || null;
+  const editId  = document.getElementById('acAlumnoEditId').value;
+  const anio    = new Date(fechaNac).getFullYear();
+
+  const data = {
+    nombre, apellido, fechaNacimiento: fechaNac,
+    sedeId, trackId,
+    tutorNombre, tutorTelefono: tutorTel,
+    estado: document.getElementById('acAlumnoEstado').value,
+    orgId:  myOrgId(),
+  };
+  if (editId) {
+    const a = S.ac_alumnos.find(x => x.id === +editId);
+    if (a) {
+      // categoriaInmutable solo se graba una vez (no editable)
+      Object.assign(a, data);
+    }
+    toast(`Alumno "${nombre}" actualizado ✓`);
+  } else {
+    S.ac_alumnos.push({ id: S.nextId++, categoriaInmutable: anio, ...data });
+    toast(`Alumno "${nombre} ${apellido}" registrado ✓`);
+  }
+  closeModal('acAlumnoModal');
+  renderAcAlumnos();
+}
+
+// ============================================================
+// ACADEMIA — Helpers de selects
+// ============================================================
+function poblarSelectSedes(elId, sedeSelId) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.innerHTML = '<option value="">— Selecciona sede —</option>' +
+    myAcSedes().map(s => `<option value="${s.id}" ${s.id === sedeSelId ? 'selected' : ''}>${s.nombre}</option>`).join('');
+}
+
+function actualizarTracksAlumnoModal(trackSelId) {
+  const sedeId = parseInt(document.getElementById('acAlumnoSede')?.value) || 0;
+  const el     = document.getElementById('acAlumnoTrack');
+  if (!el) return;
+  const tracks = sedeId ? tracksBySede(sedeId) : myAcTracks();
+  el.innerHTML = '<option value="">— Sin track —</option>' +
+    tracks.map(t => `<option value="${t.id}" ${t.id === trackSelId ? 'selected' : ''}>${t.nombreTrack}</option>`).join('');
 }
 
 if (location.search.includes('test')) {
