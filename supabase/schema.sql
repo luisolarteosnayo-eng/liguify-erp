@@ -64,12 +64,14 @@ create table if not exists public.complejos (
 );
 
 create table if not exists public.medios_pago (
-  id     bigint generated always as identity primary key,
-  nombre text not null,
-  tipo   text default 'transferencia',  -- transferencia | billetera | efectivo | tarjeta
-  icon   text,
-  activo boolean not null default true,
-  org_id bigint not null references public.organizaciones(id) on delete cascade
+  id                 bigint generated always as identity primary key,
+  nombre             text not null,
+  tipo               text default 'transferencia',  -- transferencia | billetera | efectivo | tarjeta
+  icon               text,
+  activo             boolean not null default true,
+  para_inscripciones boolean not null default true,
+  para_fechas        boolean not null default true,
+  org_id             bigint not null references public.organizaciones(id) on delete cascade
 );
 
 create table if not exists public.clubes (

@@ -714,7 +714,10 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
             <h1 class="text-xl font-bold mb-1">Medios de Pago</h1>
             <p class="text-sm text-slate-400">Métodos habilitados para el registro de pagos en el sistema.</p>
           </div>
-          <button onclick="openModal('cfgMedioModal')" class="flex items-center gap-2 bg-[#18324F] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#0f253d] transition shadow-sm shrink-0">+ Nuevo Medio</button>
+          <div class="flex items-center gap-2">
+            <button onclick="guardarMediosFlags()" class="flex items-center gap-1.5 border border-emerald-300 text-emerald-700 bg-emerald-50 text-sm font-semibold px-4 py-2 rounded-lg hover:bg-emerald-100 transition shadow-sm shrink-0">💾 Guardar</button>
+            <button onclick="openModal('cfgMedioModal')" class="flex items-center gap-2 bg-[#18324F] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#0f253d] transition shadow-sm shrink-0">+ Nuevo Medio</button>
+          </div>
         </div>
         <div id="cfgMediosList" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"></div>
       </div>
@@ -976,6 +979,38 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
       </div>
 
       <!-- P_rep_pagos: Reporte de Pagos -->
+      <!-- REPORTE: RESUMEN POR FECHA -->
+      <div id="p_rep_fechas" class="screen">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+          <div>
+            <h1 class="text-xl font-bold">Resumen de Ingresos por Fecha</h1>
+            <p class="text-sm text-slate-400">Detalle financiero de cada jornada registrada.</p>
+          </div>
+        </div>
+        <!-- Filtros -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 mb-5 flex flex-wrap items-end gap-4">
+          <div>
+            <label class="text-xs font-semibold text-slate-500 uppercase mb-1 block">Fecha inicio</label>
+            <input type="date" id="repFechaIni" onchange="renderRepFechas()" class="border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-500 uppercase mb-1 block">Fecha fin</label>
+            <input type="date" id="repFechaFin" onchange="renderRepFechas()" class="border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-500 uppercase mb-1 block">Torneo</label>
+            <select id="repTorneoFil" onchange="renderRepFechas()" class="border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200 bg-white">
+              <option value="">Todos</option>
+            </select>
+          </div>
+          <button onclick="document.getElementById('repFechaIni').value='';document.getElementById('repFechaFin').value='';document.getElementById('repTorneoFil').value='';renderRepFechas()" class="text-xs text-slate-400 hover:text-slate-600 underline pb-1">Limpiar filtros</button>
+        </div>
+        <!-- Tabla -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+          <div id="repFechasContent"></div>
+        </div>
+      </div>
+
       <div id="p_rep_pagos" class="screen">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <h1 class="text-xl font-bold">Reporte de Pagos</h1>
@@ -1538,6 +1573,7 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
       <div class="flex items-center gap-3 flex-wrap">
         <span class="text-white font-bold text-sm" id="ifTorneoNombre">Ingresos por Fecha</span>
         <select id="ifNumFecha" onchange="cargarIngresosFecha()" class="border-0 rounded-lg px-3 py-1 text-sm outline-none bg-white/20 text-white font-semibold focus:bg-white/30"></select>
+        <input type="date" id="ifFechaExacta" onchange="guardarFechaExacta()" class="border-0 rounded-lg px-2 py-1 text-xs outline-none bg-white/20 text-white focus:bg-white/30 [color-scheme:dark]" title="Fecha exacta de la jornada">
         <button onclick="agregarNuevaFechaIF()" class="text-xs font-semibold text-blue-200 hover:text-white border border-white/30 px-2.5 py-1 rounded-lg hover:bg-white/10 transition">+ Nueva fecha</button>
       </div>
       <button onclick="closeModal('ingresosFechaModal')" class="text-white/60 hover:text-white p-1">
@@ -1546,6 +1582,27 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
     </div>
 
     <div class="overflow-y-auto flex-1 p-4 space-y-4">
+
+      <!-- RESUMEN DE FECHAS -->
+      <div id="ifResumenWrap" class="hidden bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div class="bg-[#18324F] text-white text-xs font-bold py-1.5 px-3 tracking-wide">RESUMEN DEL TORNEO</div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead><tr class="text-[10px] text-slate-500 uppercase bg-slate-50 border-b border-slate-100">
+              <th class="py-2 px-3 text-left font-semibold">Fecha</th>
+              <th class="py-2 px-3 text-right font-semibold">Ingresos</th>
+              <th class="py-2 px-3 text-right font-semibold">Egresos</th>
+              <th class="py-2 px-3 text-right font-semibold">Utilidad</th>
+              <th class="py-2 px-3 text-right font-semibold">%</th>
+              <th class="py-2 px-3 text-right font-semibold">Nro Entradas</th>
+              <th class="py-2 px-3 text-right font-semibold">Efec. Disponible</th>
+            </tr></thead>
+            <tbody id="ifResumenBody" class="divide-y divide-slate-50"></tbody>
+            <tfoot id="ifResumenFoot" class="border-t-2 border-slate-200 bg-slate-50 font-bold"></tfoot>
+          </table>
+        </div>
+      </div>
+
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
         <!-- ===== INGRESOS ===== -->
@@ -1561,43 +1618,49 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
                 <th class="py-1.5 px-2 text-right">Precio</th>
                 <th class="py-1.5 px-2 text-right">Cantidad</th>
                 <th class="py-1.5 px-2 text-right">Total</th>
+                <th class="py-1.5 px-1"></th>
               </tr></thead>
               <tbody id="ifEntradasBody">
-                <tr class="if-entrada-row border-t border-slate-100">
-                  <td class="px-3 py-1 text-slate-600">Tickets</td>
+                <!-- Fila Tickets (fija) -->
+                <tr class="if-entrada-row border-t border-slate-100" data-fixed="1">
+                  <td class="px-3 py-1 text-slate-600 font-medium">Tickets</td>
                   <td class="px-2 py-1"><input type="number" min="0" step="0.01" placeholder="0" class="if-precio w-16 text-right border border-slate-200 rounded px-1 py-0.5 outline-none focus:ring-1 focus:ring-emerald-300 text-xs" oninput="recalcEntrada(this)"></td>
                   <td class="px-2 py-1"><input type="number" min="0" step="1" placeholder="0" class="if-cantidad w-16 text-right border border-slate-200 rounded px-1 py-0.5 outline-none focus:ring-1 focus:ring-emerald-300 text-xs" oninput="recalcEntrada(this)"></td>
                   <td class="px-2 py-1 text-right font-semibold if-total-entrada text-slate-700">0</td>
+                  <td></td>
                 </tr>
-                <tr class="if-entrada-row border-t border-slate-100">
-                  <td class="px-3 py-1"><input type="text" placeholder="Estacionamiento" class="if-label-entrada w-full border border-slate-200 rounded px-1 py-0.5 text-xs outline-none focus:ring-1 focus:ring-emerald-300 text-slate-600"></td>
+                <!-- Fila Estacionamiento (fija) -->
+                <tr class="if-entrada-row border-t border-slate-100" data-fixed="1">
+                  <td class="px-3 py-1 text-slate-600 font-medium">Estacionamiento</td>
                   <td class="px-2 py-1"><input type="number" min="0" step="0.01" placeholder="0" class="if-precio w-16 text-right border border-slate-200 rounded px-1 py-0.5 outline-none focus:ring-1 focus:ring-emerald-300 text-xs" oninput="recalcEntrada(this)"></td>
                   <td class="px-2 py-1"><input type="number" min="0" step="1" placeholder="0" class="if-cantidad w-16 text-right border border-slate-200 rounded px-1 py-0.5 outline-none focus:ring-1 focus:ring-emerald-300 text-xs" oninput="recalcEntrada(this)"></td>
                   <td class="px-2 py-1 text-right font-semibold if-total-entrada text-slate-700">0</td>
+                  <td></td>
                 </tr>
-                <tr class="if-entrada-row border-t border-slate-100">
-                  <td class="px-3 py-1"><input type="text" placeholder="Estacionamiento" class="if-label-entrada w-full border border-slate-200 rounded px-1 py-0.5 text-xs outline-none focus:ring-1 focus:ring-emerald-300 text-slate-600"></td>
-                  <td class="px-2 py-1"><input type="number" min="0" step="0.01" placeholder="0" class="if-precio w-16 text-right border border-slate-200 rounded px-1 py-0.5 outline-none focus:ring-1 focus:ring-emerald-300 text-xs" oninput="recalcEntrada(this)"></td>
-                  <td class="px-2 py-1"><input type="number" min="0" step="1" placeholder="0" class="if-cantidad w-16 text-right border border-slate-200 rounded px-1 py-0.5 outline-none focus:ring-1 focus:ring-emerald-300 text-xs" oninput="recalcEntrada(this)"></td>
-                  <td class="px-2 py-1 text-right font-semibold if-total-entrada text-slate-700">0</td>
-                </tr>
-                <tr id="ifEntradasExtras"></tr>
               </tbody>
               <tfoot>
                 <tr class="border-t-2 border-slate-200 bg-yellow-50">
                   <td colspan="3" class="px-3 py-1.5 text-xs font-bold text-slate-700">TOTAL VENTA</td>
                   <td class="px-2 py-1.5 text-right font-bold text-emerald-700" id="ifTotalVenta">S/ 0</td>
+                  <td></td>
                 </tr>
               </tfoot>
             </table>
+            <!-- Agregar fila -->
+            <div class="px-3 pb-2">
+              <button onclick="addIfEntradaRow()" class="text-[10px] text-emerald-600 hover:text-emerald-800 hover:underline">+ Agregar fila</button>
+            </div>
             <!-- Detalle pagos entradas -->
             <div class="border-t border-slate-100 p-3">
               <div class="bg-yellow-200 text-slate-700 text-[10px] font-bold py-1 px-2 rounded mb-2 text-center">Detalle Pagos Entradas</div>
-              <div class="space-y-1" id="ifPagosEntradasWrap">
-                <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-24 shrink-0">Efectivo</span><input type="number" min="0" step="0.01" placeholder="0" data-seccion="entradas" data-medio="Efectivo" class="if-pago-medio flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-emerald-300" oninput="recalcIF()"></div>
-                <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-24 shrink-0">YAPE</span><input type="number" min="0" step="0.01" placeholder="0" data-seccion="entradas" data-medio="YAPE" class="if-pago-medio flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-emerald-300" oninput="recalcIF()"></div>
-                <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-24 shrink-0">PLIN</span><input type="number" min="0" step="0.01" placeholder="0" data-seccion="entradas" data-medio="PLIN" class="if-pago-medio flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-emerald-300" oninput="recalcIF()"></div>
-                <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-24 shrink-0">POS</span><input type="number" min="0" step="0.01" placeholder="0" data-seccion="entradas" data-medio="POS" class="if-pago-medio flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-emerald-300" oninput="recalcIF()"></div>
+              <div class="space-y-1">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs text-slate-500 w-24 shrink-0">Efectivo</span>
+                  <input type="number" min="0" step="0.01" placeholder="0" data-seccion="entradas" data-medio="Efectivo" class="if-pago-medio flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-emerald-300" oninput="recalcIF()">
+                </div>
+                <div id="ifPagosEntExtras" class="space-y-1"></div>
+                <button onclick="addIfMedioPago('entradas')" class="text-[10px] text-emerald-600 hover:text-emerald-800 hover:underline">+ Agregar medio de pago</button>
+                <div id="ifDifEntradas" class="hidden text-[10px] font-semibold text-rose-600 pt-1"></div>
               </div>
             </div>
           </div>
@@ -1606,9 +1669,12 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
           <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
             <div class="bg-yellow-300 text-slate-800 text-center text-xs font-bold py-1.5 tracking-wide">ARBITRAJE</div>
             <div class="p-3 space-y-1">
-              <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-24 shrink-0">Efectivo</span><input type="number" min="0" step="0.01" placeholder="0" data-seccion="arbitraje" data-medio="Efectivo" class="if-pago-medio flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-emerald-300" oninput="recalcIF()"></div>
-              <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-24 shrink-0">YAPE</span><input type="number" min="0" step="0.01" placeholder="0" data-seccion="arbitraje" data-medio="YAPE" class="if-pago-medio flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-emerald-300" oninput="recalcIF()"></div>
-              <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-24 shrink-0">POS</span><input type="number" min="0" step="0.01" placeholder="0" data-seccion="arbitraje" data-medio="POS" class="if-pago-medio flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-emerald-300" oninput="recalcIF()"></div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-slate-500 w-24 shrink-0">Efectivo</span>
+                <input type="number" min="0" step="0.01" placeholder="0" data-seccion="arbitraje" data-medio="Efectivo" class="if-pago-medio flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-emerald-300" oninput="recalcIF()">
+              </div>
+              <div id="ifArbExtras" class="space-y-1"></div>
+              <button onclick="addIfMedioPago('arbitraje')" class="text-[10px] text-emerald-600 hover:text-emerald-800 hover:underline">+ Agregar medio de pago</button>
               <div class="flex justify-between border-t border-slate-100 pt-1 mt-1">
                 <span class="text-xs font-bold text-slate-600">TOTAL</span>
                 <span class="text-xs font-bold text-emerald-700" id="ifTotalArbitraje">S/ 0</span>
@@ -1616,7 +1682,24 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
             </div>
           </div>
 
-          <!-- TOTAL INGRESOS -->
+          <!-- OTROS INGRESOS -->
+          <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div class="bg-yellow-300 text-slate-800 text-center text-xs font-bold py-1.5 tracking-wide">OTROS INGRESOS</div>
+            <div class="p-3 space-y-1">
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-slate-500 w-24 shrink-0">Efectivo</span>
+                <input type="number" min="0" step="0.01" placeholder="0" data-seccion="otros" data-medio="Efectivo" class="if-pago-medio flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-emerald-300" oninput="recalcIF()">
+              </div>
+              <div id="ifOtrosExtras" class="space-y-1"></div>
+              <button onclick="addIfMedioPago('otros')" class="text-[10px] text-emerald-600 hover:text-emerald-800 hover:underline">+ Agregar medio de pago</button>
+              <div class="flex justify-between border-t border-slate-100 pt-1 mt-1">
+                <span class="text-xs font-bold text-slate-600">TOTAL</span>
+                <span class="text-xs font-bold text-emerald-700" id="ifTotalOtros">S/ 0</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- TOTAL INGRESOS (dinámico) -->
           <div class="bg-emerald-600 rounded-xl border border-emerald-500 overflow-hidden">
             <div class="text-white text-center text-xs font-bold py-1.5 tracking-wide">TOTAL INGRESOS</div>
             <div class="p-3 bg-white/90">
@@ -1625,17 +1708,13 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
                   <th class="text-left py-1 font-semibold">Medio</th>
                   <th class="text-right py-1 font-semibold">Entradas</th>
                   <th class="text-right py-1 font-semibold">Arbitraje</th>
+                  <th class="text-right py-1 font-semibold">Otros</th>
                   <th class="text-right py-1 font-semibold">Total</th>
                 </tr></thead>
-                <tbody>
-                  <tr class="border-t border-slate-50"><td class="py-1 text-slate-500">Efectivo</td><td class="py-1 text-right" id="ifIng_ent_Efectivo">0</td><td class="py-1 text-right" id="ifIng_arb_Efectivo">0</td><td class="py-1 text-right font-semibold" id="ifIngEfectivo">S/ 0</td></tr>
-                  <tr class="border-t border-slate-50"><td class="py-1 text-slate-500">YAPE</td><td class="py-1 text-right" id="ifIng_ent_YAPE">0</td><td class="py-1 text-right" id="ifIng_arb_YAPE">0</td><td class="py-1 text-right font-semibold" id="ifIngYape">S/ 0</td></tr>
-                  <tr class="border-t border-slate-50"><td class="py-1 text-slate-500">PLIN</td><td class="py-1 text-right" id="ifIng_ent_PLIN">0</td><td class="py-1 text-right" id="ifIng_arb_PLIN">0</td><td class="py-1 text-right font-semibold" id="ifIngPlin">S/ 0</td></tr>
-                  <tr class="border-t border-slate-50"><td class="py-1 text-slate-500">POS</td><td class="py-1 text-right" id="ifIng_ent_POS">0</td><td class="py-1 text-right" id="ifIng_arb_POS">0</td><td class="py-1 text-right font-semibold" id="ifIngPos">S/ 0</td></tr>
-                </tbody>
+                <tbody id="ifTotalIngresosBody"></tbody>
                 <tfoot>
                   <tr class="border-t-2 border-emerald-300">
-                    <td colspan="3" class="pt-1.5 text-sm font-bold text-emerald-800">TOTAL</td>
+                    <td colspan="4" class="pt-1.5 text-sm font-bold text-emerald-800">TOTAL</td>
                     <td class="pt-1.5 text-right text-sm font-bold text-emerald-700" id="ifTotalIngresos">S/ 0</td>
                   </tr>
                 </tfoot>
@@ -1667,7 +1746,6 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
             <div class="p-3 space-y-1">
               <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-24 shrink-0">Arbitraje</span><input type="number" min="0" step="0.01" placeholder="0" data-seccion="efectivo" data-item="Arbitraje" class="if-egreso flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-rose-300" oninput="recalcIF()"></div>
               <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-24 shrink-0">Personal</span><input type="number" min="0" step="0.01" placeholder="0" data-seccion="efectivo" data-item="Personal" class="if-egreso flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-rose-300" oninput="recalcIF()"></div>
-              <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-24 shrink-0">Tales</span><input type="number" min="0" step="0.01" placeholder="0" data-seccion="efectivo" data-item="Tales" class="if-egreso flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-rose-300" oninput="recalcIF()"></div>
               <div id="ifEfectivoExtras"></div>
               <button onclick="addIfEgresoExtra('efectivo')" class="text-[10px] text-slate-400 hover:text-slate-600 hover:underline">+ Agregar</button>
               <div class="flex justify-between border-t border-slate-100 pt-1 mt-1">
@@ -1711,18 +1789,6 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
             </div>
           </div>
 
-          <!-- INSCRIPCIONES -->
-          <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
-            <div class="bg-yellow-300 text-slate-800 text-center text-xs font-bold py-1.5 tracking-wide">INSCRIPCIONES</div>
-            <div class="p-3 space-y-1">
-              <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-24 shrink-0">Banco</span><input type="number" min="0" step="0.01" placeholder="0" id="ifInscBanco" class="flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-blue-300" oninput="recalcIF()"></div>
-              <div class="flex items-center gap-2"><span class="text-xs text-slate-500 w-24 shrink-0">Efectivo</span><input type="number" min="0" step="0.01" placeholder="0" id="ifInscEfectivo" class="flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-blue-300" oninput="recalcIF()"></div>
-              <div class="flex justify-between border-t border-slate-100 pt-1 mt-1">
-                <span class="text-xs font-bold text-slate-600">TOTAL</span>
-                <span class="text-xs font-bold text-blue-700" id="ifTotalInsc">S/ 0</span>
-              </div>
-            </div>
-          </div>
 
           <!-- UTILIDAD -->
           <div class="bg-[#18324F] rounded-xl overflow-hidden">
@@ -1733,6 +1799,19 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
               <div class="flex justify-between border-t border-white/20 pt-1.5 mt-1">
                 <span class="text-sm font-bold text-white">UTILIDAD</span>
                 <span class="text-sm font-bold" id="ifUtilidad">S/ 0</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- EFECTIVO DISPONIBLE -->
+          <div class="bg-amber-500 rounded-xl overflow-hidden">
+            <div class="text-white text-center text-xs font-bold py-1.5 tracking-wide">EFECTIVO DISPONIBLE</div>
+            <div class="p-3 space-y-1.5">
+              <div class="flex justify-between text-xs"><span class="text-amber-100">Efectivo Ingresos</span><span class="text-white font-semibold" id="ifEfectivoIng">S/ 0</span></div>
+              <div class="flex justify-between text-xs"><span class="text-amber-100">Efectivo Egresos</span><span class="text-white font-semibold" id="ifEfectivoEg">S/ 0</span></div>
+              <div class="flex justify-between border-t border-white/30 pt-1.5 mt-1">
+                <span class="text-sm font-bold text-white">DISPONIBLE</span>
+                <span class="text-sm font-bold" id="ifEfectivoDisp">S/ 0</span>
               </div>
             </div>
           </div>
@@ -1892,13 +1971,13 @@ const S = {
   usuarioActual: null,
 
   mediosPago: [
-    {id:1, nombre:'BCP',       tipo:'transferencia', activo:true,  icon:'🏦', orgId:1},
-    {id:2, nombre:'Yape',      tipo:'billetera',     activo:true,  icon:'📲', orgId:1},
-    {id:3, nombre:'Plin',      tipo:'billetera',     activo:true,  icon:'💜', orgId:1},
-    {id:4, nombre:'Interbank', tipo:'transferencia', activo:true,  icon:'🏦', orgId:1},
-    {id:5, nombre:'BBVA',      tipo:'transferencia', activo:false, icon:'🏦', orgId:1},
-    {id:6, nombre:'Efectivo',        tipo:'efectivo',      activo:true,  icon:'💵', orgId:1},
-    {id:7, nombre:'Tarjeta de Crédito', tipo:'tarjeta',   activo:true,  icon:'💳', orgId:1},
+    {id:1, nombre:'BCP',              tipo:'transferencia', activo:true,  icon:'🏦', orgId:1, paraInscripciones:true,  paraFechas:false},
+    {id:2, nombre:'Yape',             tipo:'billetera',     activo:true,  icon:'📲', orgId:1, paraInscripciones:true,  paraFechas:true},
+    {id:3, nombre:'Plin',             tipo:'billetera',     activo:true,  icon:'💜', orgId:1, paraInscripciones:true,  paraFechas:true},
+    {id:4, nombre:'Interbank',        tipo:'transferencia', activo:true,  icon:'🏦', orgId:1, paraInscripciones:true,  paraFechas:false},
+    {id:5, nombre:'BBVA',             tipo:'transferencia', activo:false, icon:'🏦', orgId:1, paraInscripciones:true,  paraFechas:false},
+    {id:6, nombre:'Efectivo',         tipo:'efectivo',      activo:true,  icon:'💵', orgId:1, paraInscripciones:false, paraFechas:false},
+    {id:7, nombre:'Tarjeta de Crédito', tipo:'tarjeta',     activo:true,  icon:'💳', orgId:1, paraInscripciones:false, paraFechas:true},
   ],
 
   torneos: [
@@ -2006,6 +2085,7 @@ const MENU = [
       {id:'p1_fin',label:'Financiero',roles:['organizador','tesorero']},
       {id:'p1_op', label:'Operativo', roles:['organizador','operador']},
       {id:'p_nuevo_torneo',label:'Nuevo Torneo',roles:['organizador']},
+      {id:'p_rep_fechas',label:'Resumen por Fecha',roles:['organizador','tesorero']},
     ]},
   {id:'__pagos',label:'Pagos',icon:'💳',roles:['organizador','operador','tesorero'],noScreen:true,
     children:[
@@ -2479,6 +2559,135 @@ function renderAdminDashboard() {
     </tr>`).join('');
 }
 
+// ---- REPORTE RESUMEN POR FECHA ----
+function initRepFechas() {
+  // Poblar selector de torneos
+  const sel = document.getElementById('repTorneoFil'); if(!sel) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Todos</option>' +
+    (S.torneos||[]).filter(t=>+t.orgId===+myOrgId()).map(t=>`<option value="${t.id}">${t.nombre}</option>`).join('');
+  sel.value = current;
+  renderRepFechas();
+}
+
+function renderRepFechas() {
+  const ini  = document.getElementById('repFechaIni')?.value || '';
+  const fin  = document.getElementById('repFechaFin')?.value || '';
+  const filT = document.getElementById('repTorneoFil')?.value || '';
+
+  // Recolectar medios dinámicos (no Efectivo)
+  const medios = (S.mediosPago||[]).filter(m=>+m.orgId===+myOrgId() && m.activo && m.tipo!=='efectivo');
+
+  // Construir filas desde _ifData
+  const rows = [];
+  Object.entries(_ifData).forEach(([torneoId, fechas]) => {
+    const torneo = (S.torneos||[]).find(t=>+t.id===+torneoId);
+    if(!torneo || +torneo.orgId!==+myOrgId()) return;
+    if(filT && +torneoId!==+filT) return;
+    Object.entries(fechas).forEach(([nFecha, d]) => {
+      const fx = d.fechaExacta || '';
+      if(ini && fx && fx < ini) return;
+      if(fin && fx && fx > fin) return;
+
+      const n = v => parseFloat(v)||0;
+      // Ingresos
+      let ing=0;
+      Object.values(d.pagosEntradas||{}).forEach(v=>ing+=n(v));
+      Object.values(d.arbitraje||{}).forEach(v=>ing+=n(v));
+      Object.values(d.otros||{}).forEach(v=>ing+=n(v));
+      // Egresos
+      let eg=0;
+      Object.values(d.banco||{}).forEach(v=>eg+=n(v));
+      (d.bancoExtras||[]).forEach(x=>eg+=n(x.monto));
+      Object.values(d.efectivo||{}).forEach(v=>eg+=n(v));
+      (d.efectivoExtras||[]).forEach(x=>eg+=n(x.monto));
+      // Efectivo disponible
+      const efIng = n(d.pagosEntradas?.['Efectivo']) + n(d.arbitraje?.['Efectivo']) + n(d.otros?.['Efectivo']);
+      const efEg  = Object.values(d.efectivo||{}).reduce((s,v)=>s+n(v),0) + (d.efectivoExtras||[]).reduce((s,x)=>s+n(x.monto),0);
+      // Por medio de pago (banco)
+      const medioVals = {};
+      medios.forEach(m => {
+        let tot = 0;
+        tot += n(d.pagosEntradas?.[m.nombre]);
+        tot += n(d.arbitraje?.[m.nombre]);
+        tot += n(d.otros?.[m.nombre]);
+        tot += n(d.banco?.[m.nombre]);
+        (d.bancoExtras||[]).filter(x=>x.item===m.nombre).forEach(x=>tot+=n(x.monto));
+        medioVals[m.nombre] = tot;
+      });
+
+      rows.push({ fx, nFecha, torneo: torneo.nombre, ing, eg, util: ing-eg, efDisp: efIng-efEg, medioVals });
+    });
+  });
+
+  // Ordenar por fecha
+  rows.sort((a,b) => (a.fx||'').localeCompare(b.fx||''));
+
+  const fmt0 = v => 'S/ '+Math.abs(v).toFixed(0);
+  const vc   = v => v>=0?'text-emerald-700':'text-rose-600';
+
+  if(!rows.length) {
+    document.getElementById('repFechasContent').innerHTML =
+      '<p class="text-slate-400 text-sm p-6">Sin fechas registradas para el filtro seleccionado.</p>';
+    return;
+  }
+
+  // Totalizadores
+  let tIng=0,tEg=0,tUtil=0,tEfDisp=0;
+  const tMedios = {};
+  medios.forEach(m=>tMedios[m.nombre]=0);
+  rows.forEach(r=>{ tIng+=r.ing; tEg+=r.eg; tUtil+=r.util; tEfDisp+=r.efDisp; medios.forEach(m=>tMedios[m.nombre]+=(r.medioVals[m.nombre]||0)); });
+
+  const medioCols = medios.map(m=>`<th class="py-2.5 px-3 text-right font-semibold whitespace-nowrap">${m.icon||'💳'} ${m.nombre}</th>`).join('');
+  const medioTots = medios.map(m=>`<td class="py-2 px-3 text-right font-bold">${fmt0(tMedios[m.nombre])}</td>`).join('');
+
+  const tbody = rows.map(r => {
+    const pct = r.ing>0 ? (r.util/r.ing*100).toFixed(0)+'%' : '—';
+    const fechaFmt = r.fx ? new Date(r.fx+'T00:00:00').toLocaleDateString('es-PE',{day:'numeric',month:'short',year:'numeric'}) : `Fecha ${r.nFecha}`;
+    const medioCells = medios.map(m=>`<td class="py-2 px-3 text-right text-slate-600">${r.medioVals[m.nombre]>0?fmt0(r.medioVals[m.nombre]):'—'}</td>`).join('');
+    return `<tr class="border-t border-slate-100 hover:bg-slate-50">
+      <td class="py-2 px-3 font-medium text-slate-700 whitespace-nowrap">${fechaFmt}</td>
+      <td class="py-2 px-3 text-slate-600 whitespace-nowrap">${r.torneo}</td>
+      <td class="py-2 px-3 text-right text-emerald-700 font-semibold">${fmt0(r.ing)}</td>
+      <td class="py-2 px-3 text-right text-rose-600">${fmt0(r.eg)}</td>
+      <td class="py-2 px-3 text-right font-bold ${vc(r.util)}">${fmt0(r.util)}</td>
+      <td class="py-2 px-3 text-right ${vc(r.util)}">${pct}</td>
+      <td class="py-2 px-3 text-right font-semibold ${vc(r.efDisp)}">${fmt0(r.efDisp)}</td>
+      ${medioCells}
+    </tr>`;
+  }).join('');
+
+  const totPct = tIng>0 ? (tUtil/tIng*100).toFixed(0)+'%' : '—';
+
+  document.getElementById('repFechasContent').innerHTML = `
+  <table class="w-full text-xs min-w-max">
+    <thead>
+      <tr class="text-[10px] text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+        <th class="py-2.5 px-3 text-left font-semibold">Fecha</th>
+        <th class="py-2.5 px-3 text-left font-semibold">Torneo</th>
+        <th class="py-2.5 px-3 text-right font-semibold">Ingresos</th>
+        <th class="py-2.5 px-3 text-right font-semibold">Egresos</th>
+        <th class="py-2.5 px-3 text-right font-semibold">Utilidad</th>
+        <th class="py-2.5 px-3 text-right font-semibold">%</th>
+        <th class="py-2.5 px-3 text-right font-semibold bg-amber-50 text-amber-700">Efec. Disponible</th>
+        ${medioCols}
+      </tr>
+    </thead>
+    <tbody>${tbody}</tbody>
+    <tfoot>
+      <tr class="border-t-2 border-slate-300 bg-slate-50 font-bold text-xs">
+        <td class="py-2.5 px-3 text-slate-700" colspan="2">TOTAL (${rows.length} fecha${rows.length!==1?'s':''})</td>
+        <td class="py-2.5 px-3 text-right text-emerald-700">${fmt0(tIng)}</td>
+        <td class="py-2.5 px-3 text-right text-rose-600">${fmt0(tEg)}</td>
+        <td class="py-2.5 px-3 text-right ${vc(tUtil)}">${fmt0(tUtil)}</td>
+        <td class="py-2.5 px-3 text-right ${vc(tUtil)}">${totPct}</td>
+        <td class="py-2.5 px-3 text-right ${vc(tEfDisp)} bg-amber-50">${fmt0(tEfDisp)}</td>
+        ${medioTots}
+      </tr>
+    </tfoot>
+  </table>`;
+}
+
 // ---- REPORTE PAGOS ----
 function initRepPagos() {
   // Poblar select de torneos
@@ -2868,6 +3077,7 @@ function renderScreen(id) {
   else if(id==='p4') renderP4(S.selectedClubId);
   else if(id==='p_cxc') renderCxc();
   else if(id==='p_rep_pagos') initRepPagos();
+  else if(id==='p_rep_fechas') initRepFechas();
   else if(id==='p_seguridad') renderSeguridad();
   else if(id==='p_cfg_medios') renderCfgMedios();
 }
@@ -2988,7 +3198,7 @@ function renderP1Detalle() {
   <div class="flex items-center gap-2 mb-3">
     <p class="text-xs text-slate-400">Esquema de cobro:</p>${esquemaLabel}
   </div>
-  <div class="grid grid-cols-3 gap-3 mb-6">
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
     <div class="bg-white rounded-xl border border-blue-100 p-4 shadow-sm">
       <p class="text-[10px] text-blue-500 mb-1 uppercase font-semibold">Total Inscripciones</p>
       <p class="font-bold mono text-blue-700 text-lg">${fmt(f.totalInsc)}</p>
@@ -3004,6 +3214,7 @@ function renderP1Detalle() {
       <p class="font-bold mono ${f.porRecaudar>0?'text-rose-700':'text-emerald-700'} text-lg">${fmt(f.porRecaudar)}</p>
       <p class="text-[10px] text-slate-300 mt-1">Inscripciones pendientes</p>
     </div>
+    ${(()=>{ const _d=_ifData[t.id]||{}; let _ing=0,_eg=0; Object.values(_d).forEach(fd=>{ Object.values(fd.pagosEntradas||{}).forEach(v=>_ing+=parseFloat(v)||0); Object.values(fd.arbitraje||{}).forEach(v=>_ing+=parseFloat(v)||0); Object.values(fd.otros||{}).forEach(v=>_ing+=parseFloat(v)||0); Object.values(fd.banco||{}).forEach(v=>_eg+=parseFloat(v)||0); (fd.bancoExtras||[]).forEach(x=>_eg+=parseFloat(x.monto)||0); Object.values(fd.efectivo||{}).forEach(v=>_eg+=parseFloat(v)||0); (fd.efectivoExtras||[]).forEach(x=>_eg+=parseFloat(x.monto)||0); }); const _util=_ing-_eg; const nF=Object.keys(_d).length; const uc=_util>=0?'text-emerald-700':'text-rose-700'; const bc=_util>=0?'bg-emerald-50 border-emerald-100':'bg-rose-50 border-rose-100'; return `<div class="${bc} rounded-xl border p-4 shadow-sm cursor-pointer hover:opacity-80 transition" onclick="abrirIngresosFecha(${t.id})"><p class="text-[10px] text-slate-500 mb-1 uppercase font-semibold">Utilidad por Fecha</p><p class="font-bold mono ${uc} text-lg">${fmt(_util)}</p><p class="text-[10px] text-slate-300 mt-1">${nF} fecha${nF!==1?'s':''} registrada${nF!==1?'s':''}</p></div>`; })()}
   </div>` : '';
 
   // Categorías + equipos agrupados
@@ -3176,16 +3387,96 @@ let _ifData = {};
 
 function _ifBlankFecha() {
   return {
-    entradas: {},       // { 'Tickets': {precio,cantidad}, ... }
+    fechaExacta: '',    // 'YYYY-MM-DD'
+    entradas_arr: [],   // [{tipo, label, precio, cantidad}]
     pagosEntradas: {},  // { 'Efectivo': monto, ... }
     arbitraje: {},
-    tales: {},
+    otros: {},
     banco: {},
     efectivo: {},
     inscripciones: {},
     bancoExtras: [],    // [{item, monto}]
     efectivoExtras: []
   };
+}
+
+function guardarFechaExacta() {
+  const n = +document.getElementById('ifNumFecha').value;
+  if(!_ifTorneoId || !n) return;
+  if(!_ifData[_ifTorneoId]?.[n]) return;
+  _ifData[_ifTorneoId][n].fechaExacta = document.getElementById('ifFechaExacta').value;
+  renderIfResumen();
+}
+
+function _calcTotalesFecha(d) {
+  const n = v => parseFloat(v)||0;
+  // Ingresos
+  let ing = 0;
+  Object.values(d.pagosEntradas||{}).forEach(v=>ing+=n(v));
+  Object.values(d.arbitraje||{}).forEach(v=>ing+=n(v));
+  Object.values(d.otros||{}).forEach(v=>ing+=n(v));
+  // Egresos banco
+  let eg = 0;
+  Object.values(d.banco||{}).forEach(v=>eg+=n(v));
+  (d.bancoExtras||[]).forEach(x=>eg+=n(x.monto));
+  Object.values(d.efectivo||{}).forEach(v=>eg+=n(v));
+  (d.efectivoExtras||[]).forEach(x=>eg+=n(x.monto));
+  // Cancha
+  const cancha = n(d.banco?.['Cancha']);
+  // Nro entradas = solo Tickets (primera fila, idx 0)
+  const nroEntradas = n((d.entradas_arr||[])[0]?.cantidad);
+  // Efectivo disponible = efectivo ingresos - efectivo egresos
+  const efIng = n(d.pagosEntradas?.['Efectivo']) + n(d.arbitraje?.['Efectivo']) + n(d.otros?.['Efectivo']);
+  const efEg  = Object.values(d.efectivo||{}).reduce((s,v)=>s+n(v),0) + (d.efectivoExtras||[]).reduce((s,x)=>s+n(x.monto),0);
+  const efDisp = efIng - efEg;
+  return { ing, eg, cancha, nroEntradas, util: ing - eg, efDisp };
+}
+
+function renderIfResumen() {
+  const data = _ifData[_ifTorneoId] || {};
+  const fechas = Object.keys(data).map(Number).sort((a,b)=>a-b);
+  const wrap = document.getElementById('ifResumenWrap');
+  const tbody = document.getElementById('ifResumenBody');
+  const tfoot = document.getElementById('ifResumenFoot');
+  if(!wrap || !tbody || !tfoot) return;
+  if(fechas.length < 1) { wrap.classList.add('hidden'); return; }
+  wrap.classList.remove('hidden');
+
+  let totIng=0, totEg=0, totEfDisp=0;
+  let totNroEnt = 0;
+  tbody.innerHTML = fechas.map(n => {
+    const d = data[n]; if(!d) return '';
+    const t = _calcTotalesFecha(d);
+    totIng+=t.ing; totEg+=t.eg; totNroEnt+=t.nroEntradas; totEfDisp+=t.efDisp;
+    const util = t.util;
+    const pct  = t.ing > 0 ? (util/t.ing*100).toFixed(0)+'%' : '—';
+    const uc   = util>=0 ? 'text-emerald-600' : 'text-rose-600';
+    const fechaLabel = d.fechaExacta
+      ? new Date(d.fechaExacta+'T00:00:00').toLocaleDateString('es-PE',{day:'numeric',month:'short'})
+      : `Fecha ${n}`;
+    return `<tr class="hover:bg-slate-50 cursor-pointer" onclick="document.getElementById('ifNumFecha').value=${n};cargarIngresosFecha()">
+      <td class="py-1.5 px-3 font-medium text-slate-700">${fechaLabel}</td>
+      <td class="py-1.5 px-3 text-right text-emerald-700 font-semibold">S/ ${t.ing.toFixed(0)}</td>
+      <td class="py-1.5 px-3 text-right text-rose-600">S/ ${t.eg.toFixed(0)}</td>
+      <td class="py-1.5 px-3 text-right font-semibold ${uc}">S/ ${Math.abs(util).toFixed(0)}</td>
+      <td class="py-1.5 px-3 text-right ${uc}">${pct}</td>
+      <td class="py-1.5 px-3 text-right">${t.nroEntradas||'—'}</td>
+      <td class="py-1.5 px-3 text-right font-semibold ${t.efDisp>=0?'text-emerald-600':'text-rose-600'}">S/ ${Math.abs(t.efDisp).toFixed(0)}</td>
+    </tr>`;
+  }).join('');
+
+  const totUtil = totIng - totEg;
+  const totPct  = totIng > 0 ? (totUtil/totIng*100).toFixed(0)+'%' : '—';
+  const tuc     = totUtil>=0 ? 'text-emerald-700' : 'text-rose-600';
+  tfoot.innerHTML = `<tr>
+    <td class="py-2 px-3 text-slate-700">TOTAL</td>
+    <td class="py-2 px-3 text-right text-emerald-700">S/ ${totIng.toFixed(0)}</td>
+    <td class="py-2 px-3 text-right text-rose-600">S/ ${totEg.toFixed(0)}</td>
+    <td class="py-2 px-3 text-right ${tuc}">S/ ${Math.abs(totUtil).toFixed(0)}</td>
+    <td class="py-2 px-3 text-right ${tuc}">${totPct}</td>
+    <td class="py-2 px-3 text-right">${totNroEnt}</td>
+    <td class="py-2 px-3 text-right ${totEfDisp>=0?'text-emerald-700':'text-rose-600'}">S/ ${Math.abs(totEfDisp).toFixed(0)}</td>
+  </tr>`;
 }
 
 function abrirIngresosFecha(torneoId) {
@@ -3199,6 +3490,7 @@ function abrirIngresosFecha(torneoId) {
   sel.innerHTML = fechas.map(n=>`<option value="${n}">Fecha ${n}</option>`).join('');
   sel.value = fechas[fechas.length-1];
   cargarIngresosFecha();
+  renderIfResumen();
   openModal('ingresosFechaModal');
 }
 
@@ -3216,8 +3508,16 @@ function agregarNuevaFechaIF() {
 }
 
 function _ifLimpiarForm() {
+  // Limpiar inputs fijos
   document.querySelectorAll('#ingresosFechaModal input[type=number], #ingresosFechaModal input[type=text]').forEach(i=>i.value='');
   document.querySelectorAll('.if-entrada-row .if-total-entrada').forEach(el=>el.textContent='0');
+  // Limpiar filas dinámicas de entradas (conservar solo las fijas data-fixed="1")
+  document.querySelectorAll('#ifEntradasBody .if-entrada-row:not([data-fixed])').forEach(r=>r.remove());
+  // Limpiar medios de pago dinámicos
+  document.getElementById('ifPagosEntExtras').innerHTML = '';
+  document.getElementById('ifArbExtras').innerHTML = '';
+  document.getElementById('ifOtrosExtras').innerHTML = '';
+  // Limpiar extras banco/efectivo
   document.getElementById('ifBancoExtras').innerHTML = '';
   document.getElementById('ifEfectivoExtras').innerHTML = '';
 }
@@ -3226,29 +3526,55 @@ function cargarIngresosFecha() {
   const n = +document.getElementById('ifNumFecha').value;
   const d = _ifData[_ifTorneoId]?.[n];
   _ifLimpiarForm();
+  // Cargar fecha exacta
+  const fxEl = document.getElementById('ifFechaExacta');
+  if(fxEl) fxEl.value = d?.fechaExacta || '';
   if(!d) { recalcIF(); return; }
 
-  // Entradas — cargar por índice (fila 0=Tickets fija, 1 y 2 con label editable)
-  const entRows = document.querySelectorAll('#ifEntradasBody .if-entrada-row');
-  const entArr  = d.entradas_arr || [];   // [{label, precio, cantidad}]
-  entRows.forEach((row, i) => {
+  // Entradas — filas fijas (0=Tickets, 1=Estacionamiento)
+  const fixedRows = document.querySelectorAll('#ifEntradasBody .if-entrada-row[data-fixed]');
+  const entArr = d.entradas_arr || [];
+  fixedRows.forEach((row, i) => {
     const e = entArr[i] || {};
     const labelEl = row.querySelector('.if-label-entrada');
     if(labelEl) labelEl.value = e.label || '';
     row.querySelector('.if-precio').value   = e.precio   || '';
     row.querySelector('.if-cantidad').value = e.cantidad || '';
-    const tot = (e.precio||0) * (e.cantidad||0);
-    row.querySelector('.if-total-entrada').textContent = tot || '0';
+    row.querySelector('.if-total-entrada').textContent = ((e.precio||0)*(e.cantidad||0)) || '0';
+  });
+  // Filas dinámicas de entradas (índices 2+)
+  entArr.slice(fixedRows.length).forEach(e => {
+    addIfEntradaRow(e.label||'', e.precio||'', e.cantidad||'');
   });
 
-  // Pagos entradas
-  document.querySelectorAll('[data-seccion="entradas"].if-pago-medio').forEach(inp => {
-    inp.value = d.pagosEntradas?.[inp.dataset.medio] || '';
+  // Pagos entradas — Efectivo fijo
+  const efEnt = document.querySelector('[data-seccion="entradas"][data-medio="Efectivo"]');
+  if(efEnt) efEnt.value = d.pagosEntradas?.['Efectivo'] || '';
+  // Medios dinámicos de entradas
+  Object.entries(d.pagosEntradas||{}).forEach(([medio, monto]) => {
+    if(medio === 'Efectivo') return;
+    const wrap = document.getElementById('ifPagosEntExtras');
+    _addMedioRow(wrap, 'entradas', medio, monto);
   });
 
-  // Arbitraje
-  document.querySelectorAll('[data-seccion="arbitraje"].if-pago-medio').forEach(inp => {
-    inp.value = d.arbitraje?.[inp.dataset.medio] || '';
+  // Arbitraje — Efectivo fijo
+  const efArb = document.querySelector('[data-seccion="arbitraje"][data-medio="Efectivo"]');
+  if(efArb) efArb.value = d.arbitraje?.['Efectivo'] || '';
+  // Medios dinámicos de arbitraje
+  Object.entries(d.arbitraje||{}).forEach(([medio, monto]) => {
+    if(medio === 'Efectivo') return;
+    const wrap = document.getElementById('ifArbExtras');
+    _addMedioRow(wrap, 'arbitraje', medio, monto);
+  });
+
+  // Otros ingresos — Efectivo fijo
+  const efOtros = document.querySelector('[data-seccion="otros"][data-medio="Efectivo"]');
+  if(efOtros) efOtros.value = d.otros?.['Efectivo'] || '';
+  // Medios dinámicos de otros
+  Object.entries(d.otros||{}).forEach(([medio, monto]) => {
+    if(medio === 'Efectivo') return;
+    const wrap = document.getElementById('ifOtrosExtras');
+    _addMedioRow(wrap, 'otros', medio, monto);
   });
 
   // Banco fijos
@@ -3267,9 +3593,6 @@ function cargarIngresosFecha() {
   document.getElementById('ifEfectivoExtras').innerHTML = '';
   (d.efectivoExtras||[]).forEach(x => addIfEgresoExtra('efectivo', x.item, x.monto));
 
-  // Inscripciones
-  document.getElementById('ifInscBanco').value    = d.inscripciones?.banco    || '';
-  document.getElementById('ifInscEfectivo').value = d.inscripciones?.efectivo || '';
 
   recalcIF();
 }
@@ -3292,36 +3615,62 @@ function recalcIF() {
   });
   document.getElementById('ifTotalVenta').textContent = 'S/ '+totalVenta.toFixed(0);
 
-  // Por medio: entradas + arbitraje
-  const medios = ['Efectivo','YAPE','PLIN','POS'];
+  // Cuadre entradas vs detalle pagos
+  const totalPagosEnt = [...document.querySelectorAll('[data-seccion="entradas"].if-pago-medio')].reduce((s,i)=>s+(parseFloat(i.value)||0),0);
+  const difEnt = totalVenta - totalPagosEnt;
+  const difEntEl = document.getElementById('ifDifEntradas');
+  if(difEntEl) {
+    if(Math.abs(difEnt) > 0.01) {
+      difEntEl.textContent = `⚠ Diferencia: S/ ${Math.abs(difEnt).toFixed(0)} (${difEnt > 0 ? 'faltan' : 'sobran'} en pagos)`;
+      difEntEl.classList.remove('hidden');
+    } else {
+      difEntEl.classList.add('hidden');
+    }
+  }
+
+  // Por medio: entradas + arbitraje (dinámico)
   const entMedio = {}, arbMedio = {};
-  medios.forEach(m => { entMedio[m] = 0; arbMedio[m] = 0; });
+  const mediosOrden = []; // orden de aparición
 
   document.querySelectorAll('[data-seccion="entradas"].if-pago-medio').forEach(inp => {
-    entMedio[inp.dataset.medio] = (entMedio[inp.dataset.medio]||0) + n(inp.value);
+    const m = inp.dataset.medio;
+    if(!mediosOrden.includes(m)) mediosOrden.push(m);
+    entMedio[m] = (entMedio[m]||0) + n(inp.value);
   });
 
   let totalArb = 0;
   document.querySelectorAll('[data-seccion="arbitraje"].if-pago-medio').forEach(inp => {
-    const v = n(inp.value); totalArb += v;
-    arbMedio[inp.dataset.medio] = (arbMedio[inp.dataset.medio]||0) + v;
+    const m = inp.dataset.medio; const v = n(inp.value); totalArb += v;
+    if(!mediosOrden.includes(m)) mediosOrden.push(m);
+    arbMedio[m] = (arbMedio[m]||0) + v;
   });
   document.getElementById('ifTotalArbitraje').textContent = 'S/ '+totalArb.toFixed(0);
 
-  let totalIng = 0;
-  medios.forEach(m => {
-    const tot = (entMedio[m]||0) + (arbMedio[m]||0);
-    totalIng += tot;
-    const setEl = (id, v) => { const el = document.getElementById(id); if(el) el.textContent = v || '—'; };
-    setEl('ifIng_ent_'+m, entMedio[m] ? entMedio[m].toFixed(0) : '—');
-    setEl('ifIng_arb_'+m, arbMedio[m] ? arbMedio[m].toFixed(0) : '—');
-    setEl('ifIngEfectivo'.replace('Efectivo', m) || 'ifIng_'+m, 'S/ '+tot.toFixed(0));
+  const otrosMedio = {};
+  let totalOtros = 0;
+  document.querySelectorAll('[data-seccion="otros"].if-pago-medio').forEach(inp => {
+    const m = inp.dataset.medio; const v = n(inp.value); totalOtros += v;
+    if(!mediosOrden.includes(m)) mediosOrden.push(m);
+    otrosMedio[m] = (otrosMedio[m]||0) + v;
   });
-  // Actualizar totales por medio en columna Total
-  document.getElementById('ifIngEfectivo').textContent = 'S/ '+((entMedio['Efectivo']||0)+(arbMedio['Efectivo']||0)).toFixed(0);
-  document.getElementById('ifIngYape').textContent     = 'S/ '+((entMedio['YAPE']||0)+(arbMedio['YAPE']||0)).toFixed(0);
-  document.getElementById('ifIngPlin').textContent     = 'S/ '+((entMedio['PLIN']||0)+(arbMedio['PLIN']||0)).toFixed(0);
-  document.getElementById('ifIngPos').textContent      = 'S/ '+((entMedio['POS']||0)+(arbMedio['POS']||0)).toFixed(0);
+  const otrosEl = document.getElementById('ifTotalOtros');
+  if(otrosEl) otrosEl.textContent = 'S/ '+totalOtros.toFixed(0);
+
+  let totalIng = 0;
+  const ingTbody = document.getElementById('ifTotalIngresosBody');
+  if(ingTbody) {
+    ingTbody.innerHTML = mediosOrden.map(m => {
+      const e = entMedio[m]||0, a = arbMedio[m]||0, o = otrosMedio[m]||0, tot = e + a + o;
+      totalIng += tot;
+      return `<tr class="border-t border-slate-50">
+        <td class="py-1 text-slate-500">${m}</td>
+        <td class="py-1 text-right">${e ? e.toFixed(0) : '—'}</td>
+        <td class="py-1 text-right">${a ? a.toFixed(0) : '—'}</td>
+        <td class="py-1 text-right">${o ? o.toFixed(0) : '—'}</td>
+        <td class="py-1 text-right font-semibold">S/ ${tot.toFixed(0)}</td>
+      </tr>`;
+    }).join('');
+  }
   document.getElementById('ifTotalIngresos').textContent = 'S/ '+totalIng.toFixed(0);
 
   // Egresos — recopilar filas con banco/efectivo por concepto
@@ -3375,9 +3724,6 @@ function recalcIF() {
   const totalEg = totalBanco + totalEfec;
   document.getElementById('ifTotalEgresos').textContent = 'S/ '+totalEg.toFixed(0);
 
-  // Inscripciones
-  const totalInsc = n(document.getElementById('ifInscBanco').value) + n(document.getElementById('ifInscEfectivo').value);
-  document.getElementById('ifTotalInsc').textContent = 'S/ '+totalInsc.toFixed(0);
 
   // Utilidad
   const utilidad = totalIng - totalEg;
@@ -3386,6 +3732,76 @@ function recalcIF() {
   const utilEl = document.getElementById('ifUtilidad');
   utilEl.textContent = 'S/ '+Math.abs(utilidad).toFixed(0) + (utilidad < 0 ? ' ⚠' : '');
   utilEl.className = utilidad >= 0 ? 'text-sm font-bold text-emerald-300' : 'text-sm font-bold text-rose-300';
+
+  // Efectivo disponible
+  const efIng = [...document.querySelectorAll('.if-pago-medio[data-medio="Efectivo"]')]
+    .reduce((s,i)=>s+(parseFloat(i.value)||0),0);
+  const efEg  = [...document.querySelectorAll('.if-egreso[data-seccion="efectivo"]')]
+    .reduce((s,i)=>s+(parseFloat(i.value)||0),0)
+    + [...document.querySelectorAll('#ifEfecExtras .if-egreso-extra-monto')]
+    .reduce((s,i)=>s+(parseFloat(i.value)||0),0);
+  const efDisp = efIng - efEg;
+  document.getElementById('ifEfectivoIng').textContent = 'S/ '+efIng.toFixed(0);
+  document.getElementById('ifEfectivoEg').textContent  = 'S/ '+efEg.toFixed(0);
+  const efDispEl = document.getElementById('ifEfectivoDisp');
+  if(efDispEl){
+    efDispEl.textContent = 'S/ '+Math.abs(efDisp).toFixed(0)+(efDisp<0?' ⚠':'');
+    efDispEl.className = efDisp>=0 ? 'text-sm font-bold text-white' : 'text-sm font-bold text-rose-300';
+  }
+}
+
+function addIfEntradaRow(label='', precio='', cantidad='') {
+  const tbody = document.getElementById('ifEntradasBody');
+  const tr = document.createElement('tr');
+  tr.className = 'if-entrada-row border-t border-slate-100';
+  const tot = precio && cantidad ? (+precio * +cantidad).toFixed(0) : '0';
+  tr.innerHTML = `
+    <td class="px-2 py-1">
+      <input type="text" placeholder="Concepto" value="${label}" class="if-label-entrada w-full border border-slate-200 rounded px-1 py-0.5 text-xs outline-none focus:ring-1 focus:ring-emerald-300 text-slate-600">
+    </td>
+    <td class="px-2 py-1"><input type="number" min="0" step="0.01" placeholder="0" value="${precio||''}" class="if-precio w-16 text-right border border-slate-200 rounded px-1 py-0.5 outline-none focus:ring-1 focus:ring-emerald-300 text-xs" oninput="recalcEntrada(this)"></td>
+    <td class="px-2 py-1"><input type="number" min="0" step="1" placeholder="0" value="${cantidad||''}" class="if-cantidad w-16 text-right border border-slate-200 rounded px-1 py-0.5 outline-none focus:ring-1 focus:ring-emerald-300 text-xs" oninput="recalcEntrada(this)"></td>
+    <td class="px-2 py-1 text-right font-semibold if-total-entrada text-slate-700">${tot}</td>
+    <td class="px-1 py-1"><button onclick="this.closest('tr').remove();recalcIF()" class="text-slate-300 hover:text-rose-500 text-xs">✕</button></td>`;
+  tbody.appendChild(tr);
+  recalcIF();
+}
+
+function addIfMedioPago(seccion) {
+  const wrapId = seccion === 'entradas' ? 'ifPagosEntExtras' : seccion === 'arbitraje' ? 'ifArbExtras' : 'ifOtrosExtras';
+  const wrap = document.getElementById(wrapId);
+  const usados = new Set(['Efectivo']);
+  wrap.querySelectorAll('[data-medio]').forEach(el => usados.add(el.dataset.medio));
+  const disponibles = (S.mediosPago||[]).filter(m => +m.orgId===+myOrgId() && m.activo && m.paraFechas && !usados.has(m.nombre));
+  if(!disponibles.length) { toast('No hay más medios de pago disponibles', 'info'); return; }
+  const sel = document.createElement('div');
+  sel.className = 'flex items-center gap-2';
+  sel.innerHTML = `
+    <select class="flex-1 border border-slate-200 rounded px-2 py-1 text-xs outline-none bg-white" onchange="_confirmIfMedioPago('${seccion}',this)">
+      <option value="">— Seleccionar medio —</option>
+      ${disponibles.map(m=>`<option value="${m.nombre}">${m.icon||''} ${m.nombre}</option>`).join('')}
+    </select>
+    <button onclick="this.closest('div').remove()" class="text-slate-300 hover:text-rose-500 text-xs shrink-0">✕</button>`;
+  wrap.appendChild(sel);
+}
+
+function _confirmIfMedioPago(seccion, select) {
+  const nombre = select.value; if(!nombre) return;
+  const div = select.closest('div');
+  const wrapId = seccion === 'entradas' ? 'ifPagosEntExtras' : seccion === 'arbitraje' ? 'ifArbExtras' : 'ifOtrosExtras';
+  div.remove();
+  _addMedioRow(document.getElementById(wrapId), seccion, nombre, '');
+  recalcIF();
+}
+
+function _addMedioRow(wrap, seccion, nombre, monto) {
+  const div = document.createElement('div');
+  div.className = 'flex items-center gap-2';
+  div.innerHTML = `
+    <span class="text-xs text-slate-500 w-24 shrink-0">${nombre}</span>
+    <input type="number" min="0" step="0.01" placeholder="0" value="${monto||''}" data-seccion="${seccion}" data-medio="${nombre}" class="if-pago-medio flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-emerald-300" oninput="recalcIF()">
+    <button onclick="this.closest('div').remove();recalcIF()" class="text-slate-300 hover:text-rose-500 text-xs shrink-0">✕</button>`;
+  wrap.appendChild(div);
 }
 
 function addIfEgresoExtra(seccion, item='', monto='') {
@@ -3402,18 +3818,39 @@ function addIfEgresoExtra(seccion, item='', monto='') {
 function guardarIngresosFecha() {
   const n = +document.getElementById('ifNumFecha').value;
   if(!_ifTorneoId) return;
+  const fxEl = document.getElementById('ifFechaExacta');
+  if(!fxEl?.value) {
+    fxEl?.classList.add('ring-2','ring-rose-400','border-rose-400');
+    toast('⚠ La fecha exacta es obligatoria', 'error');
+    fxEl?.focus();
+    return;
+  }
+  fxEl.classList.remove('ring-2','ring-rose-400','border-rose-400');
   const d = _ifBlankFecha();
   const num = v => parseFloat(v) || 0;
 
-  // Entradas como array (soporta label editable)
+  // Entradas como array (fijas + dinámicas)
   d.entradas_arr = [];
-  document.querySelectorAll('#ifEntradasBody .if-entrada-row').forEach(row => {
+  document.querySelectorAll('#ifEntradasBody .if-entrada-row').forEach((row, i) => {
     const labelEl = row.querySelector('.if-label-entrada');
-    const label   = labelEl ? labelEl.value.trim() : 'Tickets';
-    d.entradas_arr.push({ label: label || 'Tickets', precio: num(row.querySelector('.if-precio').value), cantidad: num(row.querySelector('.if-cantidad').value) });
+    const tipoEl  = row.querySelector('.if-tipo-entrada');
+    const label   = labelEl ? labelEl.value.trim() : (i === 0 ? 'Tickets' : 'Estacionamiento');
+    const tipo    = tipoEl  ? tipoEl.value : (i === 0 ? 'Tickets' : 'Estacionamiento');
+    d.entradas_arr.push({ tipo, label: label || tipo, precio: num(row.querySelector('.if-precio').value), cantidad: num(row.querySelector('.if-cantidad').value) });
   });
-  document.querySelectorAll('[data-seccion="entradas"].if-pago-medio').forEach(inp => { d.pagosEntradas[inp.dataset.medio] = num(inp.value); });
-  document.querySelectorAll('[data-seccion="arbitraje"].if-pago-medio').forEach(inp => { d.arbitraje[inp.dataset.medio] = num(inp.value); });
+  // Pagos entradas y arbitraje — guarda Efectivo siempre; extras solo si monto > 0
+  document.querySelectorAll('[data-seccion="entradas"].if-pago-medio').forEach(inp => {
+    const v = num(inp.value);
+    if(inp.dataset.medio === 'Efectivo' || v > 0) d.pagosEntradas[inp.dataset.medio] = v;
+  });
+  document.querySelectorAll('[data-seccion="arbitraje"].if-pago-medio').forEach(inp => {
+    const v = num(inp.value);
+    if(inp.dataset.medio === 'Efectivo' || v > 0) d.arbitraje[inp.dataset.medio] = v;
+  });
+  document.querySelectorAll('[data-seccion="otros"].if-pago-medio').forEach(inp => {
+    const v = num(inp.value);
+    if(inp.dataset.medio === 'Efectivo' || v > 0) d.otros[inp.dataset.medio] = v;
+  });
   document.querySelectorAll('[data-seccion="banco"].if-egreso').forEach(inp => { d.banco[inp.dataset.item] = num(inp.value); });
   document.querySelectorAll('[data-seccion="efectivo"].if-egreso').forEach(inp => { d.efectivo[inp.dataset.item] = num(inp.value); });
 
@@ -3430,8 +3867,10 @@ function guardarIngresosFecha() {
     if(item) d.efectivoExtras.push({item, monto});
   });
 
-  d.inscripciones = { banco: num(document.getElementById('ifInscBanco').value), efectivo: num(document.getElementById('ifInscEfectivo').value) };
+  d.fechaExacta = document.getElementById('ifFechaExacta')?.value || '';
   _ifData[_ifTorneoId][n] = d;
+  renderIfResumen();
+  renderP1Detalle();
   toast(`Fecha ${n} guardada ✓`, 'success');
 }
 
@@ -3799,10 +4238,8 @@ function kpiBlock(label, sublabel, kpi, color, torneoId) {
         <div class="font-bold mono text-blue-700">${fmt(kpi.totalInsc)}</div>
         <div class="text-[10px] text-slate-300 mt-0.5">${nEq!==''?nEq+' equipos':''}</div>
       </div>
-      <div class="bg-emerald-50 rounded-lg p-3">
-        <div class="text-[10px] text-emerald-600 mb-1 uppercase font-semibold">Total Pagado</div>
-        <div class="font-bold mono text-emerald-700">${fmt(kpi.recaudado)}</div>
-        <div class="text-[10px] text-slate-300 mt-0.5">Aprobado</div>
+      <div class="${(()=>{let i=0,e=0;Object.values(_ifData).forEach(td=>Object.values(td).forEach(fd=>{Object.values(fd.pagosEntradas||{}).forEach(v=>i+=parseFloat(v)||0);Object.values(fd.arbitraje||{}).forEach(v=>i+=parseFloat(v)||0);Object.values(fd.otros||{}).forEach(v=>i+=parseFloat(v)||0);Object.values(fd.banco||{}).forEach(v=>e+=parseFloat(v)||0);(fd.bancoExtras||[]).forEach(x=>e+=parseFloat(x.monto)||0);Object.values(fd.efectivo||{}).forEach(v=>e+=parseFloat(v)||0);(fd.efectivoExtras||[]).forEach(x=>e+=parseFloat(x.monto)||0);}));const u=i-e;return u>=0?'bg-emerald-50':'bg-rose-50';})()}} rounded-lg p-3">
+        ${(()=>{let i=0,e=0;Object.values(_ifData).forEach(td=>Object.values(td).forEach(fd=>{Object.values(fd.pagosEntradas||{}).forEach(v=>i+=parseFloat(v)||0);Object.values(fd.arbitraje||{}).forEach(v=>i+=parseFloat(v)||0);Object.values(fd.otros||{}).forEach(v=>i+=parseFloat(v)||0);Object.values(fd.banco||{}).forEach(v=>e+=parseFloat(v)||0);(fd.bancoExtras||[]).forEach(x=>e+=parseFloat(x.monto)||0);Object.values(fd.efectivo||{}).forEach(v=>e+=parseFloat(v)||0);(fd.efectivoExtras||[]).forEach(x=>e+=parseFloat(x.monto)||0);}));const u=i-e;const uc=u>=0?'text-emerald-600':'text-rose-600';const uv=u>=0?'text-emerald-700':'text-rose-700';return `<div class="text-[10px] ${uc} mb-1 uppercase font-semibold">Utilidad por Fecha</div><div class="font-bold mono ${uv}">${fmt(u)}</div><div class="text-[10px] text-slate-300 mt-0.5">Todas las fechas</div>`;})()}
       </div>
       <div class="${kpi.porRecaudar>0?'bg-rose-50':'bg-emerald-50'} rounded-lg p-3">
         <div class="text-[10px] ${kpi.porRecaudar>0?'text-rose-600':'text-emerald-600'} mb-1 uppercase font-semibold">Por Recaudar</div>
@@ -3861,10 +4298,7 @@ function renderTorneosList() {
           <div class="text-[10px] text-blue-500 mb-0.5 font-semibold uppercase">Total Inscripciones</div>
           <div class="font-bold mono text-blue-700 text-xs">${fmt(f.totalInsc)}</div>
         </div>
-        <div class="bg-emerald-50 rounded-lg px-3 py-2">
-          <div class="text-[10px] text-emerald-600 mb-0.5 font-semibold uppercase">Total Pagado</div>
-          <div class="font-bold mono text-emerald-700 text-xs">${fmt(f.recaudado)}</div>
-        </div>
+        ${(()=>{const _d=_ifData[t.id]||{};let i=0,e=0;Object.values(_d).forEach(fd=>{Object.values(fd.pagosEntradas||{}).forEach(v=>i+=parseFloat(v)||0);Object.values(fd.arbitraje||{}).forEach(v=>i+=parseFloat(v)||0);Object.values(fd.otros||{}).forEach(v=>i+=parseFloat(v)||0);Object.values(fd.banco||{}).forEach(v=>e+=parseFloat(v)||0);(fd.bancoExtras||[]).forEach(x=>e+=parseFloat(x.monto)||0);Object.values(fd.efectivo||{}).forEach(v=>e+=parseFloat(v)||0);(fd.efectivoExtras||[]).forEach(x=>e+=parseFloat(x.monto)||0);});const u=i-e;const uc=u>=0?'text-emerald-600':'text-rose-600';const uv=u>=0?'text-emerald-700':'text-rose-700';const bg=u>=0?'bg-emerald-50':'bg-rose-50';return `<div class="${bg} rounded-lg px-3 py-2"><div class="text-[10px] ${uc} mb-0.5 font-semibold uppercase">Utilidad Fechas</div><div class="font-bold mono ${uv} text-xs">${fmt(u)}</div></div>`;})()}
         <div class="${f.porRecaudar>0?'bg-rose-50':'bg-emerald-50'} rounded-lg px-3 py-2">
           <div class="text-[10px] ${f.porRecaudar>0?'text-rose-600':'text-emerald-600'} mb-0.5 font-semibold uppercase">Por Recaudar</div>
           <div class="font-bold mono ${f.porRecaudar>0?'text-rose-700':'text-emerald-700'} text-xs">${fmt(f.porRecaudar)}</div>
@@ -4242,7 +4676,7 @@ function removeVoucher() {
 
 // ---- REGISTRAR PAGO ----
 function renderMediosBtns() {
-  const activos = myMediosPago().filter(m=>m.activo);
+  const activos = myMediosPago().filter(m=>m.activo && m.paraInscripciones);
   const primero = activos[0];
   S.medioSeleccionado = primero?.nombre || null;
   const cont = document.getElementById('mediosBtns');
@@ -4542,6 +4976,12 @@ function renderP4(id) {
 // ---- MEDIOS DE PAGO ----
 const TIPO_LABEL = {transferencia:'Transferencia bancaria', billetera:'Billetera digital', efectivo:'Efectivo', otro:'Otro'};
 
+function _chk(val, fn) {
+  return `<button onclick="${fn}" class="w-5 h-5 rounded border-2 flex items-center justify-center mx-auto transition ${val ? 'bg-[#18324F] border-[#18324F]' : 'bg-white border-slate-300 hover:border-slate-400'}">
+    ${val ? '<svg class="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>' : ''}
+  </button>`;
+}
+
 function renderCfgMedios() {
   const filas = myMediosPago().map(m => `
     <tr class="hover:bg-slate-50">
@@ -4553,6 +4993,8 @@ function renderCfgMedios() {
           ${m.activo?'Activo':'Inactivo'}
         </span>
       </td>
+      <td class="py-3 px-4 text-center">${_chk(m.paraInscripciones, `toggleMedioFlag(${m.id},'paraInscripciones')`)}</td>
+      <td class="py-3 px-4 text-center">${_chk(m.paraFechas, `toggleMedioFlag(${m.id},'paraFechas')`)}</td>
       <td class="py-3 px-4 text-center">
         <div class="flex items-center justify-center gap-3">
           <button onclick="editarMedio(${m.id})" class="text-xs font-semibold text-[#4F86C6] hover:underline">Editar</button>
@@ -4570,10 +5012,32 @@ function renderCfgMedios() {
         <th class="py-3 px-4 font-semibold">Nombre</th>
         <th class="py-3 px-4 font-semibold">Tipo</th>
         <th class="py-3 px-4 font-semibold text-center">Estado</th>
+        <th class="py-3 px-4 font-semibold text-center">Inscripciones</th>
+        <th class="py-3 px-4 font-semibold text-center">Ing. por Fecha</th>
         <th class="py-3 px-4 font-semibold text-center">Acciones</th>
       </tr></thead>
-      <tbody class="divide-y divide-slate-100">${filas||'<tr><td colspan="5" class="py-8 text-center text-slate-400 text-sm">Sin medios de pago configurados.</td></tr>'}</tbody>
+      <tbody class="divide-y divide-slate-100">${filas||'<tr><td colspan="7" class="py-8 text-center text-slate-400 text-sm">Sin medios de pago configurados.</td></tr>'}</tbody>
     </table>`;
+}
+
+function toggleMedioFlag(id, flag) {
+  const m = S.mediosPago.find(x=>x.id===id); if(!m) return;
+  m[flag] = !m[flag];
+  renderCfgMedios();
+}
+
+async function guardarMediosFlags() {
+  const medios = (S.mediosPago||[]).filter(m=>+m.orgId===+myOrgId());
+  if(sbOn()) {
+    try {
+      await Promise.all(medios.map(m =>
+        SB().data.guardarMedio({para_inscripciones: m.paraInscripciones, para_fechas: m.paraFechas}, m.id)
+      ));
+      toast('Configuración guardada ✓', 'success');
+    } catch(e) { toast('⚠ '+e.message, 'error'); }
+  } else {
+    toast('Configuración guardada ✓', 'success');
+  }
 }
 
 function editarMedio(id) {
@@ -4601,10 +5065,10 @@ function guardarMedio() {
     if(myMediosPago().find(m=>m.nombre.toLowerCase()===nombre.toLowerCase())){
       toast('Ya existe un medio con ese nombre.','error'); return;
     }
-    const localM = {id:S.nextId++, nombre, tipo, icon, activo:true, orgId: myOrgId()};
+    const localM = {id:S.nextId++, nombre, tipo, icon, activo:true, orgId: myOrgId(), paraInscripciones:true, paraFechas:true};
     S.mediosPago.push(localM);
     toast(`"${nombre}" agregado ✓`,'success');
-    if(sbOn()) SB().data.guardarMedio({nombre,tipo,icon,activo:true,org_id:myOrgId()},null)
+    if(sbOn()) SB().data.guardarMedio({nombre,tipo,icon,activo:true,org_id:myOrgId(),para_inscripciones:true,para_fechas:true},null)
       .then(m=>{ localM.id=m.id; }).catch(e=>toast('⚠ '+e.message,'error'));
   }
   closeModal('cfgMedioModal');
@@ -5433,7 +5897,7 @@ async function sbHydrate(){
   S.usuarios       = (d.profiles||[]).map(_mapUser);
   S.categorias     = (d.categorias||[]).map(c=>({id:c.id,nombre:c.nombre,aforo:c.aforo,fechas:c.fechas,orgId:c.org_id}));
   S.complejos      = (d.complejos||[]).map(c=>({id:c.id,nombre:c.nombre,direccion:c.direccion,distrito:c.distrito,orgId:c.org_id}));
-  S.mediosPago     = (d.medios_pago||[]).map(m=>({id:m.id,nombre:m.nombre,tipo:m.tipo,icon:m.icon,activo:m.activo,orgId:m.org_id}));
+  S.mediosPago     = (d.medios_pago||[]).map(m=>({id:m.id,nombre:m.nombre,tipo:m.tipo,icon:m.icon,activo:m.activo,orgId:m.org_id,paraInscripciones:m.para_inscripciones!==false,paraFechas:m.para_fechas!==false}));
   S.clubes         = (d.clubes||[]).map(c=>({id:c.id,nombre:c.nombre,delegado:c.delegado,telefono:c.telefono,provincia:c.provincia,orgId:c.org_id}));
   const catsByT = {};
   (d.torneo_categorias||[]).forEach(tc=>{ (catsByT[tc.torneo_id] = catsByT[tc.torneo_id]||[]).push({catId:tc.cat_id,nombre:catNombre(tc.cat_id),modalidad:tc.modalidad,aforo:tc.aforo,fechas:tc.fechas,inscripcion:_num(tc.inscripcion),arbitraje:_num(tc.arbitraje)}); });
@@ -5691,7 +6155,12 @@ function runTests(){
     S.equipos = [];
     S.pagos = [];
     S.notifications = [];
-    S.mediosPago = [{id:9601,nombre:'BCP',tipo:'transferencia',activo:true,icon:'🏦',orgId:901}];
+    S.mediosPago = [
+      {id:9601,nombre:'BCP',tipo:'transferencia',activo:true,icon:'🏦',orgId:901},
+      {id:9602,nombre:'YAPE',tipo:'billetera',activo:true,icon:'💜',orgId:901},
+      {id:9603,nombre:'PLIN',tipo:'billetera',activo:true,icon:'🟢',orgId:901},
+      {id:9604,nombre:'POS',tipo:'tarjeta',activo:true,icon:'💳',orgId:901},
+    ];
     S.organizacionActual={id:901}; S.role='tesorero';
     const tA=S.torneos[0];
 
