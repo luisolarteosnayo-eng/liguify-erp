@@ -157,8 +157,8 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
       if (error) throw error; return data;
     },
     async actualizarEquipo(id, campos) {
-      const { data, error } = await sb.from('equipos').update(campos).eq('id', id).select().single();
-      if (error) throw error; return data;
+      const { error } = await sb.from('equipos').update(campos).eq('id', id);
+      if (error) throw error;
     },
     async subirVoucher(file, orgId) {
       const path = `${orgId}/${Date.now()}_${file.name}`;
@@ -5775,7 +5775,8 @@ function ecInactivar(equipoId) {
   toast('Equipo inactivado.');
   if(sbOn()) {
     SB().data.actualizarEquipo(equipoId, {estado:'inactivo'})
-      .catch(e=>toast('⚠ Error al guardar: '+e.message,'error'));
+      .then(()=>toast('Equipo inactivado ✓', 'success'))
+      .catch(err=>{ e.estado='activo'; renderEstadoCuenta(); renderP1Detalle(); toast('⚠ Error al guardar: '+err.message,'error'); });
   }
 }
 
