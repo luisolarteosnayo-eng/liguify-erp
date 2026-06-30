@@ -83,6 +83,17 @@ create table if not exists public.clubes (
   org_id    bigint not null references public.organizaciones(id) on delete cascade
 );
 
+-- Conceptos de ingresos/egresos del formulario de fechas (Tickets, Cancha, Arbitraje, ...)
+create table if not exists public.conceptos (
+  id          bigint generated always as identity primary key,
+  nombre      text not null,
+  tipo        text not null default 'egreso' check (tipo in ('ingreso','egreso','ambos')),
+  fuente      text not null default 'ambos'  check (fuente in ('banco','efectivo','ambos')),
+  por_defecto boolean not null default true,   -- aparece siempre en el formulario
+  activo      boolean not null default true,
+  org_id      bigint not null references public.organizaciones(id) on delete cascade
+);
+
 -- ---------------------------------------------------------------------------
 -- 4. TORNEOS y su configuración de categorías
 -- ---------------------------------------------------------------------------
@@ -201,6 +212,7 @@ alter table public.categorias        enable row level security;
 alter table public.complejos         enable row level security;
 alter table public.medios_pago       enable row level security;
 alter table public.clubes            enable row level security;
+alter table public.conceptos         enable row level security;
 alter table public.torneos           enable row level security;
 alter table public.torneo_categorias enable row level security;
 alter table public.equipos           enable row level security;
@@ -241,7 +253,7 @@ do $$
 declare t text;
 begin
   foreach t in array array[
-    'categorias','complejos','medios_pago','clubes',
+    'categorias','complejos','medios_pago','clubes','conceptos',
     'torneos','torneo_categorias','equipos','pagos','pago_log'
   ] loop
     execute format($f$
