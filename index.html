@@ -5765,7 +5765,12 @@ function ecInactivar(equipoId) {
   if(!confirm('¿Inactivar este equipo? Se conserva el historial de pagos.')) return;
   e.estado = 'inactivo';
   renderEstadoCuenta();
+  renderP1Detalle();
   toast('Equipo inactivado.');
+  if(sbOn()) {
+    SB().data.guardarEquipo({estado:'inactivo'}, equipoId)
+      .catch(e=>toast('⚠ Error al guardar: '+e.message,'error'));
+  }
 }
 
 function abrirAgregarCatEC() {
