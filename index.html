@@ -5889,7 +5889,7 @@ function addCategoria() {
   const arb    = parseFloat(document.getElementById('acArb').value)||0;
   const fechas = parseInt(document.getElementById('acFechas').value)||6;
   if(!clubId){ toast('Selecciona un club.'); return; }
-  if(insc<=0){ toast('El monto de inscripción es obligatorio.'); return; }
+  if(insc<0){ toast('El monto de inscripción no puede ser negativo.'); return; }
   const torneoId = S.torneoSelId;
   const existe = S.equipos.find(e=>
     +e.torneoId===+torneoId && e.clubId===clubId && e.catId===catId &&
@@ -6101,9 +6101,11 @@ function clubACFilter(el) {
   const matches = myClubs().filter(c => !q || c.nombre.toLowerCase().includes(q)).slice(0, 12);
   const drop = document.getElementById('clubACDrop');
   const r = el.getBoundingClientRect();
-  drop.style.top    = (r.bottom + window.scrollY + 2) + 'px';
-  drop.style.left   = (r.left + window.scrollX) + 'px';
+  drop.style.position = 'fixed';
+  drop.style.top    = (r.bottom + 2) + 'px';
+  drop.style.left   = r.left + 'px';
   drop.style.width  = r.width + 'px';
+  drop.style.zIndex = '9999';
 
   const hi = t => q ? t.replace(new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi'),
     '<mark class="bg-yellow-100 not-italic">$1</mark>') : t;
