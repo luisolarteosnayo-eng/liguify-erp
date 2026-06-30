@@ -3111,7 +3111,7 @@ function renderTorneosOperativo() {
   function tarjetaTorneo(t) {
     const cats = (t.cats||[]).map(tc=>{
       const cat    = S.categorias.find(c=>c.id===tc.catId);
-      const inscritos = myEquipos().filter(e=>e.torneoId===t.id&&e.catId===tc.catId&&e.estado==='activo').length;
+      const inscritos = myEquipos().filter(e=>e.torneoId===t.id&&e.catId===tc.catId&&(e.modalidad||'')===(tc.modalidad||'')&&e.estado==='activo').length;
       const aforo  = cat?.aforo || tc.aforo || 8;
       const disp   = Math.max(0, aforo - inscritos);
       const pct    = Math.round(inscritos/aforo*100);
@@ -3232,7 +3232,7 @@ function renderP1Detalle() {
     }).filter(Boolean);
 
     catsSections = tornCats.map(tc => {
-      const equipos = myEquipos().filter(e=>e.torneoId===t.id && e.catId===tc.catId);
+      const equipos = myEquipos().filter(e=>e.torneoId===t.id && e.catId===tc.catId && (e.modalidad||'')===(tc.modalidad||''));
       const inscritos = equipos.filter(e=>e.estado==='activo').length;
       const pctCat = tc.aforo>0 ? Math.min(100, Math.round(inscritos/tc.aforo*100)) : 0;
       const barCol = pctCat>=100?'bg-emerald-500':pctCat>=60?'bg-blue-500':'bg-amber-500';
@@ -3321,7 +3321,7 @@ function renderP1Detalle() {
   const semaforoCards = isActivo ? (t.cats||[]).map(tc=>{
     const cat = S.categorias.find(c=>c.id===tc.catId);
     if(!cat) return '';
-    const inscritos = myEquipos().filter(e=>e.torneoId===t.id&&e.catId===tc.catId&&e.estado==='activo').length;
+    const inscritos = myEquipos().filter(e=>e.torneoId===t.id&&e.catId===tc.catId&&(e.modalidad||'')===(tc.modalidad||'')&&e.estado==='activo').length;
     const disponibles = tc.aforo - inscritos;
     const pct = tc.aforo>0 ? Math.min(100,Math.round(inscritos/tc.aforo*100)) : 0;
     const [bg,border,barColor,textColor] =
@@ -3958,7 +3958,7 @@ function openEditTorneo() {
   if(cats.length) {
     cont.innerHTML = cats.map(tc => {
       const cat = myCategorias().find(c=>c.id===tc.catId);
-      const inscritos = myEquipos().filter(e=>e.torneoId===t.id&&e.catId===tc.catId&&e.estado==='activo').length;
+      const inscritos = myEquipos().filter(e=>e.torneoId===t.id&&e.catId===tc.catId&&(e.modalidad||'')===(tc.modalidad||'')&&e.estado==='activo').length;
       const puedeEliminar = inscritos === 0;
       return `<div class="flex items-center gap-3 px-3 py-2 bg-white border-b border-slate-100 last:border-0">
         <span class="flex-1 text-sm font-medium text-slate-700">${cat?.nombre||tc.catId}${tc.modalidad?' <span class="text-slate-400 font-semibold text-xs">'+tc.modalidad+'</span>':''}</span>
@@ -5272,7 +5272,7 @@ function abrirFormatoArbitrajes(torneoId) {
   let html = '';
 
   tornCats.forEach(tc => {
-    const equipos = myEquipos().filter(e=>+e.torneoId===+torneoId&&+e.catId===+tc.catId&&e.estado==='activo'&&!e.invitado);
+    const equipos = myEquipos().filter(e=>+e.torneoId===+torneoId&&+e.catId===+tc.catId&&(e.modalidad||'')===(tc.modalidad||'')&&e.estado==='activo'&&!e.invitado);
     if(!equipos.length) return;
 
     const totalCat = equipos.reduce((s,e)=>s+(e.arbitraje||0)*(e.fechas||0), 0);
@@ -5828,20 +5828,29 @@ function openAddEquipo(preselCatId, preselClubId) {
   // Limpiar nombre equipo
   document.getElementById('acNombreEquipo').value = '';
 
-  // Poblar selector de categorías del torneo
+  // Poblar selector de categorías del torneo (catId|modalidad como value)
   const catSel = document.getElementById('acCat');
-  const cats = (t?.cats||[]).map(tc=>myCategorias().find(c=>c.id===tc.catId)).filter(Boolean);
-  catSel.innerHTML = cats.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('');
-  if(preselCatId) catSel.value = preselCatId;
+  const tornCats = (t?.cats||[]);
+  catSel.innerHTML = tornCats.map(tc => {
+    const cat = myCategorias().find(c=>c.id===tc.catId);
+    if(!cat) return '';
+    const label = cat.nombre + (tc.modalidad ? ' '+tc.modalidad : '');
+    return `<option value="${tc.catId}|${tc.modalidad||''}">${label}</option>`;
+  }).join('');
+  if(preselCatId) {
+    // Intentar preseleccionar la primera opción que coincida con el catId
+    const opt = [...catSel.options].find(o=>o.value.startsWith(preselCatId+'|'));
+    if(opt) catSel.value = opt.value;
+  }
 
   // Mostrar/ocultar campos de arbitraje según esquema del torneo
   const soloInsc = (t?.esquema==='solo_inscripcion');
   const arbRow = document.getElementById('acArbRow');
   if(arbRow) arbRow.style.display = soloInsc ? 'none' : '';
 
-  // Pre-rellenar montos sugeridos
-  const efectivaCatId = parseInt(preselCatId) || cats[0]?.id;
-  const tc = t?.cats?.find(x=>x.catId===efectivaCatId);
+  // Pre-rellenar montos sugeridos desde la primera opción seleccionada
+  const [initCatId, initMod] = (catSel.value||'|').split('|');
+  const tc = tornCats.find(x=>x.catId===parseInt(initCatId) && (x.modalidad||'')===(initMod||''));
   if(tc) {
     document.getElementById('acInsc').value   = tc.inscripcion||'';
     document.getElementById('acArb').value    = soloInsc ? '' : (tc.arbitraje||'');
@@ -5856,8 +5865,9 @@ function acOnClubChange() { /* placeholder para futura lógica */ }
 
 function acOnCatChange() {
   const t = myTorneos().find(x=>x.id===S.torneoSelId) || S.torneos.find(x=>x.id===S.torneoSelId);
-  const catId = parseInt(document.getElementById('acCat').value);
-  const tc = t?.cats?.find(x=>x.catId===catId);
+  const [catIdStr, modalidad] = (document.getElementById('acCat').value||'|').split('|');
+  const catId = parseInt(catIdStr);
+  const tc = t?.cats?.find(x=>x.catId===catId && (x.modalidad||'')===(modalidad||''));
   const soloInsc = (t?.esquema==='solo_inscripcion');
   if(tc) {
     document.getElementById('acInsc').value   = tc.inscripcion||'';
@@ -5871,7 +5881,9 @@ let _acClubId = null;
 
 function addCategoria() {
   const clubId = _acClubId || parseInt(document.getElementById('acClub').value);
-  const catId  = parseInt(document.getElementById('acCat').value);
+  const [catIdStr, catMod] = (document.getElementById('acCat').value||'|').split('|');
+  const catId = parseInt(catIdStr);
+  const modalidad = catMod || '';
   const nombre = (document.getElementById('acNombreEquipo').value||'').trim();
   const insc   = parseFloat(document.getElementById('acInsc').value)||0;
   const arb    = parseFloat(document.getElementById('acArb').value)||0;
@@ -5881,11 +5893,11 @@ function addCategoria() {
   const torneoId = S.torneoSelId;
   const existe = S.equipos.find(e=>
     +e.torneoId===+torneoId && e.clubId===clubId && e.catId===catId &&
-    e.estado==='activo' && (e.nombre||'')===(nombre||'')
+    (e.modalidad||'')===(modalidad) && e.estado==='activo' && (e.nombre||'')===(nombre||'')
   );
-  if(existe){ toast('Ya existe un equipo con ese nombre en esta categoría. Asigna un nombre diferente (ej. "Equipo B").'); return; }
+  if(existe){ toast('Ya existe un equipo con ese nombre en esta categoría/modalidad. Asigna un nombre diferente (ej. "Equipo B").'); return; }
   const montoFinal = insc + arb * fechas;
-  const localEq = {id:S.nextId++,torneoId,clubId,catId,nombre,inscripcion:insc,arbitraje:arb,fechas,monto:montoFinal,invitado:false,estado:'activo',orgId:myOrgId()};
+  const localEq = {id:S.nextId++,torneoId,clubId,catId,modalidad,nombre,inscripcion:insc,arbitraje:arb,fechas,monto:montoFinal,invitado:false,estado:'activo',orgId:myOrgId()};
   S.equipos.push(localEq);
   document.getElementById('acClub').disabled = false;
   closeModal('addCatModal');
@@ -5894,9 +5906,9 @@ function addCategoria() {
     setTimeout(()=>{ openEstadoCuenta(_ecClubId, _ecTorneoId); }, 100);
   }
   const club = clubById(clubId);
-  toast(`${nombre||club?.nombre} inscrito en ${catById(catId)?.nombre} ✓`);
+  toast(`${nombre||club?.nombre} inscrito en ${catById(catId)?.nombre}${modalidad?' '+modalidad:''} ✓`);
   if(sbOn()){
-    SB().data.inscribirEquipo({torneo_id:torneoId,club_id:clubId,cat_id:catId,nombre,inscripcion:insc,arbitraje:arb,fechas,monto:montoFinal,invitado:false,estado:'activo',org_id:myOrgId()})
+    SB().data.inscribirEquipo({torneo_id:torneoId,club_id:clubId,cat_id:catId,modalidad,nombre,inscripcion:insc,arbitraje:arb,fechas,monto:montoFinal,invitado:false,estado:'activo',org_id:myOrgId()})
       .then(eq=>{ localEq.id=eq.id; })
       .catch(e=>{ toast('⚠ Error al guardar equipo: '+e.message,'error'); S.equipos=S.equipos.filter(x=>x!==localEq); renderP1Detalle(); });
   }
@@ -5930,7 +5942,7 @@ async function sbHydrate(){
   const catsByT = {};
   (d.torneo_categorias||[]).forEach(tc=>{ (catsByT[tc.torneo_id] = catsByT[tc.torneo_id]||[]).push({catId:tc.cat_id,nombre:catNombre(tc.cat_id),modalidad:tc.modalidad,aforo:tc.aforo,fechas:tc.fechas,inscripcion:_num(tc.inscripcion),arbitraje:_num(tc.arbitraje)}); });
   S.torneos = (d.torneos||[]).map(t=>({id:t.id,nombre:t.nombre,sede:t.sede,esquema:t.esquema,estado:t.estado,inicio:t.inicio,fin:t.fin,fechaVenc:t.fecha_venc,label:t.label,snap:t.snap,orgId:t.org_id,cats:catsByT[t.id]||[]}));
-  S.equipos = (d.equipos||[]).map(e=>({id:e.id,torneoId:e.torneo_id,clubId:e.club_id,catId:e.cat_id,nombre:e.nombre,inscripcion:_num(e.inscripcion),arbitraje:_num(e.arbitraje),fechas:e.fechas,monto:_num(e.monto),invitado:e.invitado||false,estado:e.estado,orgId:e.org_id}));
+  S.equipos = (d.equipos||[]).map(e=>({id:e.id,torneoId:e.torneo_id,clubId:e.club_id,catId:e.cat_id,modalidad:e.modalidad||'',nombre:e.nombre,inscripcion:_num(e.inscripcion),arbitraje:_num(e.arbitraje),fechas:e.fechas,monto:_num(e.monto),invitado:e.invitado||false,estado:e.estado,orgId:e.org_id}));
   S.pagos = (d.pagos||[]).map(p=>({id:p.id,torneoId:p.torneo_id,clubId:p.club_id,monto:_num(p.monto),medio:p.medio,fecha:p.fecha,nroOp:p.nro_op,desc:p.descripcion,estado:p.estado,motivo:p.motivo,op:'',regEn:p.created_at,procPor:'',procEn:p.processed_at,orgId:p.org_id}));
 }
 
