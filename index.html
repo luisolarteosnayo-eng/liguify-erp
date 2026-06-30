@@ -5771,12 +5771,22 @@ function ecInactivar(equipoId) {
   if(!confirm('¿Inactivar este equipo? Se conserva el historial de pagos.')) return;
   e.estado = 'inactivo';
   renderEstadoCuenta();
+  const _prev = S.torneoSelId;
+  S.torneoSelId = _ecTorneoId;
   renderP1Detalle();
+  S.torneoSelId = _prev;
   toast('Equipo inactivado.');
   if(sbOn()) {
     SB().data.actualizarEquipo(equipoId, {estado:'inactivo'})
       .then(()=>toast('Equipo inactivado ✓', 'success'))
-      .catch(err=>{ e.estado='activo'; renderEstadoCuenta(); renderP1Detalle(); toast('⚠ Error al guardar: '+err.message,'error'); });
+      .catch(err=>{
+        e.estado='activo';
+        renderEstadoCuenta();
+        S.torneoSelId = _ecTorneoId;
+        renderP1Detalle();
+        S.torneoSelId = _prev;
+        toast('⚠ Error al guardar: '+err.message,'error');
+      });
   }
 }
 
