@@ -157,8 +157,12 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
       if (error) throw error; return data;
     },
     async actualizarEquipo(id, campos) {
-      const { error } = await sb.from('equipos').update(campos).eq('id', id);
+      const { data, error } = await sb.from('equipos').update(campos).eq('id', id).select();
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error('No se actualizó ninguna fila (id ' + id + '). Posible bloqueo de permisos (RLS) o equipo de otra organización.');
+      }
+      return data[0];
     },
     async subirVoucher(file, orgId) {
       const path = `${orgId}/${Date.now()}_${file.name}`;
