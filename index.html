@@ -3249,7 +3249,7 @@ function renderP1Detalle() {
       <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-4">
         <div class="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-200">
           <div class="flex items-center gap-3">
-            <h3 class="font-bold text-sm">${tc.nombre}</h3>
+            <h3 class="font-bold text-sm">${tc.nombre}${tc.modalidad ? ' <span class="text-slate-400 font-semibold">'+tc.modalidad+'</span>' : ''}</h3>
             <span class="text-xs text-slate-400">${inscritos} / ${tc.aforo} equipos · ~${tc.fechas} fechas</span>
           </div>
           <div class="flex items-center gap-3">
@@ -4002,11 +4002,10 @@ function guardarEditTorneo() {
 function openAgregarCat() {
   const t = S.torneos.find(x=>x.id===S.torneoSelId);
   if(!t) return;
-  // Solo categorías que aún no están en este torneo
-  const usadas = (t.cats||[]).map(tc=>tc.catId);
-  const disponibles = myCategorias().filter(c=>!usadas.includes(c.id));
   const sel = document.getElementById('acTCat');
-  if(!disponibles.length) { toast('Todas las categorías del catálogo ya están en este torneo.'); return; }
+  // Mostrar todas las categorías; la validación de duplicado (catId+modalidad) se hace al guardar
+  const disponibles = myCategorias();
+  if(!disponibles.length) { toast('No hay categorías en el catálogo.'); return; }
   sel.innerHTML = disponibles.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('');
   document.getElementById('acTAforo').value  = 8;
   document.getElementById('acTFechas').value = 6;
@@ -4029,6 +4028,9 @@ function guardarTorneoCat() {
   const arbitraje   = parseFloat(document.getElementById('acTArb').value)||0;
   if(!catId) { toast('⚠ Selecciona una categoría.'); return; }
   if(!t.cats) t.cats = [];
+  if(t.cats.some(tc=>tc.catId===catId && tc.modalidad===modalidad)) {
+    toast(`⚠ Ya existe esa categoría en modalidad ${modalidad} en este torneo.`, 'error'); return;
+  }
   t.cats.push({catId, modalidad, aforo, fechas, inscripcion, arbitraje});
   closeModal('agregarCatTorneoModal');
   const cat = S.categorias.find(c=>c.id===catId);
