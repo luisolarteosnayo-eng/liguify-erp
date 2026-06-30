@@ -125,6 +125,7 @@ create table if not exists public.equipos (
   torneo_id   bigint not null references public.torneos(id) on delete cascade,
   club_id     bigint not null references public.clubes(id) on delete restrict,
   cat_id      bigint not null references public.categorias(id) on delete restrict,
+  modalidad   text default '',          -- 'F7' | 'F9' | etc. (heredado de torneo_categorias)
   nombre      text default '',          -- sub-nombre opcional ("Cara A", "Cara B")
   inscripcion numeric(12,2) default 0,
   arbitraje   numeric(12,2) default 0,
