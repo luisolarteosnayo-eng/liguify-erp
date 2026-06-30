@@ -3111,7 +3111,7 @@ function renderTorneosOperativo() {
   function tarjetaTorneo(t) {
     const cats = (t.cats||[]).map(tc=>{
       const cat    = S.categorias.find(c=>c.id===tc.catId);
-      const inscritos = myEquipos().filter(e=>e.torneoId===t.id&&e.catId===tc.catId&&(e.modalidad||'')===(tc.modalidad||'')&&e.estado==='activo').length;
+      const inscritos = myEquipos().filter(e=>e.torneoId===t.id&&e.catId===tc.catId&&(!e.modalidad || (e.modalidad||'')===(tc.modalidad||''))&&e.estado==='activo').length;
       const aforo  = cat?.aforo || tc.aforo || 8;
       const disp   = Math.max(0, aforo - inscritos);
       const pct    = Math.round(inscritos/aforo*100);
@@ -3232,7 +3232,7 @@ function renderP1Detalle() {
     }).filter(Boolean);
 
     catsSections = tornCats.map(tc => {
-      const equipos = myEquipos().filter(e=>e.torneoId===t.id && e.catId===tc.catId && (e.modalidad||'')===(tc.modalidad||''));
+      const equipos = myEquipos().filter(e=>e.torneoId===t.id && e.catId===tc.catId && (!e.modalidad || (e.modalidad||'')===(tc.modalidad||'')));
       const inscritos = equipos.filter(e=>e.estado==='activo').length;
       const pctCat = tc.aforo>0 ? Math.min(100, Math.round(inscritos/tc.aforo*100)) : 0;
       const barCol = pctCat>=100?'bg-emerald-500':pctCat>=60?'bg-blue-500':'bg-amber-500';
@@ -3321,7 +3321,7 @@ function renderP1Detalle() {
   const semaforoCards = isActivo ? (t.cats||[]).map(tc=>{
     const cat = S.categorias.find(c=>c.id===tc.catId);
     if(!cat) return '';
-    const inscritos = myEquipos().filter(e=>e.torneoId===t.id&&e.catId===tc.catId&&(e.modalidad||'')===(tc.modalidad||'')&&e.estado==='activo').length;
+    const inscritos = myEquipos().filter(e=>e.torneoId===t.id&&e.catId===tc.catId&&(!e.modalidad || (e.modalidad||'')===(tc.modalidad||''))&&e.estado==='activo').length;
     const disponibles = tc.aforo - inscritos;
     const pct = tc.aforo>0 ? Math.min(100,Math.round(inscritos/tc.aforo*100)) : 0;
     const [bg,border,barColor,textColor] =
@@ -3958,7 +3958,7 @@ function openEditTorneo() {
   if(cats.length) {
     cont.innerHTML = cats.map(tc => {
       const cat = myCategorias().find(c=>c.id===tc.catId);
-      const inscritos = myEquipos().filter(e=>e.torneoId===t.id&&e.catId===tc.catId&&(e.modalidad||'')===(tc.modalidad||'')&&e.estado==='activo').length;
+      const inscritos = myEquipos().filter(e=>e.torneoId===t.id&&e.catId===tc.catId&&(!e.modalidad || (e.modalidad||'')===(tc.modalidad||''))&&e.estado==='activo').length;
       const puedeEliminar = inscritos === 0;
       return `<div class="flex items-center gap-3 px-3 py-2 bg-white border-b border-slate-100 last:border-0">
         <span class="flex-1 text-sm font-medium text-slate-700">${cat?.nombre||tc.catId}${tc.modalidad?' <span class="text-slate-400 font-semibold text-xs">'+tc.modalidad+'</span>':''}</span>
@@ -5272,7 +5272,7 @@ function abrirFormatoArbitrajes(torneoId) {
   let html = '';
 
   tornCats.forEach(tc => {
-    const equipos = myEquipos().filter(e=>+e.torneoId===+torneoId&&+e.catId===+tc.catId&&(e.modalidad||'')===(tc.modalidad||'')&&e.estado==='activo'&&!e.invitado);
+    const equipos = myEquipos().filter(e=>+e.torneoId===+torneoId&&+e.catId===+tc.catId&&(!e.modalidad || (e.modalidad||'')===(tc.modalidad||''))&&e.estado==='activo'&&!e.invitado);
     if(!equipos.length) return;
 
     const totalCat = equipos.reduce((s,e)=>s+(e.arbitraje||0)*(e.fechas||0), 0);
