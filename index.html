@@ -90,6 +90,18 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
       }
       return t;
     },
+    async agregarTorneoCat(fila) {
+      const { data, error } = await sb.from('torneo_categorias').insert(fila).select().single();
+      if (error) throw error; return data;
+    },
+    async eliminarTorneoCat(torneoId, catId, modalidad) {
+      const { error } = await sb.from('torneo_categorias')
+        .delete()
+        .eq('torneo_id', torneoId)
+        .eq('cat_id', catId)
+        .eq('modalidad', modalidad||'');
+      if (error) throw error;
+    },
     async inscribirEquipo(equipo) {
       const { data, error } = await sb.from('equipos').insert(equipo).select().single();
       if (error) throw error; return data;
@@ -1409,12 +1421,6 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
         class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
     </div>
 
-    <label class="flex items-center gap-2 mb-3 cursor-pointer select-none">
-      <input type="checkbox" id="acInvitado" onchange="toggleInvitado(this.checked)" class="w-4 h-4 rounded accent-violet-600">
-      <span class="text-sm font-semibold text-violet-700">Equipo invitado</span>
-      <span class="text-xs text-slate-400 font-normal">(sin costo de inscripción ni arbitraje)</span>
-    </label>
-
     <label class="block text-xs font-semibold text-slate-600 mb-1">Categoría *</label>
     <select id="acCat" onchange="acOnCatChange()" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mb-3 outline-none focus:ring-2 focus:ring-blue-200 bg-white"></select>
 
@@ -1432,8 +1438,7 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
         <input type="number" id="acFechas" placeholder="6" oninput="calcMontoTotal()" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
       </div>
     </div>
-    <label class="block text-xs font-semibold text-slate-600 mb-1">Monto Total <span class="text-[#4F86C6]">(campo principal)</span></label>
-    <input type="number" id="acMonto" placeholder="730" class="w-full border-2 border-blue-200 rounded-lg px-3 py-2 text-sm font-bold mono mb-4 outline-none focus:ring-2 focus:ring-blue-300">
+    <input type="hidden" id="acMonto">
     <div class="flex justify-end gap-2">
       <button onclick="closeModal('addCatModal')" class="text-sm font-medium text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">Cancelar</button>
       <button onclick="addCategoria()" class="text-sm font-semibold text-white bg-[#18324F] px-4 py-2 rounded-lg hover:bg-[#0f253d]">Inscribir Equipo</button>
@@ -3954,13 +3959,17 @@ function openEditTorneo() {
     cont.innerHTML = cats.map(tc => {
       const cat = myCategorias().find(c=>c.id===tc.catId);
       const inscritos = myEquipos().filter(e=>e.torneoId===t.id&&e.catId===tc.catId&&e.estado==='activo').length;
-      return `<div class="flex items-center gap-3 px-3 py-2 bg-white">
-        <span class="flex-1 text-sm font-medium text-slate-700">${cat?.nombre||tc.catId}</span>
+      const puedeEliminar = inscritos === 0;
+      return `<div class="flex items-center gap-3 px-3 py-2 bg-white border-b border-slate-100 last:border-0">
+        <span class="flex-1 text-sm font-medium text-slate-700">${cat?.nombre||tc.catId}${tc.modalidad?' <span class="text-slate-400 font-semibold text-xs">'+tc.modalidad+'</span>':''}</span>
         <span class="text-[11px] text-slate-400">${inscritos} inscritos</span>
         <input type="number" min="${inscritos}" value="${tc.aforo||8}"
-          data-cat-id="${tc.catId}"
+          data-cat-id="${tc.catId}" data-modalidad="${tc.modalidad||''}"
           class="et-aforo w-20 border border-slate-300 rounded-lg px-2 py-1 text-sm text-center outline-none focus:ring-2 focus:ring-blue-200">
         <span class="text-xs text-slate-400">cupos</span>
+        ${puedeEliminar
+          ? `<button onclick="eliminarTorneoCat(${tc.catId},'${tc.modalidad||''}')" class="text-slate-300 hover:text-rose-500 transition text-base leading-none" title="Eliminar categoría">✕</button>`
+          : `<span class="w-5 text-slate-200 text-base leading-none" title="Tiene equipos inscritos">✕</span>`}
       </div>`;
     }).join('');
     wrap.classList.remove('hidden');
@@ -3968,6 +3977,19 @@ function openEditTorneo() {
     wrap.classList.add('hidden');
   }
   openModal('editTorneoModal');
+}
+
+function eliminarTorneoCat(catId, modalidad) {
+  const t = S.torneos.find(x=>x.id===S.torneoSelId);
+  if(!t) return;
+  const inscritos = myEquipos().filter(e=>e.torneoId===t.id&&e.catId===catId&&e.estado==='activo').length;
+  if(inscritos > 0) { toast('⚠ No se puede eliminar: hay equipos inscritos.', 'error'); return; }
+  t.cats = (t.cats||[]).filter(tc=>!(tc.catId===catId && (tc.modalidad||'')===(modalidad||'')));
+  openEditTorneo();
+  if(sbOn()) {
+    SB().data.eliminarTorneoCat(t.id, catId, modalidad)
+      .catch(e => toast('⚠ Error al eliminar: '+e.message, 'error'));
+  }
 }
 
 function guardarEditTorneo() {
@@ -4031,11 +4053,18 @@ function guardarTorneoCat() {
   if(t.cats.some(tc=>tc.catId===catId && tc.modalidad===modalidad)) {
     toast(`⚠ Ya existe esa categoría en modalidad ${modalidad} en este torneo.`, 'error'); return;
   }
-  t.cats.push({catId, modalidad, aforo, fechas, inscripcion, arbitraje});
+  const localCat = {catId, modalidad, aforo, fechas, inscripcion, arbitraje};
+  t.cats.push(localCat);
   closeModal('agregarCatTorneoModal');
   const cat = S.categorias.find(c=>c.id===catId);
   toast(`✅ Categoría "${cat?.nombre}" (${modalidad}) agregada al torneo.`);
   renderP1Detalle();
+  if(sbOn()) {
+    SB().data.agregarTorneoCat({
+      torneo_id: t.id, cat_id: catId, modalidad, aforo, fechas,
+      inscripcion, arbitraje, org_id: myOrgId()
+    }).catch(e => toast('⚠ Error al guardar categoría: '+e.message, 'error'));
+  }
 }
 
 // ---- CFG: COMPLEJOS DEPORTIVOS ----
@@ -5844,22 +5873,19 @@ function addCategoria() {
   const clubId = _acClubId || parseInt(document.getElementById('acClub').value);
   const catId  = parseInt(document.getElementById('acCat').value);
   const nombre = (document.getElementById('acNombreEquipo').value||'').trim();
-  const monto  = parseFloat(document.getElementById('acMonto').value)||0;
   const insc   = parseFloat(document.getElementById('acInsc').value)||0;
   const arb    = parseFloat(document.getElementById('acArb').value)||0;
   const fechas = parseInt(document.getElementById('acFechas').value)||6;
-  const invitado = document.getElementById('acInvitado')?.checked || false;
   if(!clubId){ toast('Selecciona un club.'); return; }
-  if(!invitado && insc<=0){ toast('El monto de inscripción es obligatorio (o marca "Equipo invitado").'); return; }
+  if(insc<=0){ toast('El monto de inscripción es obligatorio.'); return; }
   const torneoId = S.torneoSelId;
-  // Permitir dos equipos del mismo club en la misma categoría si tienen diferente nombre
   const existe = S.equipos.find(e=>
     +e.torneoId===+torneoId && e.clubId===clubId && e.catId===catId &&
     e.estado==='activo' && (e.nombre||'')===(nombre||'')
   );
   if(existe){ toast('Ya existe un equipo con ese nombre en esta categoría. Asigna un nombre diferente (ej. "Equipo B").'); return; }
-  const montoFinal = invitado ? 0 : (monto || insc);
-  const localEq = {id:S.nextId++,torneoId,clubId,catId,nombre,inscripcion:invitado?0:insc,arbitraje:invitado?0:arb,fechas,monto:montoFinal,invitado,estado:'activo',orgId:myOrgId()};
+  const montoFinal = insc + arb * fechas;
+  const localEq = {id:S.nextId++,torneoId,clubId,catId,nombre,inscripcion:insc,arbitraje:arb,fechas,monto:montoFinal,invitado:false,estado:'activo',orgId:myOrgId()};
   S.equipos.push(localEq);
   document.getElementById('acClub').disabled = false;
   closeModal('addCatModal');
@@ -5870,7 +5896,7 @@ function addCategoria() {
   const club = clubById(clubId);
   toast(`${nombre||club?.nombre} inscrito en ${catById(catId)?.nombre} ✓`);
   if(sbOn()){
-    SB().data.inscribirEquipo({torneo_id:torneoId,club_id:clubId,cat_id:catId,nombre,inscripcion:localEq.inscripcion,arbitraje:localEq.arbitraje,fechas,monto:montoFinal,invitado,estado:'activo',org_id:myOrgId()})
+    SB().data.inscribirEquipo({torneo_id:torneoId,club_id:clubId,cat_id:catId,nombre,inscripcion:insc,arbitraje:arb,fechas,monto:montoFinal,invitado:false,estado:'activo',org_id:myOrgId()})
       .then(eq=>{ localEq.id=eq.id; })
       .catch(e=>{ toast('⚠ Error al guardar equipo: '+e.message,'error'); S.equipos=S.equipos.filter(x=>x!==localEq); renderP1Detalle(); });
   }
