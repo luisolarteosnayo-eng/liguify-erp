@@ -5630,8 +5630,14 @@ function renderEstadoCuenta() {
   const soloInsc = esquema==='solo_inscripcion';
   const canEdit  = ['organizador','operador'].includes(S.role);
 
-  // Solo equipos activos
-  const equipos   = myEquipos().filter(e=>e.clubId===_ecClubId && e.torneoId===_ecTorneoId && e.estado==='activo');
+  // Solo equipos activos, ordenados por categoría y modalidad
+  const equipos   = myEquipos().filter(e=>e.clubId===_ecClubId && e.torneoId===_ecTorneoId && e.estado==='activo')
+    .sort((a,b)=>{
+      const ca = myCategorias().find(c=>c.id===a.catId)?.nombre||'';
+      const cb = myCategorias().find(c=>c.id===b.catId)?.nombre||'';
+      if(ca!==cb) return ca.localeCompare(cb, undefined, {numeric:true});
+      return (a.modalidad||'').localeCompare(b.modalidad||'');
+    });
   const totalInsc = equipos.reduce((s,e)=>s+(e.inscripcion||0), 0);
   const pagosClub = myPagos().filter(p=>p.clubId===_ecClubId && p.torneoId===_ecTorneoId);
   const recaudado = pagosClub.filter(p=>p.estado!=='rechazado').reduce((s,p)=>s+p.monto, 0);
