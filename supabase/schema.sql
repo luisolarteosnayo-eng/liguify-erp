@@ -113,7 +113,7 @@ create table if not exists public.torneo_categorias (
   inscripcion numeric(12,2) default 0,
   arbitraje   numeric(12,2) default 0,
   org_id      bigint not null references public.organizaciones(id) on delete cascade,
-  unique (torneo_id, cat_id)
+  unique (torneo_id, cat_id, modalidad)
 );
 
 -- ---------------------------------------------------------------------------
