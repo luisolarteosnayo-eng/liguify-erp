@@ -5768,7 +5768,7 @@ function ecInactivar(equipoId) {
   renderP1Detalle();
   toast('Equipo inactivado.');
   if(sbOn()) {
-    SB().data.guardarEquipo({estado:'inactivo'}, equipoId)
+    SB().data.actualizarEquipo(equipoId, {estado:'inactivo'})
       .catch(e=>toast('⚠ Error al guardar: '+e.message,'error'));
   }
 }
