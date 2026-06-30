@@ -5660,7 +5660,7 @@ function renderEstadoCuenta() {
   // ---- Tabla categorías activas ----
   document.getElementById('ec_cats_tbody').innerHTML = equipos.length>0 ? equipos.map(e=>{
     const cat = myCategorias().find(c=>c.id===e.catId);
-    const tc  = torneo.cats?.find(x=>x.catId===e.catId);
+    const tc  = torneo.cats?.find(x=>x.catId===e.catId && (!e.modalidad || (x.modalidad||'')===(e.modalidad||'')));
     const nombreEquipo = e.nombre || club.nombre;
     const arbCell = soloInsc
       ? `<td class="py-2 text-right text-slate-300 text-xs">N/A</td>`
