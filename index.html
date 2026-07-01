@@ -3608,7 +3608,7 @@ function _ifFillForm(d) {
   // Entradas guardadas sin concepto por defecto → filas extra editables
   entArr.forEach(e => {
     if(usadasEnt.has(e)) return;
-    addIfEntradaRow(e.label||e.tipo||'', e.precio||'', e.cantidad||'');
+    addIfEntradaRow(e.label||e.tipo||'', e.detalle||'', e.precio||'', e.cantidad||'');
   });
 
   // Pagos entradas — Efectivo fijo
@@ -3873,14 +3873,17 @@ function _ifRenderConceptos() {
   if(efWrap) efWrap.innerHTML = egConcepto('efectivo').map(c=>egRow('efectivo', c.nombre)).join('');
 }
 
-function addIfEntradaRow(label='', precio='', cantidad='') {
+function addIfEntradaRow(label='', detalle='', precio='', cantidad='') {
   const tbody = document.getElementById('ifEntradasBody');
   const tr = document.createElement('tr');
   tr.className = 'if-entrada-row border-t border-slate-100';
   const tot = precio && cantidad ? (+precio * +cantidad).toFixed(0) : '0';
   tr.innerHTML = `
     <td class="px-2 py-1">
-      <input type="text" placeholder="Concepto" value="${label}" class="if-label-entrada w-full border border-slate-200 rounded px-1 py-0.5 text-xs outline-none focus:ring-1 focus:ring-emerald-300 text-slate-600">
+      <div class="flex items-center gap-1">
+        <select class="if-label-entrada w-20 shrink-0 border border-slate-200 rounded px-1 py-0.5 text-xs outline-none bg-white focus:ring-1 focus:ring-emerald-300 text-slate-600">${_ifConceptoOptions('ingreso', null, label)}</select>
+        <input type="text" placeholder="Descripción" value="${detalle||''}" class="if-entrada-detalle flex-1 min-w-0 border border-slate-200 rounded px-1 py-0.5 text-xs outline-none focus:ring-1 focus:ring-emerald-300">
+      </div>
     </td>
     <td class="px-2 py-1"><input type="number" min="0" step="0.01" placeholder="0" value="${precio||''}" class="if-precio w-16 text-right border border-slate-200 rounded px-1 py-0.5 outline-none focus:ring-1 focus:ring-emerald-300 text-xs" oninput="recalcEntrada(this)"></td>
     <td class="px-2 py-1"><input type="number" min="0" step="1" placeholder="0" value="${cantidad||''}" class="if-cantidad w-16 text-right border border-slate-200 rounded px-1 py-0.5 outline-none focus:ring-1 focus:ring-emerald-300 text-xs" oninput="recalcEntrada(this)"></td>
@@ -4008,7 +4011,8 @@ function _ifReadForm() {
     const labelEl = row.querySelector('.if-label-entrada');
     const label   = (row.dataset.concepto || (labelEl ? labelEl.value.trim() : '')) || '';
     if(!label) return;
-    d.entradas_arr.push({ tipo: label, label, precio: num(row.querySelector('.if-precio').value), cantidad: num(row.querySelector('.if-cantidad').value) });
+    const detalle = (row.querySelector('.if-entrada-detalle')?.value||'').trim();
+    d.entradas_arr.push({ tipo: label, label, detalle, precio: num(row.querySelector('.if-precio').value), cantidad: num(row.querySelector('.if-cantidad').value) });
   });
   // Pagos entradas y arbitraje — guarda Efectivo siempre; extras solo si monto > 0
   document.querySelectorAll('[data-seccion="entradas"].if-pago-medio').forEach(inp => {
