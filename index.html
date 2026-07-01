@@ -1723,13 +1723,8 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
           <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
             <div class="bg-yellow-300 text-slate-800 text-center text-xs font-bold py-1.5 tracking-wide">OTROS INGRESOS</div>
             <div class="p-3 space-y-1">
-              <div class="flex items-center gap-2">
-                <span class="text-xs text-slate-500 w-24 shrink-0">Efectivo</span>
-                <input type="number" min="0" step="0.01" placeholder="0" data-seccion="otros" data-medio="Efectivo" class="if-pago-medio flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-emerald-300" oninput="recalcIF()">
-              </div>
-              <div id="ifOtrosExtras" class="space-y-1"></div>
-              <button onclick="addIfMedioPago('otros')" class="text-[10px] text-emerald-600 hover:text-emerald-800 hover:underline">+ Agregar medio de pago</button>
-              <div id="ifOtrosConceptos" class="space-y-1 pt-1"></div>
+              <p class="text-[10px] text-slate-400">Casos especiales. Agrega solo los que apliquen.</p>
+              <div id="ifOtrosConceptos" class="space-y-1"></div>
               <button onclick="addIfOtroConcepto()" class="text-[10px] text-emerald-600 hover:text-emerald-800 hover:underline">+ Agregar concepto</button>
               <div class="flex justify-between border-t border-slate-100 pt-1 mt-1">
                 <span class="text-xs font-bold text-slate-600">TOTAL</span>
@@ -3474,7 +3469,8 @@ function _calcTotalesFecha(d) {
   // Nro entradas = solo Tickets (primera fila, idx 0)
   const nroEntradas = n((d.entradas_arr||[])[0]?.cantidad);
   // Efectivo disponible = efectivo ingresos - efectivo egresos
-  const efIng = n(d.pagosEntradas?.['Efectivo']) + n(d.arbitraje?.['Efectivo']) + n(d.otros?.['Efectivo']);
+  const otrosEfec = (d.otrosExtras||[]).filter(x=>(x.medio||'Efectivo')==='Efectivo').reduce((s,x)=>s+n(x.monto),0);
+  const efIng = n(d.pagosEntradas?.['Efectivo']) + n(d.arbitraje?.['Efectivo']) + n(d.otros?.['Efectivo']) + otrosEfec;
   const efEg  = Object.values(d.efectivo||{}).reduce((s,v)=>s+n(v),0) + (d.efectivoExtras||[]).reduce((s,x)=>s+n(x.monto),0);
   const efDisp = efIng - efEg;
   return { ing, eg, cancha, nroEntradas, util: ing - eg, efDisp };
@@ -3564,7 +3560,6 @@ function _ifLimpiarForm() {
   // Limpiar medios de pago dinámicos
   document.getElementById('ifPagosEntExtras').innerHTML = '';
   document.getElementById('ifArbExtras').innerHTML = '';
-  document.getElementById('ifOtrosExtras').innerHTML = '';
   document.getElementById('ifOtrosConceptos').innerHTML = '';
   // Limpiar extras banco/efectivo
   document.getElementById('ifBancoExtras').innerHTML = '';
@@ -3624,17 +3619,8 @@ function _ifFillForm(d) {
     _addMedioRow(wrap, 'arbitraje', medio, monto);
   });
 
-  // Otros ingresos — Efectivo fijo
-  const efOtros = document.querySelector('[data-seccion="otros"][data-medio="Efectivo"]');
-  if(efOtros) efOtros.value = d.otros?.['Efectivo'] || '';
-  // Medios dinámicos de otros
-  Object.entries(d.otros||{}).forEach(([medio, monto]) => {
-    if(medio === 'Efectivo') return;
-    const wrap = document.getElementById('ifOtrosExtras');
-    _addMedioRow(wrap, 'otros', medio, monto);
-  });
-  // Otros ingresos por concepto configurado (con detalle)
-  (d.otrosExtras||[]).forEach(x => addIfOtroConcepto(x.item, x.detalle, x.monto));
+  // Otros ingresos por concepto configurado (concepto + medio + descripción + monto)
+  (d.otrosExtras||[]).forEach(x => addIfOtroConcepto(x.item, x.medio||'Efectivo', x.detalle, x.monto));
 
   // Banco — inputs por concepto
   const bancoItems = new Set();
@@ -3712,20 +3698,17 @@ function recalcIF() {
   });
   document.getElementById('ifTotalArbitraje').textContent = 'S/ '+totalArb.toFixed(0);
 
+  // Otros ingresos por concepto (agrupados por medio de pago)
   const otrosMedio = {};
   let totalOtros = 0;
-  document.querySelectorAll('[data-seccion="otros"].if-pago-medio').forEach(inp => {
-    const m = inp.dataset.medio; const v = n(inp.value); totalOtros += v;
-    if(!mediosOrden.includes(m)) mediosOrden.push(m);
-    otrosMedio[m] = (otrosMedio[m]||0) + v;
-  });
-  // Otros ingresos por concepto configurado (concepto + detalle + monto)
-  const otrosConceptoRows = [];
   document.querySelectorAll('#ifOtrosConceptos > div').forEach(div => {
-    const item = div.querySelector('.if-otro-concepto')?.value || '';
-    const detalle = (div.querySelector('.if-otro-detalle')?.value||'').trim();
+    const medio = div.querySelector('.if-otro-medio')?.value || 'Efectivo';
     const v = n(div.querySelector('.if-otro-monto')?.value);
-    if(v>0) { totalOtros += v; otrosConceptoRows.push({item: item||'—', detalle, v}); }
+    if(v>0) {
+      totalOtros += v;
+      if(!mediosOrden.includes(medio)) mediosOrden.push(medio);
+      otrosMedio[medio] = (otrosMedio[medio]||0) + v;
+    }
   });
   const otrosEl = document.getElementById('ifTotalOtros');
   if(otrosEl) otrosEl.textContent = 'S/ '+totalOtros.toFixed(0);
@@ -3733,7 +3716,7 @@ function recalcIF() {
   let totalIng = 0;
   const ingTbody = document.getElementById('ifTotalIngresosBody');
   if(ingTbody) {
-    let filas = mediosOrden.map(m => {
+    ingTbody.innerHTML = mediosOrden.map(m => {
       const e = entMedio[m]||0, a = arbMedio[m]||0, o = otrosMedio[m]||0, tot = e + a + o;
       totalIng += tot;
       return `<tr class="border-t border-slate-50">
@@ -3744,19 +3727,6 @@ function recalcIF() {
         <td class="py-1 text-right font-semibold">S/ ${tot.toFixed(0)}</td>
       </tr>`;
     }).join('');
-    // Filas de otros ingresos por concepto (van en la columna Otros)
-    filas += otrosConceptoRows.map(r => {
-      totalIng += r.v;
-      const lbl = r.item + (r.detalle ? ` <span class="text-slate-300">· ${r.detalle}</span>` : '');
-      return `<tr class="border-t border-slate-50">
-        <td class="py-1 text-slate-500">${lbl}</td>
-        <td class="py-1 text-right">—</td>
-        <td class="py-1 text-right">—</td>
-        <td class="py-1 text-right">${r.v.toFixed(0)}</td>
-        <td class="py-1 text-right font-semibold">S/ ${r.v.toFixed(0)}</td>
-      </tr>`;
-    }).join('');
-    ingTbody.innerHTML = filas;
   }
   document.getElementById('ifTotalIngresos').textContent = 'S/ '+totalIng.toFixed(0);
 
@@ -3825,11 +3795,17 @@ function recalcIF() {
   utilEl.className = utilidad >= 0 ? 'text-sm font-bold text-emerald-300' : 'text-sm font-bold text-rose-300';
 
   // Efectivo disponible
-  const efIng = [...document.querySelectorAll('.if-pago-medio[data-medio="Efectivo"]')]
+  // Ingresos en efectivo: entradas + arbitraje (medio Efectivo) + otros conceptos con medio Efectivo
+  let efIng = [...document.querySelectorAll('.if-pago-medio[data-medio="Efectivo"]')]
     .reduce((s,i)=>s+(parseFloat(i.value)||0),0);
+  document.querySelectorAll('#ifOtrosConceptos > div').forEach(div => {
+    if((div.querySelector('.if-otro-medio')?.value) === 'Efectivo')
+      efIng += parseFloat(div.querySelector('.if-otro-monto')?.value)||0;
+  });
+  // Egresos en efectivo: filas por concepto + extras de la sección efectivo
   const efEg  = [...document.querySelectorAll('.if-egreso[data-seccion="efectivo"]')]
     .reduce((s,i)=>s+(parseFloat(i.value)||0),0)
-    + [...document.querySelectorAll('#ifEfecExtras .if-egreso-extra-monto')]
+    + [...document.querySelectorAll('#ifEfectivoExtras .if-egreso-extra')]
     .reduce((s,i)=>s+(parseFloat(i.value)||0),0);
   const efDisp = efIng - efEg;
   document.getElementById('ifEfectivoIng').textContent = 'S/ '+efIng.toFixed(0);
@@ -3957,14 +3933,23 @@ function addIfEgresoExtra(seccion, item='', detalle='', monto='') {
   wrap.appendChild(div);
 }
 
-function addIfOtroConcepto(item='', detalle='', monto='') {
+// Opciones <option> de medios de pago disponibles para fechas (+ Efectivo siempre).
+function _ifMedioOptions(seleccionado='') {
+  const medios = (S.mediosPago||[]).filter(m=>+m.orgId===+myOrgId() && m.activo && m.paraFechas).map(m=>m.nombre);
+  const nombres = ['Efectivo', ...medios.filter(m=>m!=='Efectivo')];
+  if(seleccionado && !nombres.includes(seleccionado)) nombres.push(seleccionado);
+  return nombres.map(nm=>`<option value="${nm}" ${nm===seleccionado?'selected':''}>${nm}</option>`).join('');
+}
+
+function addIfOtroConcepto(item='', medio='Efectivo', detalle='', monto='') {
   const wrap = document.getElementById('ifOtrosConceptos');
   const div = document.createElement('div');
-  div.className = 'flex items-center gap-2';
+  div.className = 'flex items-center gap-1.5';
   div.innerHTML = `
-    <select class="if-otro-concepto w-24 shrink-0 border border-slate-200 rounded px-1 py-1 text-xs outline-none bg-white focus:ring-1 focus:ring-emerald-300" onchange="recalcIF()">${_ifConceptoOptions('ingreso', null, item)}</select>
-    <input type="text" placeholder="Detalle (opcional)" value="${detalle||''}" class="if-otro-detalle flex-1 min-w-0 border border-slate-200 rounded px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-emerald-300">
-    <input type="number" min="0" step="0.01" placeholder="0" value="${monto}" class="if-otro-monto w-20 shrink-0 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-emerald-300" oninput="recalcIF()">
+    <select class="if-otro-concepto w-20 shrink-0 border border-slate-200 rounded px-1 py-1 text-xs outline-none bg-white focus:ring-1 focus:ring-emerald-300" onchange="recalcIF()">${_ifConceptoOptions('ingreso', null, item)}</select>
+    <select class="if-otro-medio w-20 shrink-0 border border-slate-200 rounded px-1 py-1 text-xs outline-none bg-white focus:ring-1 focus:ring-emerald-300" onchange="recalcIF()">${_ifMedioOptions(medio)}</select>
+    <input type="text" placeholder="Descripción" value="${detalle||''}" class="if-otro-detalle flex-1 min-w-0 border border-slate-200 rounded px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-emerald-300">
+    <input type="number" min="0" step="0.01" placeholder="0" value="${monto}" class="if-otro-monto w-16 shrink-0 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-emerald-300" oninput="recalcIF()">
     <button onclick="this.closest('div').remove();recalcIF()" class="text-slate-300 hover:text-rose-500 text-xs shrink-0">✕</button>`;
   wrap.appendChild(div);
 }
@@ -4009,10 +3994,6 @@ function _ifReadForm() {
     const v = num(inp.value);
     if(inp.dataset.medio === 'Efectivo' || v > 0) d.arbitraje[inp.dataset.medio] = v;
   });
-  document.querySelectorAll('[data-seccion="otros"].if-pago-medio').forEach(inp => {
-    const v = num(inp.value);
-    if(inp.dataset.medio === 'Efectivo' || v > 0) d.otros[inp.dataset.medio] = v;
-  });
   document.querySelectorAll('[data-seccion="banco"].if-egreso').forEach(inp => { d.banco[inp.dataset.item] = num(inp.value); });
   document.querySelectorAll('[data-seccion="efectivo"].if-egreso').forEach(inp => { d.efectivo[inp.dataset.item] = num(inp.value); });
 
@@ -4030,12 +4011,13 @@ function _ifReadForm() {
     const monto = num(div.querySelector('.if-egreso-extra')?.value);
     if(item) d.efectivoExtras.push({item, detalle, monto});
   });
-  // Otros ingresos por concepto (concepto + detalle + monto)
+  // Otros ingresos por concepto (concepto + medio + descripción + monto)
   document.querySelectorAll('#ifOtrosConceptos > div').forEach(div => {
     const item = (div.querySelector('.if-otro-concepto')?.value||'').trim();
+    const medio = (div.querySelector('.if-otro-medio')?.value||'Efectivo').trim();
     const detalle = (div.querySelector('.if-otro-detalle')?.value||'').trim();
     const monto = num(div.querySelector('.if-otro-monto')?.value);
-    if(item) d.otrosExtras.push({item, detalle, monto});
+    if(item) d.otrosExtras.push({item, medio, detalle, monto});
   });
 
   d.fechaExacta = document.getElementById('ifFechaExacta')?.value || '';
