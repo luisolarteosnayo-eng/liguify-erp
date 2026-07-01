@@ -3263,7 +3263,7 @@ function renderP1Detalle() {
       <p class="font-bold mono ${f.porRecaudar>0?'text-rose-700':'text-emerald-700'} text-lg">${fmt(f.porRecaudar)}</p>
       <p class="text-[10px] text-slate-300 mt-1">Inscripciones pendientes</p>
     </div>
-    ${(()=>{ const _d=_ifData[t.id]||{}; let _ing=0,_eg=0; Object.values(_d).forEach(fd=>{ Object.values(fd.pagosEntradas||{}).forEach(v=>_ing+=parseFloat(v)||0); Object.values(fd.arbitraje||{}).forEach(v=>_ing+=parseFloat(v)||0); Object.values(fd.otros||{}).forEach(v=>_ing+=parseFloat(v)||0); Object.values(fd.banco||{}).forEach(v=>_eg+=parseFloat(v)||0); (fd.bancoExtras||[]).forEach(x=>_eg+=parseFloat(x.monto)||0); Object.values(fd.efectivo||{}).forEach(v=>_eg+=parseFloat(v)||0); (fd.efectivoExtras||[]).forEach(x=>_eg+=parseFloat(x.monto)||0); }); const _util=_ing-_eg; const nF=Object.keys(_d).length; const uc=_util>=0?'text-emerald-700':'text-rose-700'; const bc=_util>=0?'bg-emerald-50 border-emerald-100':'bg-rose-50 border-rose-100'; return `<div class="${bc} rounded-xl border p-4 shadow-sm cursor-pointer hover:opacity-80 transition" onclick="abrirIngresosFecha(${t.id})"><p class="text-[10px] text-slate-500 mb-1 uppercase font-semibold">Utilidad por Fecha</p><p class="font-bold mono ${uc} text-lg">${fmt(_util)}</p><p class="text-[10px] text-slate-300 mt-1">${nF} fecha${nF!==1?'s':''} registrada${nF!==1?'s':''}</p></div>`; })()}
+    ${(()=>{ const _d=_ifData[t.id]||{}; const _util=_utilFechas(_d); const nF=Object.keys(_d).length; const uc=_util>=0?'text-emerald-700':'text-rose-700'; const bc=_util>=0?'bg-emerald-50 border-emerald-100':'bg-rose-50 border-rose-100'; return `<div class="${bc} rounded-xl border p-4 shadow-sm cursor-pointer hover:opacity-80 transition" onclick="abrirIngresosFecha(${t.id})"><p class="text-[10px] text-slate-500 mb-1 uppercase font-semibold">Utilidad por Fecha</p><p class="font-bold mono ${uc} text-lg">${fmt(_util)}</p><p class="text-[10px] text-slate-300 mt-1">${nF} fecha${nF!==1?'s':''} registrada${nF!==1?'s':''}</p></div>`; })()}
   </div>` : '';
 
   // Categorías + equipos agrupados
@@ -3486,6 +3486,9 @@ function _calcTotalesFecha(d) {
   const efDisp = efIng - efEg;
   return { ing, eg, cancha, nroEntradas, util: ing - eg, efDisp };
 }
+
+// Suma de utilidad (ingresos - egresos) de todas las fechas de un torneo (o dict de fechas).
+function _utilFechas(fechasDict){ let u=0; Object.values(fechasDict||{}).forEach(fd=>u+=_calcTotalesFecha(fd).util); return u; }
 
 function renderIfResumen() {
   const data = _ifData[_ifTorneoId] || {};
@@ -4523,8 +4526,8 @@ function kpiBlock(label, sublabel, kpi, color, torneoId) {
         <div class="font-bold mono text-blue-700">${fmt(kpi.totalInsc)}</div>
         <div class="text-[10px] text-slate-300 mt-0.5">${nEq!==''?nEq+' equipos':''}</div>
       </div>
-      <div class="${(()=>{let i=0,e=0;Object.values(_ifData).forEach(td=>Object.values(td).forEach(fd=>{Object.values(fd.pagosEntradas||{}).forEach(v=>i+=parseFloat(v)||0);Object.values(fd.arbitraje||{}).forEach(v=>i+=parseFloat(v)||0);Object.values(fd.otros||{}).forEach(v=>i+=parseFloat(v)||0);Object.values(fd.banco||{}).forEach(v=>e+=parseFloat(v)||0);(fd.bancoExtras||[]).forEach(x=>e+=parseFloat(x.monto)||0);Object.values(fd.efectivo||{}).forEach(v=>e+=parseFloat(v)||0);(fd.efectivoExtras||[]).forEach(x=>e+=parseFloat(x.monto)||0);}));const u=i-e;return u>=0?'bg-emerald-50':'bg-rose-50';})()}} rounded-lg p-3">
-        ${(()=>{let i=0,e=0;Object.values(_ifData).forEach(td=>Object.values(td).forEach(fd=>{Object.values(fd.pagosEntradas||{}).forEach(v=>i+=parseFloat(v)||0);Object.values(fd.arbitraje||{}).forEach(v=>i+=parseFloat(v)||0);Object.values(fd.otros||{}).forEach(v=>i+=parseFloat(v)||0);Object.values(fd.banco||{}).forEach(v=>e+=parseFloat(v)||0);(fd.bancoExtras||[]).forEach(x=>e+=parseFloat(x.monto)||0);Object.values(fd.efectivo||{}).forEach(v=>e+=parseFloat(v)||0);(fd.efectivoExtras||[]).forEach(x=>e+=parseFloat(x.monto)||0);}));const u=i-e;const uc=u>=0?'text-emerald-600':'text-rose-600';const uv=u>=0?'text-emerald-700':'text-rose-700';return `<div class="text-[10px] ${uc} mb-1 uppercase font-semibold">Utilidad por Fecha</div><div class="font-bold mono ${uv}">${fmt(u)}</div><div class="text-[10px] text-slate-300 mt-0.5">Todas las fechas</div>`;})()}
+      <div class="${(()=>{let u=0;Object.values(_ifData).forEach(td=>u+=_utilFechas(td));return u>=0?'bg-emerald-50':'bg-rose-50';})()} rounded-lg p-3">
+        ${(()=>{let u=0;Object.values(_ifData).forEach(td=>u+=_utilFechas(td));const uc=u>=0?'text-emerald-600':'text-rose-600';const uv=u>=0?'text-emerald-700':'text-rose-700';return `<div class="text-[10px] ${uc} mb-1 uppercase font-semibold">Utilidad por Fecha</div><div class="font-bold mono ${uv}">${fmt(u)}</div><div class="text-[10px] text-slate-300 mt-0.5">Todas las fechas</div>`;})()}
       </div>
       <div class="${kpi.porRecaudar>0?'bg-rose-50':'bg-emerald-50'} rounded-lg p-3">
         <div class="text-[10px] ${kpi.porRecaudar>0?'text-rose-600':'text-emerald-600'} mb-1 uppercase font-semibold">Por Recaudar</div>
@@ -4583,7 +4586,7 @@ function renderTorneosList() {
           <div class="text-[10px] text-blue-500 mb-0.5 font-semibold uppercase">Total Inscripciones</div>
           <div class="font-bold mono text-blue-700 text-xs">${fmt(f.totalInsc)}</div>
         </div>
-        ${(()=>{const _d=_ifData[t.id]||{};let i=0,e=0;Object.values(_d).forEach(fd=>{Object.values(fd.pagosEntradas||{}).forEach(v=>i+=parseFloat(v)||0);Object.values(fd.arbitraje||{}).forEach(v=>i+=parseFloat(v)||0);Object.values(fd.otros||{}).forEach(v=>i+=parseFloat(v)||0);Object.values(fd.banco||{}).forEach(v=>e+=parseFloat(v)||0);(fd.bancoExtras||[]).forEach(x=>e+=parseFloat(x.monto)||0);Object.values(fd.efectivo||{}).forEach(v=>e+=parseFloat(v)||0);(fd.efectivoExtras||[]).forEach(x=>e+=parseFloat(x.monto)||0);});const u=i-e;const uc=u>=0?'text-emerald-600':'text-rose-600';const uv=u>=0?'text-emerald-700':'text-rose-700';const bg=u>=0?'bg-emerald-50':'bg-rose-50';return `<div class="${bg} rounded-lg px-3 py-2"><div class="text-[10px] ${uc} mb-0.5 font-semibold uppercase">Utilidad Fechas</div><div class="font-bold mono ${uv} text-xs">${fmt(u)}</div></div>`;})()}
+        ${(()=>{const u=_utilFechas(_ifData[t.id]||{});const uc=u>=0?'text-emerald-600':'text-rose-600';const uv=u>=0?'text-emerald-700':'text-rose-700';const bg=u>=0?'bg-emerald-50':'bg-rose-50';return `<div class="${bg} rounded-lg px-3 py-2"><div class="text-[10px] ${uc} mb-0.5 font-semibold uppercase">Utilidad Fechas</div><div class="font-bold mono ${uv} text-xs">${fmt(u)}</div></div>`;})()}
         <div class="${f.porRecaudar>0?'bg-rose-50':'bg-emerald-50'} rounded-lg px-3 py-2">
           <div class="text-[10px] ${f.porRecaudar>0?'text-rose-600':'text-emerald-600'} mb-0.5 font-semibold uppercase">Por Recaudar</div>
           <div class="font-bold mono ${f.porRecaudar>0?'text-rose-700':'text-emerald-700'} text-xs">${fmt(f.porRecaudar)}</div>
