@@ -2641,33 +2641,19 @@ function renderRepFechas() {
       if(fin && fx && fx > fin) return;
 
       const n = v => parseFloat(v)||0;
-      // Ingresos
-      let ing=0;
-      Object.values(d.pagosEntradas||{}).forEach(v=>ing+=n(v));
-      Object.values(d.arbitraje||{}).forEach(v=>ing+=n(v));
-      Object.values(d.otros||{}).forEach(v=>ing+=n(v));
-      // Egresos
-      let eg=0;
-      Object.values(d.banco||{}).forEach(v=>eg+=n(v));
-      (d.bancoExtras||[]).forEach(x=>eg+=n(x.monto));
-      Object.values(d.efectivo||{}).forEach(v=>eg+=n(v));
-      (d.efectivoExtras||[]).forEach(x=>eg+=n(x.monto));
-      // Efectivo disponible
-      const efIng = n(d.pagosEntradas?.['Efectivo']) + n(d.arbitraje?.['Efectivo']) + n(d.otros?.['Efectivo']);
-      const efEg  = Object.values(d.efectivo||{}).reduce((s,v)=>s+n(v),0) + (d.efectivoExtras||[]).reduce((s,x)=>s+n(x.monto),0);
-      // Por medio de pago (banco)
+      // Ingresos/egresos/utilidad/efectivo disponible — misma fuente que el formulario
+      const tot = _calcTotalesFecha(d);
+      // Por medio de pago: ingresos recibidos vía cada medio (entradas + arbitraje + otros)
       const medioVals = {};
       medios.forEach(m => {
-        let tot = 0;
-        tot += n(d.pagosEntradas?.[m.nombre]);
-        tot += n(d.arbitraje?.[m.nombre]);
-        tot += n(d.otros?.[m.nombre]);
-        tot += n(d.banco?.[m.nombre]);
-        (d.bancoExtras||[]).filter(x=>x.item===m.nombre).forEach(x=>tot+=n(x.monto));
-        medioVals[m.nombre] = tot;
+        let s = 0;
+        s += n(d.pagosEntradas?.[m.nombre]);
+        s += n(d.arbitraje?.[m.nombre]);
+        (d.otrosExtras||[]).filter(x=>x.medio===m.nombre).forEach(x=>s+=n(x.monto));
+        medioVals[m.nombre] = s;
       });
 
-      rows.push({ fx, nFecha, torneo: torneo.nombre, ing, eg, util: ing-eg, efDisp: efIng-efEg, medioVals });
+      rows.push({ fx, nFecha, torneo: torneo.nombre, ing: tot.ing, eg: tot.eg, util: tot.util, efDisp: tot.efDisp, medioVals });
     });
   });
 
