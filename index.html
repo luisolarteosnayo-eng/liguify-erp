@@ -68,7 +68,7 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
 
   async function loadAll() {
     const tablas = ['organizaciones','profiles','categorias','complejos','medios_pago',
-                    'clubes','torneos','torneo_categorias','equipos','pagos','conceptos'];
+                    'clubes','torneos','torneo_categorias','equipos','pagos','conceptos','ingresos_fecha'];
     const out = {};
     for (const t of tablas) {
       const { data, error } = await sb.from(t).select('*');
@@ -158,6 +158,18 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
     },
     async eliminarConcepto(id) {
       const { error } = await sb.from('conceptos').delete().eq('id', id);
+      if (error) throw error;
+    },
+    async guardarIngresoFecha(fila) {
+      // Upsert por (torneo_id, n_fecha)
+      const { data, error } = await sb.from('ingresos_fecha')
+        .upsert({ ...fila, updated_at: new Date().toISOString() }, { onConflict: 'torneo_id,n_fecha' })
+        .select().single();
+      if (error) throw error; return data;
+    },
+    async eliminarIngresoFecha(torneoId, nFecha) {
+      const { error } = await sb.from('ingresos_fecha').delete()
+        .eq('torneo_id', torneoId).eq('n_fecha', nFecha);
       if (error) throw error;
     },
     async crearCategoria(cat) {
@@ -3983,7 +3995,15 @@ function guardarIngresosFecha() {
   _ifData[_ifTorneoId][n] = d;
   renderIfResumen();
   renderP1Detalle();
-  toast(`Fecha ${n} guardada ✓`, 'success');
+  if(sbOn()) {
+    SB().data.guardarIngresoFecha({
+      torneo_id: _ifTorneoId, n_fecha: n, fecha_exacta: d.fechaExacta || null,
+      data: d, org_id: myOrgId()
+    }).then(()=>toast(`Fecha ${n} guardada ✓`, 'success'))
+      .catch(e=>toast('⚠ Error al guardar: '+e.message, 'error'));
+  } else {
+    toast(`Fecha ${n} guardada ✓`, 'success');
+  }
 }
 
 // Lee el estado actual del formulario y devuelve un objeto de fecha (sin persistir).
@@ -6201,6 +6221,11 @@ async function sbHydrate(){
   S.torneos = (d.torneos||[]).map(t=>({id:t.id,nombre:t.nombre,sede:t.sede,esquema:t.esquema,estado:t.estado,inicio:t.inicio,fin:t.fin,fechaVenc:t.fecha_venc,label:t.label,snap:t.snap,orgId:t.org_id,cats:catsByT[t.id]||[]}));
   S.equipos = (d.equipos||[]).map(e=>({id:e.id,torneoId:e.torneo_id,clubId:e.club_id,catId:e.cat_id,modalidad:e.modalidad||'',nombre:e.nombre,inscripcion:_num(e.inscripcion),arbitraje:_num(e.arbitraje),fechas:e.fechas,monto:_num(e.monto),invitado:e.invitado||false,estado:e.estado,orgId:e.org_id}));
   S.pagos = (d.pagos||[]).map(p=>({id:p.id,torneoId:p.torneo_id,clubId:p.club_id,monto:_num(p.monto),medio:p.medio,fecha:p.fecha,nroOp:p.nro_op,desc:p.descripcion,estado:p.estado,motivo:p.motivo,op:'',regEn:p.created_at,procPor:'',procEn:p.processed_at,orgId:p.org_id}));
+  // Ingresos por Fecha (detalle financiero de cada jornada)
+  _ifData = {};
+  (d.ingresos_fecha||[]).forEach(r=>{
+    (_ifData[r.torneo_id] = _ifData[r.torneo_id] || {})[r.n_fecha] = { ..._ifBlankFecha(), ...(r.data||{}), fechaExacta: r.fecha_exacta || (r.data?.fechaExacta) || '' };
+  });
 }
 
 async function sbRouteAfterLogin(){

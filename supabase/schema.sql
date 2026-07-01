@@ -182,7 +182,20 @@ create table if not exists public.pago_log (
   org_id     bigint not null references public.organizaciones(id) on delete cascade
 );
 
+-- Persistencia de "Ingresos por Fecha" (detalle financiero de cada jornada)
+create table if not exists public.ingresos_fecha (
+  id           bigint generated always as identity primary key,
+  torneo_id    bigint not null references public.torneos(id) on delete cascade,
+  n_fecha      int not null,
+  fecha_exacta date,
+  data         jsonb not null default '{}',
+  org_id       bigint not null references public.organizaciones(id) on delete cascade,
+  updated_at   timestamptz not null default now(),
+  unique (torneo_id, n_fecha)
+);
+
 -- Índices útiles
+create index if not exists idx_ingresos_fecha_torneo on public.ingresos_fecha(torneo_id);
 create index if not exists idx_equipos_torneo on public.equipos(torneo_id);
 create index if not exists idx_equipos_club   on public.equipos(club_id);
 create index if not exists idx_pagos_club     on public.pagos(club_id);
@@ -216,6 +229,7 @@ alter table public.conceptos         enable row level security;
 alter table public.torneos           enable row level security;
 alter table public.torneo_categorias enable row level security;
 alter table public.equipos           enable row level security;
+alter table public.ingresos_fecha    enable row level security;
 alter table public.pagos             enable row level security;
 alter table public.pago_log          enable row level security;
 
@@ -254,7 +268,7 @@ declare t text;
 begin
   foreach t in array array[
     'categorias','complejos','medios_pago','clubes','conceptos',
-    'torneos','torneo_categorias','equipos','pagos','pago_log'
+    'torneos','torneo_categorias','equipos','ingresos_fecha','pagos','pago_log'
   ] loop
     execute format($f$
       drop policy if exists %1$s_select on public.%1$s;
