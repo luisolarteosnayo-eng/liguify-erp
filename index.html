@@ -3156,7 +3156,7 @@ function renderTorneosOperativo() {
     const cats = (t.cats||[]).map(tc=>{
       const cat    = S.categorias.find(c=>c.id===tc.catId);
       const inscritos = myEquipos().filter(e=>e.torneoId===t.id&&e.catId===tc.catId&&(!e.modalidad || (e.modalidad||'')===(tc.modalidad||''))&&e.estado==='activo').length;
-      const aforo  = cat?.aforo || tc.aforo || 8;
+      const aforo  = tc.aforo || cat?.aforo || 8;
       const disp   = Math.max(0, aforo - inscritos);
       const pct    = Math.round(inscritos/aforo*100);
       // Semáforo
@@ -5749,7 +5749,8 @@ function confirmarInscripcion(prospectoId) {
     const defArb  = tc?.arbitraje  || 0;
     const defFec  = cat?.fechas    || 6;
     const mod     = tc?.modalidad  || '';
-    const aforo   = cat ? cat.aforo - equiposByCat(catId).length : null;
+    const afoBase = tc?.aforo || cat?.aforo || 8;
+    const aforo   = cat ? afoBase - equiposByCat(catId).length : null;
     const afoTag  = aforo!==null && aforo<=0
       ? `<span class="text-[10px] font-bold text-rose-500 ml-1">Aforo lleno</span>`
       : aforo!==null && aforo<=2
@@ -5793,8 +5794,11 @@ function doConfirmarInscripcion() {
   document.querySelectorAll('#ci_cats_tbody tr[data-cat]').forEach(row=>{
     const catId = parseInt(row.dataset.cat);
     const cat   = catById(catId);
+    const _torn = myTorneos().find(t=>+t.id===+torneoId) || S.torneos.find(t=>+t.id===+torneoId);
+    const _tc   = _torn?.cats?.find(x=>x.catId===catId);
+    const afoBase = _tc?.aforo || cat?.aforo || 8;
     const count = equiposByCat(catId).length;
-    if(cat && count>=cat.aforo){ toast(`${cat?.nombre}: aforo completo, omitido.`,'error'); return; }
+    if(afoBase && count>=afoBase){ toast(`${cat?.nombre}: aforo completo, omitido.`,'error'); return; }
     const ya = S.equipos.find(e=>e.torneoId===torneoId&&e.clubId===club.id&&e.catId===catId&&e.estado==='activo');
     if(ya) return;
     const insc   = parseFloat(row.querySelector('[data-field="inscripcion"]').value)||0;
