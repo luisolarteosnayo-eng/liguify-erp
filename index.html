@@ -1729,6 +1729,8 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
               </div>
               <div id="ifOtrosExtras" class="space-y-1"></div>
               <button onclick="addIfMedioPago('otros')" class="text-[10px] text-emerald-600 hover:text-emerald-800 hover:underline">+ Agregar medio de pago</button>
+              <div id="ifOtrosConceptos" class="space-y-1 pt-1"></div>
+              <button onclick="addIfOtroConcepto()" class="text-[10px] text-emerald-600 hover:text-emerald-800 hover:underline">+ Agregar concepto</button>
               <div class="flex justify-between border-t border-slate-100 pt-1 mt-1">
                 <span class="text-xs font-bold text-slate-600">TOTAL</span>
                 <span class="text-xs font-bold text-emerald-700" id="ifTotalOtros">S/ 0</span>
@@ -3439,7 +3441,8 @@ function _ifBlankFecha() {
     banco: {},
     efectivo: {},
     inscripciones: {},
-    bancoExtras: [],    // [{item, monto}]
+    otrosExtras: [],    // [{item, detalle, monto}]  ingresos con concepto configurado
+    bancoExtras: [],    // [{item, detalle, monto}]
     efectivoExtras: []
   };
 }
@@ -3459,6 +3462,7 @@ function _calcTotalesFecha(d) {
   Object.values(d.pagosEntradas||{}).forEach(v=>ing+=n(v));
   Object.values(d.arbitraje||{}).forEach(v=>ing+=n(v));
   Object.values(d.otros||{}).forEach(v=>ing+=n(v));
+  (d.otrosExtras||[]).forEach(x=>ing+=n(x.monto));
   // Egresos banco
   let eg = 0;
   Object.values(d.banco||{}).forEach(v=>eg+=n(v));
@@ -3561,6 +3565,7 @@ function _ifLimpiarForm() {
   document.getElementById('ifPagosEntExtras').innerHTML = '';
   document.getElementById('ifArbExtras').innerHTML = '';
   document.getElementById('ifOtrosExtras').innerHTML = '';
+  document.getElementById('ifOtrosConceptos').innerHTML = '';
   // Limpiar extras banco/efectivo
   document.getElementById('ifBancoExtras').innerHTML = '';
   document.getElementById('ifEfectivoExtras').innerHTML = '';
@@ -3628,6 +3633,8 @@ function _ifFillForm(d) {
     const wrap = document.getElementById('ifOtrosExtras');
     _addMedioRow(wrap, 'otros', medio, monto);
   });
+  // Otros ingresos por concepto configurado (con detalle)
+  (d.otrosExtras||[]).forEach(x => addIfOtroConcepto(x.item, x.detalle, x.monto));
 
   // Banco — inputs por concepto
   const bancoItems = new Set();
@@ -3638,9 +3645,9 @@ function _ifFillForm(d) {
   // Banco: montos guardados de conceptos ya no por-defecto → fila extra
   Object.entries(d.banco||{}).forEach(([item, monto]) => {
     if(bancoItems.has(item) || !(parseFloat(monto)>0)) return;
-    addIfEgresoExtra('banco', item, monto);
+    addIfEgresoExtra('banco', item, '', monto);
   });
-  (d.bancoExtras||[]).forEach(x => addIfEgresoExtra('banco', x.item, x.monto));
+  (d.bancoExtras||[]).forEach(x => addIfEgresoExtra('banco', x.item, x.detalle, x.monto));
 
   // Efectivo — inputs por concepto
   const efItems = new Set();
@@ -3651,9 +3658,9 @@ function _ifFillForm(d) {
   // Efectivo: montos guardados de conceptos ya no por-defecto → fila extra
   Object.entries(d.efectivo||{}).forEach(([item, monto]) => {
     if(efItems.has(item) || !(parseFloat(monto)>0)) return;
-    addIfEgresoExtra('efectivo', item, monto);
+    addIfEgresoExtra('efectivo', item, '', monto);
   });
-  (d.efectivoExtras||[]).forEach(x => addIfEgresoExtra('efectivo', x.item, x.monto));
+  (d.efectivoExtras||[]).forEach(x => addIfEgresoExtra('efectivo', x.item, x.detalle, x.monto));
 }
 
 function recalcEntrada(input) {
@@ -3712,13 +3719,21 @@ function recalcIF() {
     if(!mediosOrden.includes(m)) mediosOrden.push(m);
     otrosMedio[m] = (otrosMedio[m]||0) + v;
   });
+  // Otros ingresos por concepto configurado (concepto + detalle + monto)
+  const otrosConceptoRows = [];
+  document.querySelectorAll('#ifOtrosConceptos > div').forEach(div => {
+    const item = div.querySelector('.if-otro-concepto')?.value || '';
+    const detalle = (div.querySelector('.if-otro-detalle')?.value||'').trim();
+    const v = n(div.querySelector('.if-otro-monto')?.value);
+    if(v>0) { totalOtros += v; otrosConceptoRows.push({item: item||'—', detalle, v}); }
+  });
   const otrosEl = document.getElementById('ifTotalOtros');
   if(otrosEl) otrosEl.textContent = 'S/ '+totalOtros.toFixed(0);
 
   let totalIng = 0;
   const ingTbody = document.getElementById('ifTotalIngresosBody');
   if(ingTbody) {
-    ingTbody.innerHTML = mediosOrden.map(m => {
+    let filas = mediosOrden.map(m => {
       const e = entMedio[m]||0, a = arbMedio[m]||0, o = otrosMedio[m]||0, tot = e + a + o;
       totalIng += tot;
       return `<tr class="border-t border-slate-50">
@@ -3729,6 +3744,19 @@ function recalcIF() {
         <td class="py-1 text-right font-semibold">S/ ${tot.toFixed(0)}</td>
       </tr>`;
     }).join('');
+    // Filas de otros ingresos por concepto (van en la columna Otros)
+    filas += otrosConceptoRows.map(r => {
+      totalIng += r.v;
+      const lbl = r.item + (r.detalle ? ` <span class="text-slate-300">· ${r.detalle}</span>` : '');
+      return `<tr class="border-t border-slate-50">
+        <td class="py-1 text-slate-500">${lbl}</td>
+        <td class="py-1 text-right">—</td>
+        <td class="py-1 text-right">—</td>
+        <td class="py-1 text-right">${r.v.toFixed(0)}</td>
+        <td class="py-1 text-right font-semibold">S/ ${r.v.toFixed(0)}</td>
+      </tr>`;
+    }).join('');
+    ingTbody.innerHTML = filas;
   }
   document.getElementById('ifTotalIngresos').textContent = 'S/ '+totalIng.toFixed(0);
 
@@ -3740,7 +3768,9 @@ function recalcIF() {
     egRows.push({ concepto: inp.dataset.item, banco: v, efectivo: 0 });
   });
   document.querySelectorAll('#ifBancoExtras > div').forEach(div => {
-    const concepto = div.querySelector('.if-extra-label')?.value.trim() || '—';
+    const base = div.querySelector('.if-extra-label')?.value.trim() || '—';
+    const det  = (div.querySelector('.if-extra-detalle')?.value||'').trim();
+    const concepto = base + (det ? ` · ${det}` : '');
     const v = n(div.querySelector('.if-egreso-extra')?.value);
     egRows.push({ concepto, banco: v, efectivo: 0 });
   });
@@ -3752,7 +3782,9 @@ function recalcIF() {
     else egRows.push({ concepto: inp.dataset.item, banco: 0, efectivo: v });
   });
   document.querySelectorAll('#ifEfectivoExtras > div').forEach(div => {
-    const concepto = div.querySelector('.if-extra-label')?.value.trim() || '—';
+    const base = div.querySelector('.if-extra-label')?.value.trim() || '—';
+    const det  = (div.querySelector('.if-extra-detalle')?.value||'').trim();
+    const concepto = base + (det ? ` · ${det}` : '');
     const v = n(div.querySelector('.if-egreso-extra')?.value);
     const existing = egRows.find(r => r.concepto === concepto);
     if(existing) existing.efectivo += v;
@@ -3899,13 +3931,40 @@ function _addMedioRow(wrap, seccion, nombre, monto) {
   wrap.appendChild(div);
 }
 
-function addIfEgresoExtra(seccion, item='', monto='') {
+// Opciones <option> de conceptos configurados para un tipo de flujo.
+// flujo: 'egreso' (banco/efectivo) | 'ingreso'. seccion (solo egreso): 'banco'|'efectivo'.
+function _ifConceptoOptions(flujo, seccion, seleccionado='') {
+  const cs = myConceptos().filter(c=>c.activo && (
+    flujo==='ingreso'
+      ? (c.tipo==='ingreso' || c.tipo==='ambos')
+      : (c.tipo==='egreso'  || c.tipo==='ambos') && (c.fuente==='ambos' || c.fuente===seccion)
+  ));
+  const nombres = [...new Set(cs.map(c=>c.nombre))];
+  if(seleccionado && !nombres.includes(seleccionado)) nombres.push(seleccionado); // conservar valor guardado
+  return `<option value="">— Concepto —</option>` +
+    nombres.map(nm=>`<option value="${nm}" ${nm===seleccionado?'selected':''}>${nm}</option>`).join('');
+}
+
+function addIfEgresoExtra(seccion, item='', detalle='', monto='') {
   const wrap = document.getElementById(seccion==='banco' ? 'ifBancoExtras' : 'ifEfectivoExtras');
   const div = document.createElement('div');
   div.className = 'flex items-center gap-2 mt-1';
   div.innerHTML = `
-    <input type="text" placeholder="Concepto" value="${item}" class="if-extra-label w-24 shrink-0 border border-slate-200 rounded px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-rose-300">
-    <input type="number" min="0" step="0.01" placeholder="0" value="${monto}" class="if-egreso-extra flex-1 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-rose-300" oninput="recalcIF()">
+    <select class="if-extra-label w-24 shrink-0 border border-slate-200 rounded px-1 py-1 text-xs outline-none bg-white focus:ring-1 focus:ring-rose-300" onchange="recalcIF()">${_ifConceptoOptions('egreso', seccion, item)}</select>
+    <input type="text" placeholder="Detalle (opcional)" value="${detalle||''}" class="if-extra-detalle flex-1 min-w-0 border border-slate-200 rounded px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-rose-300">
+    <input type="number" min="0" step="0.01" placeholder="0" value="${monto}" class="if-egreso-extra w-20 shrink-0 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-rose-300" oninput="recalcIF()">
+    <button onclick="this.closest('div').remove();recalcIF()" class="text-slate-300 hover:text-rose-500 text-xs shrink-0">✕</button>`;
+  wrap.appendChild(div);
+}
+
+function addIfOtroConcepto(item='', detalle='', monto='') {
+  const wrap = document.getElementById('ifOtrosConceptos');
+  const div = document.createElement('div');
+  div.className = 'flex items-center gap-2';
+  div.innerHTML = `
+    <select class="if-otro-concepto w-24 shrink-0 border border-slate-200 rounded px-1 py-1 text-xs outline-none bg-white focus:ring-1 focus:ring-emerald-300" onchange="recalcIF()">${_ifConceptoOptions('ingreso', null, item)}</select>
+    <input type="text" placeholder="Detalle (opcional)" value="${detalle||''}" class="if-otro-detalle flex-1 min-w-0 border border-slate-200 rounded px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-emerald-300">
+    <input type="number" min="0" step="0.01" placeholder="0" value="${monto}" class="if-otro-monto w-20 shrink-0 border border-slate-200 rounded px-2 py-1 text-xs text-right outline-none focus:ring-1 focus:ring-emerald-300" oninput="recalcIF()">
     <button onclick="this.closest('div').remove();recalcIF()" class="text-slate-300 hover:text-rose-500 text-xs shrink-0">✕</button>`;
   wrap.appendChild(div);
 }
@@ -3957,17 +4016,26 @@ function _ifReadForm() {
   document.querySelectorAll('[data-seccion="banco"].if-egreso').forEach(inp => { d.banco[inp.dataset.item] = num(inp.value); });
   document.querySelectorAll('[data-seccion="efectivo"].if-egreso').forEach(inp => { d.efectivo[inp.dataset.item] = num(inp.value); });
 
-  // Extras banco
+  // Extras banco (concepto + detalle + monto)
   document.querySelectorAll('#ifBancoExtras > div').forEach(div => {
-    const item = div.querySelector('.if-extra-label').value.trim();
-    const monto = num(div.querySelector('.if-egreso-extra').value);
-    if(item) d.bancoExtras.push({item, monto});
+    const item = (div.querySelector('.if-extra-label')?.value||'').trim();
+    const detalle = (div.querySelector('.if-extra-detalle')?.value||'').trim();
+    const monto = num(div.querySelector('.if-egreso-extra')?.value);
+    if(item) d.bancoExtras.push({item, detalle, monto});
   });
-  // Extras efectivo
+  // Extras efectivo (concepto + detalle + monto)
   document.querySelectorAll('#ifEfectivoExtras > div').forEach(div => {
-    const item = div.querySelector('.if-extra-label').value.trim();
-    const monto = num(div.querySelector('.if-egreso-extra').value);
-    if(item) d.efectivoExtras.push({item, monto});
+    const item = (div.querySelector('.if-extra-label')?.value||'').trim();
+    const detalle = (div.querySelector('.if-extra-detalle')?.value||'').trim();
+    const monto = num(div.querySelector('.if-egreso-extra')?.value);
+    if(item) d.efectivoExtras.push({item, detalle, monto});
+  });
+  // Otros ingresos por concepto (concepto + detalle + monto)
+  document.querySelectorAll('#ifOtrosConceptos > div').forEach(div => {
+    const item = (div.querySelector('.if-otro-concepto')?.value||'').trim();
+    const detalle = (div.querySelector('.if-otro-detalle')?.value||'').trim();
+    const monto = num(div.querySelector('.if-otro-monto')?.value);
+    if(item) d.otrosExtras.push({item, detalle, monto});
   });
 
   d.fechaExacta = document.getElementById('ifFechaExacta')?.value || '';
