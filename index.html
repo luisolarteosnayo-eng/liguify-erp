@@ -5450,18 +5450,11 @@ function renderCxc() {
   document.getElementById('cxcFiltroBar').classList.add('hidden');
   setCxcVencFilter('todos');
 
-  // Total global — solo inscripción (nunca arbitraje)
-  const totalGlobal = myClubs().reduce((s,c) => {
-    const insc   = myEquipos().filter(e=>e.clubId===c.id&&e.estado==='activo').reduce((a,e)=>a+(e.inscripcion||0), 0);
-    const pagado = myPagos().filter(p=>p.clubId===c.id&&p.estado==='aprobado').reduce((a,p)=>a+p.monto, 0);
-    return s + Math.max(0, insc - pagado);
-  }, 0);
-
-  // Por cobrar por torneo
-  const torneoKpis = myTorneos().map(t => {
-    const f = torneoFinancials(t);
-    return {torneo: t, porRecaudar: f.porRecaudar || 0};
-  }).filter(x => x.porRecaudar > 0);
+  // Por cobrar por torneo (el max(0,...) se aplica por torneo, sin netear saldos a favor entre torneos)
+  const torneoKpisAll = myTorneos().map(t => ({ torneo: t, porRecaudar: torneoFinancials(t).porRecaudar || 0 }));
+  // Total global = suma exacta de las tarjetas por torneo (consistente con la pantalla Financiero)
+  const totalGlobal = torneoKpisAll.reduce((s, x) => s + x.porRecaudar, 0);
+  const torneoKpis  = torneoKpisAll.filter(x => x.porRecaudar > 0);
 
   let kpiHtml = `<div class="grid gap-4" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr))">
     <div class="bg-rose-600 text-white rounded-xl p-4 cursor-pointer hover:bg-rose-700 transition" onclick="setCxcTorneoFilter(null)">
