@@ -90,6 +90,10 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
       }
       return t;
     },
+    async actualizarTorneo(id, campos) {
+      const { data, error } = await sb.from('torneos').update(campos).eq('id', id).select().single();
+      if (error) throw error; return data;
+    },
     async agregarTorneoCat(fila) {
       const { data, error } = await sb.from('torneo_categorias').insert(fila).select().single();
       if (error) throw error; return data;
@@ -122,6 +126,11 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
       if (error) throw error;
       await sb.from('pago_log').insert({ pago_id: pagoId, accion: 'aprobado', actor: user?.id, org_id: orgId });
       return data;
+    },
+    async fetchPagosClub(clubId, torneoId) {
+      const { data, error } = await sb.from('pagos')
+        .select('*').eq('club_id', clubId).eq('torneo_id', torneoId);
+      if (error) throw error; return data || [];
     },
     async rechazarPago(pagoId, orgId, motivo) {
       const user = await auth.getUser();
@@ -2190,6 +2199,31 @@ const myUsuarios   = () => S.usuarios.filter(u=>u.orgId===myOrgId() && !u.esAdmi
 const myMediosPago = () => S.mediosPago.filter(m=>m.orgId===myOrgId());
 const myConceptos  = () => (S.conceptos||[]).filter(c=>c.orgId===myOrgId());
 
+// ---- ESTADOS DE TORNEO ----
+// activo (al crear) → en_ejecucion (en juego) → cerrado (finalizado)
+const ESTADOS_TORNEO = {
+  activo:       { label:'Activo',       badge:'bg-emerald-100 text-emerald-700' },
+  en_ejecucion: { label:'En Ejecución', badge:'bg-amber-100 text-amber-700' },
+  cerrado:      { label:'Cerrado',      badge:'bg-slate-200 text-slate-500' },
+};
+const estadoTorneoLabel = e => (ESTADOS_TORNEO[e] || ESTADOS_TORNEO.activo).label;
+function badgeTorneo(estado) {
+  const cfg = ESTADOS_TORNEO[estado] || ESTADOS_TORNEO.activo;
+  return `<span class="text-[11px] font-bold ${cfg.badge} px-2.5 py-0.5 rounded-full">${cfg.label}</span>`;
+}
+async function cambiarEstadoTorneo(id, nuevo) {
+  const t = S.torneos.find(x=>+x.id===+id);
+  if(!t || t.estado===nuevo) return;
+  const prev = t.estado;
+  t.estado = nuevo;
+  if(sbOn()){
+    try { await SB().data.actualizarTorneo(id, { estado: nuevo }); }
+    catch(e){ t.estado = prev; toast('⚠ No se pudo cambiar el estado: '+e.message,'error'); renderTorneosList(); return; }
+  }
+  toast(`Torneo marcado como "${estadoTorneoLabel(nuevo)}" ✓`,'success');
+  renderTorneosList();
+}
+
 function cargosClub(id) { return myEquipos().filter(e=>+e.clubId===+id&&e.estado==='activo').reduce((s,e)=>s+(e.inscripcion||0),0); }
 function abonadoClub(id) { return myPagos().filter(p=>+p.clubId===+id&&p.estado==='aprobado').reduce((s,p)=>s+p.monto,0); }
 function saldoClub(id) { return cargosClub(id) - abonadoClub(id); }
@@ -3149,8 +3183,8 @@ function renderP1View(vista) {
 }
 
 function renderTorneosOperativo() {
+  // Operativo: solo torneos en estado Activo (abiertos a inscripción).
   const activos  = myTorneos().filter(t=>t.estado==='activo');
-  const cerrados = myTorneos().filter(t=>t.estado!=='activo');
 
   function tarjetaTorneo(t) {
     const cats = (t.cats||[]).map(tc=>{
@@ -3222,11 +3256,7 @@ function renderTorneosOperativo() {
     html += `<h3 class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Torneos Activos</h3>
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">${activos.map(tarjetaTorneo).join('')}</div>`;
   }
-  if(cerrados.length) {
-    html += `<h3 class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Torneos Cerrados</h3>
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">${cerrados.map(tarjetaTorneo).join('')}</div>`;
-  }
-  document.getElementById('torneosList').innerHTML = html || '<p class="text-slate-400 text-sm">Sin torneos registrados.</p>';
+  document.getElementById('torneosList').innerHTML = html || '<p class="text-slate-400 text-sm">No hay torneos activos abiertos a inscripción.</p>';
 }
 
 // ---- P1 DETALLE: vista completa de un torneo ----
@@ -3235,7 +3265,7 @@ function renderP1Detalle() {
   if(!t) { document.getElementById('p1DetalleContent').innerHTML = '<p class="text-slate-400">Selecciona un torneo.</p>'; return; }
 
   const f = torneoFinancials(t);
-  const isActivo = t.estado==='activo';
+  const isActivo = t.estado!=='cerrado';   // activo y en_ejecucion: datos en vivo (solo cerrado usa snapshot)
 
   const esquemaLabel = (t.esquema||'inscripcion_arbitraje')==='solo_inscripcion'
     ? '<span class="text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full ml-2">Solo Inscripción</span>'
@@ -4476,7 +4506,7 @@ async function crearTorneo() {
 function equiposByTorneo(torneoId) { return myEquipos().filter(e=>+e.torneoId===+torneoId); }
 
 function torneoFinancials(t) {
-  if(t.estado === 'activo') {
+  if(t.estado !== 'cerrado') {   // activo y en_ejecucion usan datos en vivo
     const equipos   = equiposByTorneo(t.id).filter(e=>e.estado==='activo');
     const totalInsc = equipos.reduce((s,e)=>s+(e.inscripcion||0), 0);
     const totalArb  = equipos.reduce((s,e)=>s+(e.arbitraje||0)*(e.fechas||0), 0);
@@ -4564,9 +4594,16 @@ function renderTorneosList() {
     const isActivo = t.estado==='activo';
     const isSel    = t.id === S.torneoSelId;
 
-    const estadoBadge = isActivo
-      ? '<span class="text-[11px] font-bold bg-emerald-100 text-emerald-700 px-2.5 py-0.5 rounded-full">Activo</span>'
-      : '<span class="text-[11px] font-bold bg-slate-200 text-slate-500 px-2.5 py-0.5 rounded-full">Cerrado</span>';
+    const estadoBadge = badgeTorneo(t.estado);
+    // Selector de estado (solo organizador). Se detiene la propagación del click de la tarjeta.
+    const estadoSelector = S.role==='organizador' ? `
+      <div class="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2" onclick="event.stopPropagation()">
+        <span class="text-[10px] text-slate-400 uppercase font-semibold">Estado</span>
+        <select onchange="cambiarEstadoTorneo(${t.id}, this.value)"
+                class="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-[#4F86C6]">
+          ${Object.keys(ESTADOS_TORNEO).map(k=>`<option value="${k}" ${t.estado===k?'selected':''}>${ESTADOS_TORNEO[k].label}</option>`).join('')}
+        </select>
+      </div>` : '';
 
     return `
     <div onclick="selTorneo(${t.id})" class="cursor-pointer bg-white rounded-xl border-2 ${isSel?'border-[#4F86C6] ring-2 ring-blue-100':'border-slate-200 hover:border-slate-300'} p-5 shadow-sm transition-all">
@@ -4598,6 +4635,7 @@ function renderTorneosList() {
         </div>
         <span class="text-[11px] font-semibold text-slate-500 shrink-0">${pct}%</span>
       </div>
+      ${estadoSelector}
     </div>`;
   }).join('');
 
@@ -5433,9 +5471,7 @@ function renderCxc() {
     </div>`;
 
   torneoKpis.forEach(({torneo, porRecaudar}) => {
-    const badge = torneo.estado==='activo'
-      ? '<span class="text-[10px] bg-emerald-200 text-emerald-800 px-1.5 py-0.5 rounded font-semibold">Activo</span>'
-      : '<span class="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded font-semibold">Cerrado</span>';
+    const badge = badgeTorneo(torneo.estado);
     kpiHtml += `<div class="bg-white ring-1 ring-rose-200 rounded-xl p-4 cursor-pointer hover:ring-rose-500 hover:shadow-md transition" onclick="setCxcTorneoFilter(${torneo.id})">
       <div class="flex items-center gap-2 mb-2">${badge}</div>
       <p class="text-xs font-semibold text-slate-600 truncate mb-1">${torneo.nombre}</p>
@@ -5630,9 +5666,7 @@ function abrirCxcClub(clubId) {
     if(deuda <= 0) return ''; // sin deuda en este torneo
     totalDeuda += deuda;
 
-    const badge = torneo?.estado==='activo'
-      ? '<span class="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-semibold">Activo</span>'
-      : '<span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-semibold">Cerrado</span>';
+    const badge = badgeTorneo(torneo?.estado);
 
     const filas = equipos.map(e=>{
       const cat = catById(e.catId);
@@ -5993,8 +6027,23 @@ function ecGuardar() {
   toast('Cambios guardados ✓', 'success');
 }
 
-function openEstadoCuenta(clubId, torneoId) {
+async function openEstadoCuenta(clubId, torneoId) {
   _ecClubId = clubId; _ecTorneoId = torneoId;
+  // Refrescar pagos del club desde Supabase para que todos los usuarios (operadores, tesorero)
+  // vean los pagos registrados por otros sin necesidad de recargar la página.
+  if (sbOn()) {
+    try {
+      const frescos = await SB().data.fetchPagosClub(clubId, torneoId);
+      // Eliminar pagos anteriores de este club+torneo y reemplazar con datos frescos
+      S.pagos = S.pagos.filter(p => !(+p.clubId===+clubId && +p.torneoId===+torneoId));
+      frescos.forEach(p => S.pagos.push({
+        id:p.id, torneoId:p.torneo_id, clubId:p.club_id, monto:_num(p.monto),
+        medio:p.medio, fecha:p.fecha, nroOp:p.nro_op, desc:p.descripcion,
+        estado:p.estado, motivo:p.motivo, op:'', regEn:p.created_at,
+        procPor:'', procEn:p.processed_at, orgId:p.org_id
+      }));
+    } catch(e) { console.warn('[EC] No se pudo refrescar pagos:', e.message); }
+  }
   renderEstadoCuenta();
   openModal('estadoCuentaModal');
 }

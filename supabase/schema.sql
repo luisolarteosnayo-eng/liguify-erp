@@ -103,7 +103,7 @@ create table if not exists public.torneos (
   sede    text,
   esquema text not null default 'inscripcion_arbitraje'
           check (esquema in ('inscripcion_arbitraje','solo_inscripcion')),
-  estado  text not null default 'activo' check (estado in ('activo','cerrado')),
+  estado  text not null default 'activo' check (estado in ('activo','en_ejecucion','cerrado')),
   inicio  date,
   fin     date,
   label   text,
