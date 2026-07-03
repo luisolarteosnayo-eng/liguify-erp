@@ -6043,7 +6043,7 @@ function renderEstadoCuenta() {
   document.getElementById('ec_torneo_label').textContent = torneo.nombre;
   document.getElementById('ec_club_nombre').textContent  = club.nombre;
   document.getElementById('ec_club_detalle').textContent =
-    `RUC/DNI: ${club.ruc||'—'}  ·  Contacto: ${club.contacto||'—'}  ·  ${equipos.length} equipo(s) activo(s)`;
+    `Contacto: ${club.delegado||'—'}  ·  Tel: ${club.telefono||'—'}  ·  ${equipos.length} equipo(s) activo(s)`;
 
   // KPIs
   document.getElementById('ec_total_insc').textContent = fmt(totalInsc);
