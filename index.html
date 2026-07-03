@@ -205,6 +205,14 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
       const { data } = await sb.storage.from('vouchers').createSignedUrl(path, 60 * 60 * 24 * 365);
       return data?.signedUrl || path;
     },
+    async subirCabeceraTorneo(file, orgId) {
+      const ext  = (file.name.split('.').pop() || 'png').toLowerCase();
+      const path = `${orgId}/${Date.now()}.${ext}`;
+      const { error } = await sb.storage.from('torneos').upload(path, file, { upsert: true });
+      if (error) throw error;
+      const { data } = sb.storage.from('torneos').getPublicUrl(path);
+      return data?.publicUrl || path;
+    },
   };
 
   window.LiguifyDB = { configurado, client: sb, auth, getProfile, completeOnboarding, data };
@@ -793,6 +801,14 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
               <input type="text" id="ntNombre" placeholder="Ej. Copa Clausura Lima 2026" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200">
             </div>
             <div class="mb-4">
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Imagen de cabecera <span class="text-slate-400 font-normal">(opcional — aparece en el Estado de Cuenta)</span></label>
+              <div class="flex items-center gap-3">
+                <img id="ntHeaderPreview" class="hidden h-14 rounded-lg border border-slate-200 object-cover" alt="">
+                <input type="file" id="ntHeader" accept="image/*" onchange="_previewTorneoHeader('ntHeader','ntHeaderPreview')"
+                  class="flex-1 text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-600 hover:file:bg-slate-200 cursor-pointer">
+              </div>
+            </div>
+            <div class="mb-4">
               <label class="block text-xs font-semibold text-slate-600 mb-1">Sede / Complejo Deportivo *</label>
               <div class="flex gap-2">
                 <select id="ntSede" class="flex-1 border border-slate-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 bg-white"></select>
@@ -1339,7 +1355,10 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
 
 <!-- estadoCuentaModal -->
 <div id="estadoCuentaModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60">
-  <div id="ec_card" class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full max-w-3xl fade-in max-h-[92vh] flex flex-col">
+  <div id="ec_card" class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full max-w-3xl fade-in max-h-[92vh] flex flex-col overflow-hidden">
+
+    <!-- Banner de cabecera del torneo (si tiene imagen) -->
+    <img id="ec_header_img" class="hidden w-full h-auto object-contain shrink-0" alt="" crossorigin="anonymous">
 
     <!-- Header -->
     <div class="flex items-start justify-between px-6 py-4 border-b border-slate-100 shrink-0">
@@ -1913,6 +1932,13 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
     <h3 class="font-bold text-base mb-4">Editar Torneo</h3>
     <label class="block text-xs font-semibold text-slate-600 mb-1">Nombre del torneo *</label>
     <input type="text" id="etNombre" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 outline-none focus:ring-2 focus:ring-blue-200">
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Imagen de cabecera <span class="text-slate-400 font-normal">(aparece en el Estado de Cuenta)</span></label>
+    <div class="flex items-center gap-3 mb-3">
+      <img id="etHeaderPreview" class="hidden h-14 rounded-lg border border-slate-200 object-cover" alt="">
+      <input type="file" id="etHeader" accept="image/*" onchange="_previewTorneoHeader('etHeader','etHeaderPreview')"
+        class="flex-1 text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-600 hover:file:bg-slate-200 cursor-pointer">
+      <button type="button" id="etHeaderQuitar" onclick="_quitarTorneoHeader()" class="hidden text-xs font-semibold text-rose-500 hover:text-rose-600 shrink-0">Quitar</button>
+    </div>
     <label class="block text-xs font-semibold text-slate-600 mb-1">Sede / Complejo Deportivo *</label>
     <select id="etSede" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 outline-none focus:ring-2 focus:ring-blue-200 bg-white"></select>
     <div class="grid grid-cols-2 gap-3 mb-4">
@@ -4248,6 +4274,13 @@ function openEditTorneo() {
   const t = S.torneos.find(x=>x.id===S.torneoSelId);
   if(!t) return;
   document.getElementById('etNombre').value = t.nombre;
+  // Cabecera: precargar preview con la imagen actual (si tiene)
+  _etHeaderRemove = false;
+  const etH = document.getElementById('etHeader'); if(etH) etH.value='';
+  const etHP = document.getElementById('etHeaderPreview');
+  const etHQ = document.getElementById('etHeaderQuitar');
+  if(t.headerUrl){ etHP.src=t.headerUrl; etHP.classList.remove('hidden'); if(etHQ) etHQ.classList.remove('hidden'); }
+  else { etHP.src=''; etHP.classList.add('hidden'); if(etHQ) etHQ.classList.add('hidden'); }
   document.getElementById('etInicio').value = t.inicio;
   document.getElementById('etFin').value    = t.fin;
   const sedeEl = document.getElementById('etSede');
@@ -4298,7 +4331,7 @@ function eliminarTorneoCat(catId, modalidad) {
   }
 }
 
-function guardarEditTorneo() {
+async function guardarEditTorneo() {
   const t = S.torneos.find(x=>x.id===S.torneoSelId);
   if(!t) return;
   const nombre  = (document.getElementById('etNombre').value||'').trim();
@@ -4321,6 +4354,24 @@ function guardarEditTorneo() {
     const tc = (t.cats||[]).find(x=>x.catId===catId);
     if(tc) tc.aforo = Math.max(parseInt(inp.value)||1, parseInt(inp.min)||1);
   });
+  // Cabecera: subir nueva imagen, quitarla, o dejarla como está
+  const headerFile = document.getElementById('etHeader')?.files?.[0] || null;
+  let headerChanged = false, headerUrl = t.headerUrl || null;
+  if(sbOn()){
+    try {
+      if(headerFile){ headerUrl = await SB().data.subirCabeceraTorneo(headerFile, myOrgId()); headerChanged = true; }
+      else if(_etHeaderRemove){ headerUrl = null; headerChanged = true; }
+    } catch(err){ toast('⚠ No se pudo actualizar la imagen: '+err.message,'warn'); }
+    try {
+      const campos = { nombre, sede, inicio, fin, esquema, label: t.label };
+      if(headerChanged) campos.header_url = headerUrl;
+      await SB().data.actualizarTorneo(t.id, campos);
+    } catch(err){ toast('⚠ Cambios locales, no se guardaron en la BD: '+err.message,'warn'); }
+  } else if(headerFile){
+    headerUrl = URL.createObjectURL(headerFile); headerChanged = true;
+  } else if(_etHeaderRemove){ headerUrl = null; headerChanged = true; }
+  if(headerChanged) t.headerUrl = headerUrl;
+  _etHeaderRemove = false;
   closeModal('editTorneoModal');
   toast('✅ Torneo actualizado.');
   renderP1Detalle();
@@ -4474,6 +4525,24 @@ function eliminarCategoriaConfig(id) {
   renderCfgCategorias();
 }
 
+// ---- Imagen de cabecera del torneo ----
+let _etHeaderRemove = false;   // marca que se quitó la cabecera existente al editar
+function _previewTorneoHeader(inputId, imgId) {
+  const inp = document.getElementById(inputId);
+  const img = document.getElementById(imgId);
+  const file = inp?.files?.[0];
+  if(!file){ return; }
+  if(inputId==='etHeader'){ _etHeaderRemove = false; const q=document.getElementById('etHeaderQuitar'); if(q) q.classList.remove('hidden'); }
+  const url = URL.createObjectURL(file);
+  img.src = url; img.classList.remove('hidden');
+}
+function _quitarTorneoHeader() {
+  _etHeaderRemove = true;
+  const inp = document.getElementById('etHeader'); if(inp) inp.value='';
+  const img = document.getElementById('etHeaderPreview'); if(img){ img.src=''; img.classList.add('hidden'); }
+  const q = document.getElementById('etHeaderQuitar'); if(q) q.classList.add('hidden');
+}
+
 async function crearTorneo() {
   const nombre = (document.getElementById('ntNombre').value||'').trim();
   const sede   = document.getElementById('ntSede').value||'';
@@ -4496,20 +4565,29 @@ async function crearTorneo() {
   const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   const d0=new Date(inicio), d1=new Date(fin);
   const label = `${MESES[d0.getMonth()]} ${d0.getFullYear()} — ${MESES[d1.getMonth()]} ${d1.getFullYear()}`;
+  const headerFile = document.getElementById('ntHeader')?.files?.[0] || null;
   const tmpId = Math.max(0,...S.torneos.map(t=>+t.id))+1;
-  const local = {id:tmpId,nombre,sede,esquema,estado:'activo',inicio,fin,fechaVenc,label,cats,snap:null,orgId:myOrgId()};
+  const local = {id:tmpId,nombre,sede,esquema,estado:'activo',inicio,fin,fechaVenc,label,headerUrl:null,cats,snap:null,orgId:myOrgId()};
   S.torneos.unshift(local);
   S.torneoSelId = tmpId;
   showScreen('p1');
   if(sbOn()){
     try {
       const orgId = myOrgId();
+      let headerUrl = null;
+      if(headerFile){
+        try { headerUrl = await SB().data.subirCabeceraTorneo(headerFile, orgId); local.headerUrl = headerUrl; }
+        catch(err){ toast('⚠ No se pudo subir la imagen de cabecera: '+err.message,'warn'); }
+      }
       const t = await SB().data.crearTorneo(
-        {nombre,sede,esquema,estado:'activo',inicio,fin,fecha_venc:fechaVenc||null,label,org_id:orgId},
+        {nombre,sede,esquema,estado:'activo',inicio,fin,fecha_venc:fechaVenc||null,label,header_url:headerUrl,org_id:orgId},
         cats.map(c=>({cat_id:c.catId,modalidad:c.modalidad,aforo:c.aforo,fechas:c.fechas,inscripcion:c.inscripcion,arbitraje:c.arbitraje,org_id:orgId}))
       );
       local.id = t.id;
       S.torneoSelId = t.id;
+      // Limpiar el campo de imagen para el próximo torneo
+      const hi=document.getElementById('ntHeader'); if(hi) hi.value='';
+      const hp=document.getElementById('ntHeaderPreview'); if(hp){ hp.src=''; hp.classList.add('hidden'); }
       renderScreen('p1');
       toast('✅ Torneo "'+nombre+'" guardado en la base de datos.','success');
     } catch(e){
@@ -4517,6 +4595,7 @@ async function crearTorneo() {
       toast('⚠ Torneo creado localmente pero no se guardó: '+e.message,'warn');
     }
   } else {
+    if(headerFile) local.headerUrl = URL.createObjectURL(headerFile);
     toast('✅ Torneo "'+nombre+'" creado.');
   }
 }
@@ -5950,6 +6029,13 @@ function renderEstadoCuenta() {
   const recaudado = pagosClub.filter(p=>p.estado!=='rechazado').reduce((s,p)=>s+p.monto, 0);
   const pendiente = Math.max(0, totalInsc - recaudado);
 
+  // Banner de cabecera del torneo (si tiene imagen)
+  const bannerImg = document.getElementById('ec_header_img');
+  if(bannerImg){
+    if(torneo.headerUrl){ bannerImg.src = torneo.headerUrl; bannerImg.classList.remove('hidden'); }
+    else { bannerImg.src = ''; bannerImg.classList.add('hidden'); }
+  }
+
   // Header
   document.getElementById('ec_torneo_label').textContent = torneo.nombre;
   document.getElementById('ec_club_nombre').textContent  = club.nombre;
@@ -6345,7 +6431,7 @@ async function sbHydrate(){
   S.clubes         = (d.clubes||[]).map(c=>({id:c.id,nombre:c.nombre,delegado:c.delegado,telefono:c.telefono,provincia:c.provincia,orgId:c.org_id}));
   const catsByT = {};
   (d.torneo_categorias||[]).forEach(tc=>{ (catsByT[tc.torneo_id] = catsByT[tc.torneo_id]||[]).push({catId:tc.cat_id,nombre:catNombre(tc.cat_id),modalidad:tc.modalidad,aforo:tc.aforo,fechas:tc.fechas,inscripcion:_num(tc.inscripcion),arbitraje:_num(tc.arbitraje)}); });
-  S.torneos = (d.torneos||[]).map(t=>({id:t.id,nombre:t.nombre,sede:t.sede,esquema:t.esquema,estado:t.estado,inicio:t.inicio,fin:t.fin,fechaVenc:t.fecha_venc,label:t.label,snap:t.snap,orgId:t.org_id,cats:catsByT[t.id]||[]}));
+  S.torneos = (d.torneos||[]).map(t=>({id:t.id,nombre:t.nombre,sede:t.sede,esquema:t.esquema,estado:t.estado,inicio:t.inicio,fin:t.fin,fechaVenc:t.fecha_venc,label:t.label,headerUrl:t.header_url,snap:t.snap,orgId:t.org_id,cats:catsByT[t.id]||[]}));
   S.equipos = (d.equipos||[]).map(e=>({id:e.id,torneoId:e.torneo_id,clubId:e.club_id,catId:e.cat_id,modalidad:e.modalidad||'',nombre:e.nombre,inscripcion:_num(e.inscripcion),arbitraje:_num(e.arbitraje),fechas:e.fechas,monto:_num(e.monto),invitado:e.invitado||false,estado:e.estado,orgId:e.org_id}));
   S.pagos = (d.pagos||[]).map(p=>({id:p.id,torneoId:p.torneo_id,clubId:p.club_id,monto:_num(p.monto),medio:p.medio,fecha:p.fecha,nroOp:p.nro_op,desc:p.descripcion,estado:p.estado,motivo:p.motivo,op:'',regEn:p.created_at,procPor:'',procEn:p.processed_at,orgId:p.org_id}));
   // Ingresos por Fecha (detalle financiero de cada jornada)

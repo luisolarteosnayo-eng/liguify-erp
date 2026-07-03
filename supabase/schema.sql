@@ -108,6 +108,7 @@ create table if not exists public.torneos (
   fin     date,
   label   text,
   fecha_venc date,                     -- fecha límite de pago (heredada a pagos pendientes)
+  header_url text,                     -- imagen de cabecera del torneo (Storage, bucket 'torneos')
   snap    jsonb,                       -- snapshot al cerrar el torneo
   org_id  bigint not null references public.organizaciones(id) on delete cascade,
   created_at timestamptz not null default now()
