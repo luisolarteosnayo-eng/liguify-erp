@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Liguify ERP — Gestión Financiera</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 <!-- Supabase: SDK + config + capa de conexión (ver supabase/SETUP.md) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -223,6 +224,12 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
   .role-btn.sel{border-color:#4F86C6!important;background:#EBF4FF}
   .medio-btn.sel{border-color:#18324F!important;border-width:2px!important;background:rgba(24,50,79,.06);color:#18324F!important;font-weight:700}
   input[type=number]::-webkit-inner-spin-button{opacity:.4}
+  /* Exportación del Estado de Cuenta como imagen */
+  #ec_card.exporting{max-height:none!important}
+  #ec_card.exporting .ec-scroll{overflow:visible!important;max-height:none!important}
+  #ec_card.exporting .ec-noexport{display:none!important}
+  #ec_card #ec_stamp{display:none}
+  #ec_card.exporting #ec_stamp{display:block!important}
 </style>
 </head>
 <body class="bg-slate-100 text-slate-800">
@@ -1332,7 +1339,7 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
 
 <!-- estadoCuentaModal -->
 <div id="estadoCuentaModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60">
-  <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full max-w-3xl fade-in max-h-[92vh] flex flex-col">
+  <div id="ec_card" class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full max-w-3xl fade-in max-h-[92vh] flex flex-col">
 
     <!-- Header -->
     <div class="flex items-start justify-between px-6 py-4 border-b border-slate-100 shrink-0">
@@ -1341,7 +1348,7 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
         <h2 class="text-lg font-bold text-slate-800" id="ec_club_nombre">Club</h2>
         <p class="text-xs text-slate-400 mt-0.5" id="ec_club_detalle"></p>
       </div>
-      <button onclick="closeModal('estadoCuentaModal')" class="text-slate-300 hover:text-slate-500 text-xl leading-none mt-1">✕</button>
+      <button onclick="closeModal('estadoCuentaModal')" class="ec-noexport text-slate-300 hover:text-slate-500 text-xl leading-none mt-1">✕</button>
     </div>
 
     <!-- KPIs: 3 tarjetas -->
@@ -1364,13 +1371,13 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
     </div>
 
     <!-- Cuerpo scrolleable -->
-    <div class="overflow-y-auto flex-1 px-6 py-5 space-y-6">
+    <div class="ec-scroll overflow-y-auto flex-1 px-6 py-5 space-y-6">
 
       <!-- Sección 1: Categorías activas -->
       <div>
         <div class="flex items-center justify-between mb-3">
           <p class="text-xs font-bold text-slate-500 uppercase tracking-wide">Categorías inscritas</p>
-          <button id="ec_btn_cat" onclick="abrirAgregarCatEC()" class="text-xs font-semibold text-[#4F86C6] border border-blue-200 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition">+ Agregar categoría</button>
+          <button id="ec_btn_cat" onclick="abrirAgregarCatEC()" class="ec-noexport text-xs font-semibold text-[#4F86C6] border border-blue-200 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition">+ Agregar categoría</button>
         </div>
         <table class="w-full text-sm">
           <thead>
@@ -1380,7 +1387,7 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
               <th class="pb-2 font-semibold text-center">Mod.</th>
               <th class="pb-2 font-semibold text-right">Inscripción</th>
               <th class="pb-2 font-semibold text-right">Arb./fecha</th>
-              <th class="pb-2 font-semibold text-center">Acción</th>
+              <th class="ec-noexport pb-2 font-semibold text-center">Acción</th>
             </tr>
           </thead>
           <tbody id="ec_cats_tbody" class="divide-y divide-slate-100"></tbody>
@@ -1407,11 +1414,23 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
         </table>
       </div>
 
+      <!-- Sello (solo visible al exportar la imagen) -->
+      <div id="ec_stamp" class="pt-3 mt-2 border-t border-slate-100 text-[10px] text-slate-400 text-center">
+        Generado el <span id="ec_stamp_fecha"></span> · <span id="ec_stamp_org"></span> · Liguify
+      </div>
+
     </div>
 
     <!-- Footer -->
-    <div class="px-6 py-3 border-t border-slate-100 shrink-0 flex items-center justify-between">
-      <button onclick="closeModal('estadoCuentaModal')" class="text-sm font-semibold text-slate-400 hover:text-slate-600 px-4 py-2 rounded-lg hover:bg-slate-100 transition">Cerrar</button>
+    <div class="ec-noexport px-6 py-3 border-t border-slate-100 shrink-0 flex items-center justify-between gap-2 flex-wrap">
+      <div class="flex items-center gap-2">
+        <button onclick="closeModal('estadoCuentaModal')" class="text-sm font-semibold text-slate-400 hover:text-slate-600 px-3 py-2 rounded-lg hover:bg-slate-100 transition">Cerrar</button>
+        <button onclick="ecDescargarImagen()" title="Descargar como imagen" class="text-sm font-semibold text-slate-600 border border-slate-200 bg-white px-3 py-2 rounded-lg hover:bg-slate-50 transition flex items-center gap-1">⬇ Imagen</button>
+        <button onclick="ecCompartir()" title="Compartir por WhatsApp" class="text-sm font-semibold text-white bg-[#25D366] px-3 py-2 rounded-lg hover:bg-[#1ebe5a] transition flex items-center gap-1">
+          <svg viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4"><path d="M17.5 14.4c-.3-.1-1.7-.8-1.9-.9-.3-.1-.5-.1-.6.1-.2.3-.7.9-.9 1.1-.2.2-.3.2-.6.1-1.4-.7-2.3-1.3-3.3-2.9-.2-.4.2-.4.6-1.2.1-.2 0-.3 0-.5s-.6-1.5-.9-2c-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.9.9-1.1 2-1.1 2.1 0 1.2.8 2.3 1 2.5.1.2 1.7 2.7 4.2 3.7 2.1.9 2.5.7 3 .7.5 0 1.6-.6 1.8-1.3.2-.6.2-1.2.2-1.3-.1-.2-.3-.3-.5-.4M12 21.5c-1.7 0-3.3-.4-4.7-1.3l-.3-.2-3.5.9.9-3.4-.2-.3c-.9-1.5-1.4-3.2-1.4-4.9C2.5 6.8 6.8 2.5 12 2.5S21.5 6.8 21.5 12 17.2 21.5 12 21.5M12 .5C5.7.5.5 5.7.5 12c0 2 .5 3.9 1.5 5.6L.5 23.5l6-1.6c1.6.9 3.5 1.4 5.5 1.4 6.3 0 11.5-5.2 11.5-11.5S18.3.5 12 .5"/></svg>
+          WhatsApp
+        </button>
+      </div>
       <div class="flex items-center gap-2">
         <button id="ec_btn_guardar" onclick="ecGuardar()" class="text-sm font-semibold text-emerald-700 border border-emerald-200 bg-emerald-50 px-4 py-2 rounded-lg hover:bg-emerald-100 transition">Guardar cambios</button>
         <button id="ec_btn_pago" onclick="abrirPagoDesdeEC()" class="text-sm font-bold bg-[#18324F] text-white px-5 py-2 rounded-lg hover:bg-[#0f1f33] transition shadow-sm">+ Registrar pago</button>
@@ -5985,7 +6004,7 @@ function renderEstadoCuenta() {
           : `<span class="mono font-bold text-blue-700">${fmt(e.inscripcion)}</span>`}
       </td>
       ${arbCell}
-      <td class="py-2 text-center">
+      <td class="ec-noexport py-2 text-center">
         <button onclick="ecInactivar(${e.id})" title="Inactivar equipo"
           class="text-slate-300 hover:text-rose-400 text-xs px-1">✕</button>
       </td>
@@ -6039,6 +6058,65 @@ async function openEstadoCuenta(clubId, torneoId) {
   }
   renderEstadoCuenta();
   openModal('estadoCuentaModal');
+}
+
+// ---- Exportar / compartir el Estado de Cuenta como imagen ----
+function _ecNombreArchivo() {
+  const club = (document.getElementById('ec_club_nombre')?.textContent || 'club')
+    .replace(/[^\w\sÁÉÍÓÚÑáéíóúñ-]/g,'').trim().replace(/\s+/g,'_');
+  return `EstadoCuenta_${club}_${new Date().toISOString().slice(0,10)}.png`;
+}
+function _ecResumenTexto() {
+  const torneo = document.getElementById('ec_torneo_label')?.textContent || '';
+  const club   = document.getElementById('ec_club_nombre')?.textContent || '';
+  const tot    = document.getElementById('ec_total_insc')?.textContent || '';
+  const pag    = document.getElementById('ec_recaudado')?.textContent || '';
+  const pend   = document.getElementById('ec_por_recaudar')?.textContent || '';
+  return `*Estado de cuenta*\n${club}\n${torneo}\n\n`+
+         `Total inscripción: ${tot}\nPagado: ${pag}\nPendiente de pago: ${pend}`;
+}
+async function _ecCapturarCanvas() {
+  if (typeof html2canvas === 'undefined') throw new Error('Librería de imagen no cargada');
+  const card = document.getElementById('ec_card');
+  // Rellenar el sello con fecha y organización
+  const f = document.getElementById('ec_stamp_fecha'); if(f) f.textContent = new Date().toLocaleDateString('es-PE');
+  const o = document.getElementById('ec_stamp_org');   if(o) o.textContent = S.organizacionActual?.nombre || 'Liguify';
+  card.classList.add('exporting');
+  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+  try {
+    return await html2canvas(card, { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false });
+  } finally {
+    card.classList.remove('exporting');
+  }
+}
+async function ecDescargarImagen() {
+  try {
+    const canvas = await _ecCapturarCanvas();
+    const a = document.createElement('a');
+    a.download = _ecNombreArchivo();
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+    toast('Imagen descargada ✓','success');
+  } catch(e) { toast('⚠ No se pudo generar la imagen: '+e.message,'error'); }
+}
+async function ecCompartir() {
+  let canvas;
+  try { canvas = await _ecCapturarCanvas(); }
+  catch(e){ toast('⚠ No se pudo generar la imagen: '+e.message,'error'); return; }
+  const resumen = _ecResumenTexto();
+  const blob = await new Promise(res=>canvas.toBlob(res,'image/png'));
+  const file = new File([blob], _ecNombreArchivo(), { type:'image/png' });
+  // 1) Compartir nativo con imagen adjunta (móvil: permite elegir WhatsApp)
+  if (navigator.canShare && navigator.canShare({ files:[file] })) {
+    try {
+      await navigator.share({ files:[file], title:'Estado de cuenta', text:resumen });
+      return;
+    } catch(e){ if(e.name==='AbortError') return; /* si falla, cae al fallback */ }
+  }
+  // 2) Fallback (escritorio): descargar la imagen y abrir WhatsApp con el resumen en texto
+  const a=document.createElement('a'); a.download=_ecNombreArchivo(); a.href=canvas.toDataURL('image/png'); a.click();
+  window.open('https://wa.me/?text='+encodeURIComponent(resumen), '_blank');
+  toast('Imagen descargada. Adjúntala en el chat de WhatsApp.','info');
 }
 
 function ecEditarMonto(equipoId, campo, valor) {
