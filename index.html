@@ -1644,6 +1644,7 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
       <div>
         <p class="text-[10px] text-rose-500 uppercase font-semibold mb-0.5">Estado de Cuenta — Deuda Pendiente</p>
         <h2 class="text-lg font-bold text-slate-800" id="cxcm_club"></h2>
+        <p class="text-xs text-slate-400 mt-0.5" id="cxcm_contacto"></p>
       </div>
       <button onclick="closeModal('cxcClubModal')" class="text-slate-300 hover:text-slate-500 text-xl leading-none mt-1">✕</button>
     </div>
@@ -5741,6 +5742,8 @@ function imprimirArbitrajes() {
 function abrirCxcClub(clubId) {
   const club = clubById(clubId);
   document.getElementById('cxcm_club').textContent = club?.nombre || '—';
+  document.getElementById('cxcm_contacto').textContent =
+    `Contacto: ${club?.delegado || '—'}  ·  Tel: ${club?.telefono || '—'}`;
 
   // Torneos donde el club tiene equipos activos
   const torneoIds = [...new Set(myEquipos().filter(e=>e.clubId===clubId&&e.estado==='activo').map(e=>e.torneoId))];
