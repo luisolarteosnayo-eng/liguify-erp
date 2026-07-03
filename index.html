@@ -6170,7 +6170,32 @@ async function _ecCapturarCanvas() {
   card.classList.add('exporting');
   await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
   try {
-    return await html2canvas(card, { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false });
+    return await html2canvas(card, {
+      scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false,
+      // html2canvas no renderiza bien el texto dentro de <input>; en la copia
+      // reemplazamos cada input por un <span> con su valor para que se vea nítido.
+      onclone: (clonedDoc) => {
+        clonedDoc.querySelectorAll('#ec_cats_tbody input').forEach(inp => {
+          const span = clonedDoc.createElement('span');
+          const isNum = inp.type === 'number';
+          const val = (inp.value && inp.value.trim() !== '') ? inp.value : (inp.getAttribute('placeholder') || '');
+          span.textContent = val;
+          span.style.display   = 'block';
+          span.style.fontSize  = '13px';
+          span.style.lineHeight= '1.4';
+          if(isNum){
+            span.style.textAlign  = 'right';
+            span.style.fontFamily = "'JetBrains Mono', monospace";
+            span.style.fontWeight = '700';
+            span.style.color      = '#1d4ed8';
+          } else {
+            span.style.fontWeight = '600';
+            span.style.color      = '#334155';
+          }
+          inp.replaceWith(span);
+        });
+      }
+    });
   } finally {
     card.classList.remove('exporting');
   }
