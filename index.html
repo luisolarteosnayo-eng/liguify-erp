@@ -119,10 +119,13 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
       await sb.from('pago_log').insert({ pago_id: data.id, accion: 'registrado', actor: user?.id, org_id: pago.org_id });
       return data;
     },
-    async aprobarPago(pagoId, orgId, medio) {
+    async aprobarPago(pagoId, orgId, cambios = {}) {
       const user = await auth.getUser();
       const upd = { estado: 'aprobado', processed_by: user?.id, processed_at: new Date().toISOString() };
-      if (medio) upd.medio = medio;
+      if (cambios.medio)                 upd.medio = cambios.medio;
+      if (cambios.fecha)                 upd.fecha = cambios.fecha;
+      if (cambios.nro_op !== undefined)  upd.nro_op = cambios.nro_op;
+      if (cambios.voucher_url)           upd.voucher_url = cambios.voucher_url;
       const { data, error } = await sb.from('pagos').update(upd).eq('id', pagoId).select().single();
       if (error) throw error;
       await sb.from('pago_log').insert({ pago_id: pagoId, accion: 'aprobado', actor: user?.id, org_id: orgId });
@@ -5278,13 +5281,13 @@ function abrirVoucher(pagoId) {
   document.getElementById('vmMonto').textContent = fmt(p.monto);
   document.getElementById('vmFecha').textContent = p.fecha;
   const saldo = saldoCxcClub(p.clubId, p.torneoId);
+  const canAprobar = ['organizador','tesorero'].includes(S.role);
   const medios = myMediosPago().filter(m=>m.activo);
   const medioOpts = medios.map(m=>`<option value="${m.nombre}" ${m.nombre===p.medio?'selected':''}>${m.icon||''} ${m.nombre}</option>`).join('');
+  const inputCls = 'w-full border border-slate-300 rounded-md px-2 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-200';
   document.getElementById('vmFicha').innerHTML = [
     ['Club', club?.nombre],
     ['Monto reportado', `<span class="font-bold mono">${fmt(p.monto)}</span>`],
-    ['Fecha del pago', p.fecha],
-    ['N° de Operación', `<span class="mono">${p.nroOp}</span>`],
     ['Descripción', p.desc||'—'],
     ['Registrado por', `${p.op} (Operador)`],
     ['Fecha de registro', p.regEn],
@@ -5298,13 +5301,31 @@ function abrirVoucher(pagoId) {
       </a>
       <a href="${p.voucherUrl}" target="_blank" rel="noopener" class="block text-center text-xs text-[#4F86C6] hover:underline mt-1">🔍 Ver en tamaño completo</a>
     </div>` : `<div class="mt-3 mb-1 py-4 text-center text-xs text-slate-300 border border-dashed border-slate-200 rounded-lg">Sin voucher adjunto</div>`)
-  + `<div class="flex justify-between items-center py-2 border-b border-slate-100 text-sm">
-      <span class="text-slate-500 shrink-0">Medio de pago</span>
-      <select id="vmMedioEdit" class="border border-slate-300 rounded-md px-2 py-1 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-200 font-medium">
-        ${medioOpts}
-      </select>
-    </div>`;
-  const canAprobar = ['organizador','tesorero'].includes(S.role);
+  + (canAprobar ? `
+    <div class="mt-4 pt-3 border-t border-slate-200">
+      <p class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Corregir datos del pago</p>
+      <div class="grid grid-cols-2 gap-2 mb-2">
+        <div>
+          <label class="block text-[10px] font-semibold text-slate-500 mb-1">Fecha del pago</label>
+          <input type="date" id="vmFechaEdit" value="${p.fecha||''}" class="${inputCls}">
+        </div>
+        <div>
+          <label class="block text-[10px] font-semibold text-slate-500 mb-1">N° de Operación</label>
+          <input type="text" id="vmNroOpEdit" value="${p.nroOp||''}" placeholder="N° operación" class="${inputCls} mono">
+        </div>
+      </div>
+      <label class="block text-[10px] font-semibold text-slate-500 mb-1">Medio de pago</label>
+      <select id="vmMedioEdit" class="${inputCls} font-medium mb-2">${medioOpts}</select>
+      <label class="block text-[10px] font-semibold text-slate-500 mb-1">Reemplazar voucher <span class="font-normal text-slate-400">(opcional)</span></label>
+      <input type="file" id="vmVoucherEdit" accept="image/*"
+        class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-600 hover:file:bg-slate-200 cursor-pointer">
+    </div>`
+  : `<div class="mt-3 flex justify-between items-center py-2 border-b border-slate-100 text-sm">
+      <span class="text-slate-500 shrink-0">Fecha del pago</span><span>${p.fecha}</span>
+    </div>
+    <div class="flex justify-between items-center py-2 border-b border-slate-100 text-sm">
+      <span class="text-slate-500 shrink-0">N° de Operación</span><span class="mono">${p.nroOp}</span>
+    </div>`);
   document.getElementById('vmActions').innerHTML = canAprobar
     ? `<button onclick="rechazarPago()" class="flex-1 flex items-center justify-center gap-1.5 border-2 border-rose-200 text-rose-600 font-semibold text-sm py-2.5 rounded-lg hover:bg-rose-50">✕ Rechazar Pago</button>
        <button onclick="aprobarPago()" class="flex-1 flex items-center justify-center gap-1.5 bg-emerald-600 text-white font-semibold text-sm py-2.5 rounded-lg hover:bg-emerald-700">✓ Confirmar Abono</button>`
@@ -5312,19 +5333,29 @@ function abrirVoucher(pagoId) {
   openModal('voucherModal');
 }
 
-function aprobarPago() {
+async function aprobarPago() {
   const p = S.pagos.find(x=>x.id===S.selectedPagoId);
   if(!p) return;
   const medioSel = document.getElementById('vmMedioEdit')?.value;
+  const fechaSel = document.getElementById('vmFechaEdit')?.value;
+  const nroOpEl  = document.getElementById('vmNroOpEdit');
+  const nroOpSel = nroOpEl ? nroOpEl.value.trim() : undefined;
+  const voucherFile = document.getElementById('vmVoucherEdit')?.files?.[0] || null;
+  // Aplicar correcciones locales
   if(medioSel) p.medio = medioSel;
+  if(fechaSel) p.fecha = fechaSel;
+  if(nroOpSel !== undefined) p.nroOp = nroOpSel;
   p.estado='aprobado'; p.procPor=ROLES[S.role]?.nombre||'Tesorero'; p.procEn=now();
   closeModal('voucherModal');
   toast(`Pago de ${fmt(p.monto)} aprobado ✓`,'success');
   addNotif(`✓ Tu pago de ${fmt(p.monto)} para ${clubById(p.clubId)?.nombre} fue APROBADO por ${p.procPor}.`,'success');
   renderP3();
   if(sbOn()){
-    SB().data.aprobarPago(p.id, myOrgId(), medioSel)
-      .catch(e=>toast('⚠ Error al guardar aprobación: '+e.message,'error'));
+    try {
+      let voucherUrl;
+      if(voucherFile){ voucherUrl = await SB().data.subirVoucher(voucherFile, myOrgId()); p.voucherUrl = voucherUrl; }
+      await SB().data.aprobarPago(p.id, myOrgId(), { medio:medioSel, fecha:fechaSel, nro_op:nroOpSel, voucher_url:voucherUrl });
+    } catch(e){ toast('⚠ Error al guardar aprobación: '+e.message,'error'); }
   }
 }
 
@@ -6140,7 +6171,7 @@ async function openEstadoCuenta(clubId, torneoId) {
       frescos.forEach(p => S.pagos.push({
         id:p.id, torneoId:p.torneo_id, clubId:p.club_id, monto:_num(p.monto),
         medio:p.medio, fecha:p.fecha, nroOp:p.nro_op, desc:p.descripcion,
-        estado:p.estado, motivo:p.motivo, op:'', regEn:p.created_at,
+        voucherUrl:p.voucher_url, estado:p.estado, motivo:p.motivo, op:'', regEn:p.created_at,
         procPor:'', procEn:p.processed_at, orgId:p.org_id
       }));
     } catch(e) { console.warn('[EC] No se pudo refrescar pagos:', e.message); }
@@ -6461,7 +6492,7 @@ async function sbHydrate(){
   (d.torneo_categorias||[]).forEach(tc=>{ (catsByT[tc.torneo_id] = catsByT[tc.torneo_id]||[]).push({catId:tc.cat_id,nombre:catNombre(tc.cat_id),modalidad:tc.modalidad,aforo:tc.aforo,fechas:tc.fechas,inscripcion:_num(tc.inscripcion),arbitraje:_num(tc.arbitraje)}); });
   S.torneos = (d.torneos||[]).map(t=>({id:t.id,nombre:t.nombre,sede:t.sede,esquema:t.esquema,estado:t.estado,inicio:t.inicio,fin:t.fin,fechaVenc:t.fecha_venc,label:t.label,headerUrl:t.header_url,snap:t.snap,orgId:t.org_id,cats:catsByT[t.id]||[]}));
   S.equipos = (d.equipos||[]).map(e=>({id:e.id,torneoId:e.torneo_id,clubId:e.club_id,catId:e.cat_id,modalidad:e.modalidad||'',nombre:e.nombre,inscripcion:_num(e.inscripcion),arbitraje:_num(e.arbitraje),fechas:e.fechas,monto:_num(e.monto),invitado:e.invitado||false,estado:e.estado,orgId:e.org_id}));
-  S.pagos = (d.pagos||[]).map(p=>({id:p.id,torneoId:p.torneo_id,clubId:p.club_id,monto:_num(p.monto),medio:p.medio,fecha:p.fecha,nroOp:p.nro_op,desc:p.descripcion,estado:p.estado,motivo:p.motivo,op:'',regEn:p.created_at,procPor:'',procEn:p.processed_at,orgId:p.org_id}));
+  S.pagos = (d.pagos||[]).map(p=>({id:p.id,torneoId:p.torneo_id,clubId:p.club_id,monto:_num(p.monto),medio:p.medio,fecha:p.fecha,nroOp:p.nro_op,desc:p.descripcion,voucherUrl:p.voucher_url,estado:p.estado,motivo:p.motivo,op:'',regEn:p.created_at,procPor:'',procEn:p.processed_at,orgId:p.org_id}));
   // Ingresos por Fecha (detalle financiero de cada jornada)
   _ifData = {};
   (d.ingresos_fecha||[]).forEach(r=>{
