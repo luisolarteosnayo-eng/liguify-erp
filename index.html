@@ -3392,7 +3392,8 @@ function renderP1Detalle() {
     }).filter(Boolean);
 
     catsSections = tornCats.map(tc => {
-      const equipos = myEquipos().filter(e=>e.torneoId===t.id && e.catId===tc.catId && (!e.modalidad || (e.modalidad||'')===(tc.modalidad||'')) && e.estado==='activo');
+      const equipos = myEquipos().filter(e=>e.torneoId===t.id && e.catId===tc.catId && (!e.modalidad || (e.modalidad||'')===(tc.modalidad||'')) && e.estado==='activo')
+        .sort((a,b)=>(clubById(a.clubId)?.nombre||'').localeCompare(clubById(b.clubId)?.nombre||'', 'es', {sensitivity:'base', numeric:true}));
       const inscritos = equipos.filter(e=>e.estado==='activo').length;
       const pctCat = tc.aforo>0 ? Math.min(100, Math.round(inscritos/tc.aforo*100)) : 0;
       const barCol = pctCat>=100?'bg-emerald-500':pctCat>=60?'bg-blue-500':'bg-amber-500';
