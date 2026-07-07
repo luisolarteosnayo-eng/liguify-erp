@@ -2264,6 +2264,8 @@ const today = () => new Date().toISOString().slice(0,10);
 const now = () => { const d = new Date(); return d.toISOString().slice(0,10) + ' ' + d.toTimeString().slice(0,5); };
 const clubById = id => S.clubes.find(c => +c.id === +id);
 const catById  = id => S.categorias.find(c => +c.id === +id);
+// Perfil del usuario (operador) que registró un pago, para contacto ante dudas
+const pagoRegistrante = p => (S.usuarios||[]).find(u => u.id === p?.createdBy) || null;
 const equiposByClub = id => myEquipos().filter(e => e.clubId === id);
 const equiposByCat  = id => myEquipos().filter(e => e.catId === id && e.estado === 'activo');
 const prospectosByCat = id => S.prospectos.filter(p => p.catId === id);
@@ -5300,7 +5302,7 @@ function renderP3() {
       <td class="py-3 px-4 mono font-semibold text-right">${fmt(p.monto)}</td>
       <td class="py-3 px-4"><span class="bg-slate-100 text-slate-600 text-[11px] px-2 py-0.5 rounded font-medium">${p.medio}</span></td>
       <td class="py-3 px-4 mono text-xs text-slate-500">${p.nroOp}</td>
-      <td class="py-3 px-4 text-slate-500 text-xs">${p.op}</td>
+      <td class="py-3 px-4 text-slate-500 text-xs">${pagoRegistrante(p)?.nombre || p.op || '—'}</td>
       <td class="py-3 px-4 text-center"><button onclick="abrirVoucher(${p.id})" class="inline-flex items-center gap-1 text-xs font-semibold text-[#4F86C6] hover:underline">👁 Ver</button></td>
     </tr>`;
   }).join('')
@@ -5324,7 +5326,7 @@ function abrirVoucher(pagoId) {
     ['Club', club?.nombre],
     ['Monto reportado', `<span class="font-bold mono">${fmt(p.monto)}</span>`],
     ['Descripción', p.desc||'—'],
-    ['Registrado por', `${p.op} (Operador)`],
+    ['Registrado por', (()=>{ const r=pagoRegistrante(p); return r ? `${r.nombre||'—'}${r.email?` · <a href="mailto:${r.email}" class="text-[#4F86C6] hover:underline">${r.email}</a>`:''}` : (p.op||'—'); })()],
     ['Fecha de registro', p.regEn],
     ['Saldo pendiente actual', `<span class="font-bold mono text-rose-600">${fmt(Math.max(0,saldo))}</span>`],
   ].map(([k,v])=>`<div class="flex justify-between items-center py-1.5 border-b border-slate-100 text-sm"><span class="text-slate-500 shrink-0">${k}</span><span>${v}</span></div>`).join('')
@@ -6206,7 +6208,7 @@ async function openEstadoCuenta(clubId, torneoId) {
       frescos.forEach(p => S.pagos.push({
         id:p.id, torneoId:p.torneo_id, clubId:p.club_id, monto:_num(p.monto),
         medio:p.medio, fecha:p.fecha, nroOp:p.nro_op, desc:p.descripcion,
-        voucherUrl:p.voucher_url, estado:p.estado, motivo:p.motivo, op:'', regEn:p.created_at,
+        voucherUrl:p.voucher_url, estado:p.estado, motivo:p.motivo, op:'', createdBy:p.created_by, regEn:p.created_at,
         procPor:'', procEn:p.processed_at, orgId:p.org_id
       }));
     } catch(e) { console.warn('[EC] No se pudo refrescar pagos:', e.message); }
@@ -6527,7 +6529,7 @@ async function sbHydrate(){
   (d.torneo_categorias||[]).forEach(tc=>{ (catsByT[tc.torneo_id] = catsByT[tc.torneo_id]||[]).push({catId:tc.cat_id,nombre:catNombre(tc.cat_id),modalidad:tc.modalidad,aforo:tc.aforo,fechas:tc.fechas,inscripcion:_num(tc.inscripcion),arbitraje:_num(tc.arbitraje)}); });
   S.torneos = (d.torneos||[]).map(t=>({id:t.id,nombre:t.nombre,sede:t.sede,esquema:t.esquema,estado:t.estado,inicio:t.inicio,fin:t.fin,fechaVenc:t.fecha_venc,label:t.label,headerUrl:t.header_url,snap:t.snap,orgId:t.org_id,cats:catsByT[t.id]||[]}));
   S.equipos = (d.equipos||[]).map(e=>({id:e.id,torneoId:e.torneo_id,clubId:e.club_id,catId:e.cat_id,modalidad:e.modalidad||'',nombre:e.nombre,inscripcion:_num(e.inscripcion),arbitraje:_num(e.arbitraje),fechas:e.fechas,monto:_num(e.monto),invitado:e.invitado||false,estado:e.estado,orgId:e.org_id}));
-  S.pagos = (d.pagos||[]).map(p=>({id:p.id,torneoId:p.torneo_id,clubId:p.club_id,monto:_num(p.monto),medio:p.medio,fecha:p.fecha,nroOp:p.nro_op,desc:p.descripcion,voucherUrl:p.voucher_url,estado:p.estado,motivo:p.motivo,op:'',regEn:p.created_at,procPor:'',procEn:p.processed_at,orgId:p.org_id}));
+  S.pagos = (d.pagos||[]).map(p=>({id:p.id,torneoId:p.torneo_id,clubId:p.club_id,monto:_num(p.monto),medio:p.medio,fecha:p.fecha,nroOp:p.nro_op,desc:p.descripcion,voucherUrl:p.voucher_url,estado:p.estado,motivo:p.motivo,op:'',createdBy:p.created_by,regEn:p.created_at,procPor:'',procEn:p.processed_at,orgId:p.org_id}));
   // Ingresos por Fecha (detalle financiero de cada jornada)
   _ifData = {};
   (d.ingresos_fecha||[]).forEach(r=>{
