@@ -5302,7 +5302,7 @@ function renderP3() {
       <td class="py-3 px-4 mono font-semibold text-right">${fmt(p.monto)}</td>
       <td class="py-3 px-4"><span class="bg-slate-100 text-slate-600 text-[11px] px-2 py-0.5 rounded font-medium">${p.medio}</span></td>
       <td class="py-3 px-4 mono text-xs text-slate-500">${p.nroOp}</td>
-      <td class="py-3 px-4 text-slate-500 text-xs">${pagoRegistrante(p)?.nombre || p.op || '—'}</td>
+      <td class="py-3 px-4 text-slate-500 text-xs">${(()=>{ const r=pagoRegistrante(p); return (r && (r.nombre||r.email)) || p.op || '—'; })()}</td>
       <td class="py-3 px-4 text-center"><button onclick="abrirVoucher(${p.id})" class="inline-flex items-center gap-1 text-xs font-semibold text-[#4F86C6] hover:underline">👁 Ver</button></td>
     </tr>`;
   }).join('')
