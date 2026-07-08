@@ -1,0 +1,7 @@
+# Configuración local de Claude Code (no versionar)
+.claude/
+
+# Temporales / sistema
+*.log
+.DS_Store
+Thumbs.db
