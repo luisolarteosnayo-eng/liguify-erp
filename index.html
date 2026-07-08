@@ -6915,7 +6915,8 @@ window.addEventListener('load', () => {
 (function () {
   var hosted = /^https?:$/.test(location.protocol) && !['localhost', '127.0.0.1'].includes(location.hostname);
   if (hosted) {
-    var url = 'https://liguify-academias.vercel.app';   // cambiar a https://academias.liguify.com si se configura el dominio
+    // Apuntar directo a la app (no a la raíz) para no perder el fragmento #sso en el redirect.
+    var url = 'https://liguify-academias.vercel.app/academias/index.html';
     document.querySelectorAll('[data-app-academias]').forEach(function (a) { a.href = url; });
   }
   document.querySelectorAll('[data-app-academias]').forEach(function (a) {
