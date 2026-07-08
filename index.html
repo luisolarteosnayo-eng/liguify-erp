@@ -6670,10 +6670,24 @@ async function sbLogout(){
   showLanding();
 }
 
-// Restaurar sesión existente al cargar (y al volver de Google OAuth)
-if (sbOn()) {
-  SB().auth.getSession().then(s=>{ if(s) sbRouteAfterLogin(); }).catch(e=>console.error(e));
-}
+// Restaurar sesión existente al cargar (y al volver de Google OAuth).
+// SSO entre apps Liguify: si llegamos desde otra app (Academias) con la sesión
+// en el fragmento (#sso=...), la aplicamos antes de rutear — así no se pide login otra vez.
+(async function () {
+  if (!sbOn()) return;
+  try {
+    var m = (location.hash || '').match(/[#&]sso=([^&]+)/);
+    if (m) {
+      var payload = JSON.parse(atob(decodeURIComponent(m[1])));
+      if (payload.at && payload.rt) {
+        await SB().client.auth.setSession({ access_token: payload.at, refresh_token: payload.rt });
+      }
+      history.replaceState(null, '', location.pathname + location.search);   // no dejar tokens en la URL
+    }
+  } catch (e) { console.warn('[SSO] no se pudo aplicar la sesión entrante:', e); }
+  try { const s = await SB().auth.getSession(); if (s) sbRouteAfterLogin(); }
+  catch (e) { console.error(e); }
+})();
 
 // ---- CLUB AUTOCOMPLETE ────────────────────────────────────────────────────
 // Dropdown flotante compartido por todos los campos de club
@@ -6896,11 +6910,27 @@ window.addEventListener('load', () => {
 
 <script>
 // Enlaces a Liguify Academias: ruta relativa en local, URL desplegada en producción.
+// SSO: al hacer clic, adjuntamos la sesión de Supabase (tokens) en el fragmento de la URL
+// para que Academias entre sin volver a pedir login. El fragmento (#) no viaja al servidor.
 (function () {
   var hosted = /^https?:$/.test(location.protocol) && !['localhost', '127.0.0.1'].includes(location.hostname);
-  if (!hosted) return;
-  var url = 'https://liguify-academias.vercel.app';   // cambiar a https://academias.liguify.com si se configura el dominio
-  document.querySelectorAll('[data-app-academias]').forEach(function (a) { a.href = url; });
+  if (hosted) {
+    var url = 'https://liguify-academias.vercel.app';   // cambiar a https://academias.liguify.com si se configura el dominio
+    document.querySelectorAll('[data-app-academias]').forEach(function (a) { a.href = url; });
+  }
+  document.querySelectorAll('[data-app-academias]').forEach(function (a) {
+    a.addEventListener('click', function (ev) {
+      if (!(window.sbOn && sbOn())) return;   // sin backend: navegación normal
+      ev.preventDefault();
+      var dest = a.href;
+      Promise.resolve(SB().auth.getSession()).then(function (s) {
+        if (s && s.access_token && s.refresh_token) {
+          var payload = btoa(JSON.stringify({ at: s.access_token, rt: s.refresh_token }));
+          dest += (dest.indexOf('#') === -1 ? '#' : '&') + 'sso=' + encodeURIComponent(payload);
+        }
+      }).catch(function () {}).then(function () { window.location.href = dest; });
+    });
+  });
 })();
 </script>
 </body>
