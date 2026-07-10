@@ -1211,6 +1211,8 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
           </div>
         </div>
         <div id="cxcKpi" class="mt-5 mb-5"></div>
+        <!-- Gráfico: recaudado por día, apilado por trabajador que registró el pago -->
+        <div id="cxcChart" class="mb-5"></div>
         <!-- Filtro activo por torneo -->
         <div id="cxcFiltroBar" class="hidden mb-3 flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5">
           <span class="text-xs text-blue-700 font-semibold">Filtrando por torneo:</span>
@@ -5705,7 +5707,73 @@ function renderCxc() {
 
   kpiHtml += `</div>`;
   document.getElementById('cxcKpi').innerHTML = kpiHtml;
+  renderCxcChart();
   renderCxcTabla();
+}
+
+// Paleta categórica (dataviz) — color estable por trabajador, en orden fijo (no por monto).
+const CXC_CHART_COLORS = ['#2a78d6','#1baf7a','#eda100','#008300','#4a3aa7','#e34948','#e87ba4','#eb6834'];
+const CXC_OTROS_COLOR  = '#94a3b8';
+function _cxcRegistranteNombre(p){
+  const r = pagoRegistrante(p);
+  return (r && (r.nombre || r.email)) || 'Sin identificar';
+}
+// Gráfico de barras apiladas: recaudado por día, cada color = trabajador que registró el pago.
+// Cuenta pagos no rechazados (aprobados + pendientes de aprobar) por fecha de pago.
+function renderCxcChart(){
+  const cont = document.getElementById('cxcChart');
+  if(!cont) return;
+  const pagos = myPagos().filter(p => p.estado!=='rechazado' && p.fecha && (p.monto||0) > 0);
+  if(!pagos.length){ cont.innerHTML = ''; return; }
+
+  // Trabajadores en orden alfabético fijo -> color estable. El 9.º+ cae en "Otros" (gris).
+  const nombres = [...new Set(pagos.map(_cxcRegistranteNombre))].sort((a,b)=>a.localeCompare(b,'es'));
+  const colorDe = {}; nombres.forEach((n,i)=>{ colorDe[n] = i < CXC_CHART_COLORS.length ? CXC_CHART_COLORS[i] : CXC_OTROS_COLOR; });
+  const etiqueta = n => (nombres.indexOf(n) < CXC_CHART_COLORS.length ? n : 'Otros');
+
+  // Agrupar por día -> por trabajador
+  const porDia = {}; const totalPorNombre = {};
+  pagos.forEach(p=>{
+    const n = _cxcRegistranteNombre(p);
+    (porDia[p.fecha] = porDia[p.fecha] || {});
+    porDia[p.fecha][n] = (porDia[p.fecha][n]||0) + p.monto;
+    totalPorNombre[n] = (totalPorNombre[n]||0) + p.monto;
+  });
+  const dias   = Object.keys(porDia).sort().slice(-14);   // últimos 14 días con actividad
+  const maxDia = Math.max(...dias.map(d => Object.values(porDia[d]).reduce((s,v)=>s+v,0)), 1);
+  const H = 180;
+
+  const columnas = dias.map(d=>{
+    const dayData  = porDia[d];
+    const totalDia = Object.values(dayData).reduce((s,v)=>s+v,0);
+    const hTotal   = Math.round(totalDia/maxDia*H);
+    const segs = nombres.filter(n=>dayData[n]>0).map(n=>{
+      const h = totalDia>0 ? (dayData[n]/totalDia*hTotal) : 0;
+      return `<div title="${etiqueta(n)} · ${d} · ${fmt(dayData[n])}" style="height:${h}px;background:${colorDe[n]}"></div>`;
+    }).join('');
+    return `<div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:4px">
+      <div class="text-[9px] text-slate-400 mono" style="white-space:nowrap">${Math.round(totalDia).toLocaleString('es-PE')}</div>
+      <div style="height:${hTotal}px;width:100%;max-width:32px;display:flex;flex-direction:column-reverse;gap:2px;border-radius:4px 4px 0 0;overflow:hidden">${segs}</div>
+      <div class="text-[9px] text-slate-500 mono">${d.slice(5)}</div>
+    </div>`;
+  }).join('');
+
+  const leyenda = nombres.map(n=>`
+    <div class="flex items-center gap-1.5">
+      <span class="inline-block w-3 h-3 rounded-sm" style="background:${colorDe[n]}"></span>
+      <span class="text-xs text-slate-600">${etiqueta(n)}</span>
+      <span class="text-xs font-semibold mono text-slate-500">${fmt(totalPorNombre[n])}</span>
+    </div>`).join('');
+
+  cont.innerHTML = `
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+      <div class="flex items-center justify-between mb-1 flex-wrap gap-2">
+        <h3 class="text-sm font-bold text-slate-700">Recaudado por día · por trabajador</h3>
+        <span class="text-[11px] text-slate-400">Últimos ${dias.length} día(s) con pagos · incluye pendientes de aprobar</span>
+      </div>
+      <div class="flex items-end gap-1.5 mt-4" style="height:${H+28}px">${columnas}</div>
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3 pt-3 border-t border-slate-100">${leyenda}</div>
+    </div>`;
 }
 
 function renderCxcTabla() {
