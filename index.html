@@ -5655,8 +5655,9 @@ function renderCxcTabla() {
   const tId  = _cxcTorneoFilter;
   const hoy  = new Date().toISOString().slice(0,10);
 
-  // Para cada club calculamos deuda y, si hay filtro vencidos, si algún torneo está vencido
-  const filas = myClubs().flatMap(c => {
+  // Para cada club calculamos deuda y, si hay filtro vencidos, si algún torneo está vencido.
+  // Orden alfabético ascendente por nombre de club.
+  const filas = [...myClubs()].sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'', 'es', {sensitivity:'base', numeric:true})).flatMap(c => {
     // Torneos donde el club tiene equipos activos (respeta filtro por torneo)
     const torneoIds = [...new Set(
       myEquipos().filter(e=>+e.clubId===+c.id&&e.estado==='activo'&&(!tId||+e.torneoId===+tId)).map(e=>e.torneoId)
