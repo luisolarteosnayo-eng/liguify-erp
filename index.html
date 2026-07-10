@@ -1123,6 +1123,21 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
         </div>
       </div>
 
+      <!-- P: Reporte de Comisiones por Vendedor -->
+      <div id="p_rep_comisiones" class="screen">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-1">
+          <h1 class="text-xl font-bold">Comisiones por Vendedor</h1>
+        </div>
+        <p class="text-xs text-slate-500 mb-4">Comisión de venta por cada equipo/categoría inscrito, agrupada por torneo y vendedor.</p>
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 mb-4">
+          <label class="block text-xs font-semibold text-slate-500 mb-1">Torneo</label>
+          <select id="comTorneo" onchange="renderRepComisiones()" class="w-full sm:w-96 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-200">
+            <option value="">Todos los torneos</option>
+          </select>
+        </div>
+        <div id="comBody"></div>
+      </div>
+
       <div id="p_rep_pagos" class="screen">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <h1 class="text-xl font-bold">Reporte de Pagos</h1>
@@ -2034,7 +2049,7 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
       <label class="flex-1 text-center"><input type="radio" name="acTMod" value="F9" class="sr-only peer"><span class="block border border-slate-300 rounded-lg py-2 text-sm font-bold text-slate-500 cursor-pointer peer-checked:border-[#4F86C6] peer-checked:bg-blue-50 peer-checked:text-[#18324F] hover:bg-slate-50 transition">F9</span></label>
       <label class="flex-1 text-center"><input type="radio" name="acTMod" value="F11" class="sr-only peer"><span class="block border border-slate-300 rounded-lg py-2 text-sm font-bold text-slate-500 cursor-pointer peer-checked:border-[#4F86C6] peer-checked:bg-blue-50 peer-checked:text-[#18324F] hover:bg-slate-50 transition">F11</span></label>
     </div>
-    <div class="grid grid-cols-4 gap-3 mb-4">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
       <div>
         <label class="block text-[10px] font-semibold text-slate-500 mb-1 uppercase">Aforo</label>
         <input type="number" id="acTAforo" value="8" min="2" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
@@ -2050,6 +2065,10 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
       <div>
         <label class="block text-[10px] font-semibold text-slate-500 mb-1 uppercase">Arb./fecha (S/.)</label>
         <input type="number" id="acTArb" placeholder="80" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+      <div>
+        <label class="block text-[10px] font-semibold text-slate-500 mb-1 uppercase">Comisión (S/.)</label>
+        <input type="number" id="acTComision" placeholder="0" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
       </div>
     </div>
     <div class="flex justify-end gap-2">
@@ -2245,6 +2264,7 @@ const MENU = [
       {id:'p1_op', label:'Operativo', roles:['organizador','operador']},
       {id:'p_nuevo_torneo',label:'Nuevo Torneo',roles:['organizador']},
       {id:'p_rep_fechas',label:'Resumen por Fecha',roles:['organizador','tesorero']},
+      {id:'p_rep_comisiones',label:'Comisiones',roles:['organizador']},
     ]},
   {id:'__pagos',label:'Pagos',icon:'💳',roles:['organizador','operador','tesorero'],noScreen:true,
     children:[
@@ -3259,6 +3279,7 @@ function renderScreen(id) {
   else if(id==='p_cxc') renderCxc();
   else if(id==='p_rep_pagos') initRepPagos();
   else if(id==='p_rep_fechas') initRepFechas();
+  else if(id==='p_rep_comisiones') initRepComisiones();
   else if(id==='p_seguridad') renderSeguridad();
   else if(id==='p_cfg_medios') renderCfgMedios();
 }
@@ -4313,7 +4334,7 @@ function renderNuevoTorneo() {
             ${['F5','F7','F9','F11'].map(m=>`<label class="flex-1 text-center"><input type="radio" name="ntMod_${cat.id}" value="${m}" class="sr-only peer"><span class="block border border-slate-300 rounded-lg py-1.5 text-xs font-bold text-slate-500 cursor-pointer peer-checked:border-[#4F86C6] peer-checked:bg-blue-50 peer-checked:text-[#18324F] hover:bg-slate-50 transition">${m}</span></label>`).join('')}
           </div>
         </div>
-        <div class="grid grid-cols-4 gap-3">
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           <div>
             <label class="block text-[10px] font-semibold text-slate-500 mb-1 uppercase">Aforo</label>
             <input type="number" id="ntAforo_${cat.id}" value="8" min="2" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
@@ -4329,6 +4350,10 @@ function renderNuevoTorneo() {
           <div>
             <label class="block text-[10px] font-semibold text-slate-500 mb-1 uppercase">Arb./fecha (S/.)</label>
             <input type="number" id="ntArb_${cat.id}" placeholder="80" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+          </div>
+          <div>
+            <label class="block text-[10px] font-semibold text-slate-500 mb-1 uppercase">Comisión (S/.)</label>
+            <input type="number" id="ntComision_${cat.id}" placeholder="0" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
           </div>
         </div>
       </div>
@@ -4484,12 +4509,13 @@ function guardarTorneoCat() {
   const fechas    = parseInt(document.getElementById('acTFechas').value)||6;
   const inscripcion = parseFloat(document.getElementById('acTInsc').value)||0;
   const arbitraje   = parseFloat(document.getElementById('acTArb').value)||0;
+  const comision    = parseFloat(document.getElementById('acTComision').value)||0;
   if(!catId) { toast('⚠ Selecciona una categoría.'); return; }
   if(!t.cats) t.cats = [];
   if(t.cats.some(tc=>tc.catId===catId && tc.modalidad===modalidad)) {
     toast(`⚠ Ya existe esa categoría en modalidad ${modalidad} en este torneo.`, 'error'); return;
   }
-  const localCat = {catId, modalidad, aforo, fechas, inscripcion, arbitraje};
+  const localCat = {catId, modalidad, aforo, fechas, inscripcion, arbitraje, comision};
   t.cats.push(localCat);
   closeModal('agregarCatTorneoModal');
   const cat = S.categorias.find(c=>c.id===catId);
@@ -4498,7 +4524,7 @@ function guardarTorneoCat() {
   if(sbOn()) {
     SB().data.agregarTorneoCat({
       torneo_id: t.id, cat_id: catId, modalidad, aforo, fechas,
-      inscripcion, arbitraje, org_id: myOrgId()
+      inscripcion, arbitraje, comision, org_id: myOrgId()
     }).catch(e => toast('⚠ Error al guardar categoría: '+e.message, 'error'));
   }
 }
@@ -4637,7 +4663,8 @@ async function crearTorneo() {
         aforo:+document.getElementById(`ntAforo_${cat.id}`).value||8,
         fechas:+document.getElementById(`ntFechas_${cat.id}`).value||6,
         inscripcion:+document.getElementById(`ntInsc_${cat.id}`).value||0,
-        arbitraje:+document.getElementById(`ntArb_${cat.id}`).value||0};
+        arbitraje:+document.getElementById(`ntArb_${cat.id}`).value||0,
+        comision:+document.getElementById(`ntComision_${cat.id}`).value||0};
     });
   if(!cats.length) { toast('⚠ Selecciona al menos una categoría.'); return; }
   const esquema = document.querySelector('input[name="ntEsquema"]:checked')?.value||'inscripcion_arbitraje';
@@ -4660,7 +4687,7 @@ async function crearTorneo() {
       }
       const t = await SB().data.crearTorneo(
         {nombre,sede,esquema,estado:'activo',inicio,fin,fecha_venc:fechaVenc||null,label,header_url:headerUrl,org_id:orgId},
-        cats.map(c=>({cat_id:c.catId,modalidad:c.modalidad,aforo:c.aforo,fechas:c.fechas,inscripcion:c.inscripcion,arbitraje:c.arbitraje,org_id:orgId}))
+        cats.map(c=>({cat_id:c.catId,modalidad:c.modalidad,aforo:c.aforo,fechas:c.fechas,inscripcion:c.inscripcion,arbitraje:c.arbitraje,comision:c.comision||0,org_id:orgId}))
       );
       local.id = t.id;
       S.torneoSelId = t.id;
@@ -5806,6 +5833,108 @@ function renderCxcChart(){
     </div>`;
 }
 
+// ---- REPORTE DE COMISIONES POR VENDEDOR ----
+// Comisión de un equipo = comisión configurada para su categoría+modalidad en el torneo.
+function comisionEquipo(t, e){
+  const tc = (t?.cats||[]).find(x=>+x.catId===+e.catId && (x.modalidad||'')===(e.modalidad||''));
+  return _num(tc?.comision)||0;
+}
+function initRepComisiones(){
+  const sel = document.getElementById('comTorneo');
+  if(sel){
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">Todos los torneos</option>' +
+      myTorneos().slice().sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{numeric:true}))
+        .map(t=>`<option value="${t.id}">${t.nombre}</option>`).join('');
+    sel.value = cur;
+  }
+  renderRepComisiones();
+}
+function renderRepComisiones(){
+  const cont = document.getElementById('comBody');
+  if(!cont) return;
+  const filtroT = document.getElementById('comTorneo')?.value || '';
+  const torneos = myTorneos().filter(t=>!filtroT || +t.id===+filtroT)
+    .slice().sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{numeric:true}));
+
+  let html = ''; let granTotal = 0;
+  torneos.forEach(t=>{
+    // Equipos con comisión (activos, no invitados)
+    const equipos = myEquipos().filter(e=>+e.torneoId===+t.id && e.estado==='activo' && !e.invitado);
+    if(!equipos.length) return;
+    // Agrupar por vendedor
+    const porVend = {};
+    equipos.forEach(e=>{
+      const n = equipoRegistranteNombre(e);
+      (porVend[n] = porVend[n] || []).push(e);
+    });
+    const vendedores = Object.keys(porVend).map(n=>{
+      const items = porVend[n].map(e=>({e, com: comisionEquipo(t,e)}));
+      const total = items.reduce((s,i)=>s+i.com,0);
+      return {n, items, total, cant: items.length};
+    }).sort((a,b)=>b.total-a.total);
+    const totalTorneo = vendedores.reduce((s,v)=>s+v.total,0);
+    granTotal += totalTorneo;
+
+    const bloquesVend = vendedores.map(v=>{
+      const filas = v.items.slice().sort((a,b)=>{
+        const ca=catById(a.e.catId)?.nombre||'', cb=catById(b.e.catId)?.nombre||'';
+        return (clubById(a.e.clubId)?.nombre||'').localeCompare(clubById(b.e.clubId)?.nombre||'','es',{numeric:true}) || ca.localeCompare(cb,'es',{numeric:true});
+      }).map(({e,com})=>{
+        const club = clubById(e.clubId)?.nombre || '—';
+        const cat  = catById(e.catId)?.nombre || '—';
+        return `<tr class="border-b border-slate-50">
+          <td class="py-2 px-3 text-sm">${club}${e.nombre?` <span class="text-slate-400">· ${e.nombre}</span>`:''}</td>
+          <td class="py-2 px-3 text-sm text-slate-600">${cat}</td>
+          <td class="py-2 px-3 text-center"><span class="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">${e.modalidad||'—'}</span></td>
+          <td class="py-2 px-3 text-right mono font-semibold ${com>0?'text-emerald-700':'text-slate-300'}">${fmt(com)}</td>
+        </tr>`;
+      }).join('');
+      return `
+      <div class="border border-slate-200 rounded-lg overflow-hidden mb-3">
+        <div class="flex items-center justify-between px-4 py-2 bg-slate-50 border-b border-slate-100">
+          <div class="flex items-center gap-2">
+            <span class="inline-block w-3 h-3 rounded-sm" style="background:${vendedorColor(v.n)}"></span>
+            <span class="font-bold text-sm text-slate-700">${v.n}</span>
+            <span class="text-[11px] text-slate-400">${v.cant} equipo(s)</span>
+          </div>
+          <span class="mono font-extrabold text-emerald-700">${fmt(v.total)}</span>
+        </div>
+        <table class="w-full text-sm">
+          <thead><tr class="text-left text-[10px] text-slate-400 uppercase border-b border-slate-100">
+            <th class="py-1.5 px-3 font-semibold">Club / Equipo</th>
+            <th class="py-1.5 px-3 font-semibold">Categoría</th>
+            <th class="py-1.5 px-3 font-semibold text-center">Mod.</th>
+            <th class="py-1.5 px-3 font-semibold text-right">Comisión</th>
+          </tr></thead>
+          <tbody>${filas}</tbody>
+        </table>
+      </div>`;
+    }).join('');
+
+    html += `
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-5">
+      <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <div class="flex items-center gap-2">${badgeTorneo(t.estado)}<h3 class="font-bold text-slate-800">${t.nombre}</h3><span class="text-[11px] text-slate-400">${t.label||''}</span></div>
+        <div class="text-right"><p class="text-[10px] text-slate-400 uppercase font-semibold">Total comisiones</p><p class="mono font-extrabold text-emerald-700 text-lg">${fmt(totalTorneo)}</p></div>
+      </div>
+      ${bloquesVend}
+    </div>`;
+  });
+
+  if(!html){
+    cont.innerHTML = '<p class="text-slate-400 text-sm text-center py-10">No hay equipos inscritos con comisión en el/los torneo(s) seleccionado(s).</p>';
+    return;
+  }
+  if(!filtroT){
+    html = `<div class="bg-[#18324F] text-white rounded-xl px-6 py-4 mb-5 flex items-center justify-between">
+      <span class="text-sm font-semibold opacity-80">Total comisiones — todos los torneos</span>
+      <span class="text-2xl font-extrabold mono">${fmt(granTotal)}</span>
+    </div>` + html;
+  }
+  cont.innerHTML = html;
+}
+
 function renderCxcTabla() {
   const tId  = _cxcTorneoFilter;
 
@@ -6719,7 +6848,7 @@ async function sbHydrate(){
   S.conceptos      = (d.conceptos||[]).map(c=>({id:c.id,nombre:c.nombre,tipo:c.tipo,fuente:c.fuente||'ambos',porDefecto:c.por_defecto!==false,activo:c.activo!==false,orgId:c.org_id}));
   S.clubes         = (d.clubes||[]).map(c=>({id:c.id,nombre:c.nombre,delegado:c.delegado,telefono:c.telefono,provincia:c.provincia,orgId:c.org_id}));
   const catsByT = {};
-  (d.torneo_categorias||[]).forEach(tc=>{ (catsByT[tc.torneo_id] = catsByT[tc.torneo_id]||[]).push({catId:tc.cat_id,nombre:catNombre(tc.cat_id),modalidad:tc.modalidad,aforo:tc.aforo,fechas:tc.fechas,inscripcion:_num(tc.inscripcion),arbitraje:_num(tc.arbitraje)}); });
+  (d.torneo_categorias||[]).forEach(tc=>{ (catsByT[tc.torneo_id] = catsByT[tc.torneo_id]||[]).push({catId:tc.cat_id,nombre:catNombre(tc.cat_id),modalidad:tc.modalidad,aforo:tc.aforo,fechas:tc.fechas,inscripcion:_num(tc.inscripcion),arbitraje:_num(tc.arbitraje),comision:_num(tc.comision)}); });
   S.torneos = (d.torneos||[]).map(t=>({id:t.id,nombre:t.nombre,sede:t.sede,esquema:t.esquema,estado:t.estado,inicio:t.inicio,fin:t.fin,fechaVenc:t.fecha_venc,label:t.label,headerUrl:t.header_url,snap:t.snap,orgId:t.org_id,cats:catsByT[t.id]||[]}));
   S.equipos = (d.equipos||[]).map(e=>({id:e.id,torneoId:e.torneo_id,clubId:e.club_id,catId:e.cat_id,modalidad:e.modalidad||'',nombre:e.nombre,inscripcion:_num(e.inscripcion),arbitraje:_num(e.arbitraje),fechas:e.fechas,monto:_num(e.monto),invitado:e.invitado||false,estado:e.estado,createdBy:e.created_by,orgId:e.org_id}));
   S.pagos = (d.pagos||[]).map(p=>({id:p.id,torneoId:p.torneo_id,clubId:p.club_id,monto:_num(p.monto),medio:p.medio,fecha:p.fecha,nroOp:p.nro_op,desc:p.descripcion,voucherUrl:p.voucher_url,estado:p.estado,motivo:p.motivo,op:'',createdBy:p.created_by,regEn:p.created_at,procPor:'',procEn:p.processed_at,orgId:p.org_id}));
