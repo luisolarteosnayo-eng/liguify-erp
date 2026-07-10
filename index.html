@@ -108,7 +108,9 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
       if (error) throw error;
     },
     async inscribirEquipo(equipo) {
-      const { data, error } = await sb.from('equipos').insert(equipo).select().single();
+      const user = await auth.getUser();
+      const fila = { ...equipo, created_by: equipo.created_by || user?.id };
+      const { data, error } = await sb.from('equipos').insert(fila).select().single();
       if (error) throw error; return data;
     },
     async registrarPago(pago) {
@@ -2268,6 +2270,14 @@ const clubById = id => S.clubes.find(c => +c.id === +id);
 const catById  = id => S.categorias.find(c => +c.id === +id);
 // Perfil del usuario (operador) que registró un pago, para contacto ante dudas
 const pagoRegistrante = p => (S.usuarios||[]).find(u => u.id === p?.createdBy) || null;
+// Vendedor (usuario) que inscribió un equipo — para medir desempeño
+const equipoRegistranteNombre = e => { const u=(S.usuarios||[]).find(x=>x.id===e?.createdBy); return (u && (u.nombre||u.email)) || 'Sin asignar'; };
+// Color estable por vendedor (misma persona = mismo color en toda la app)
+function vendedorColor(nombre){
+  const nombres = (S.usuarios||[]).filter(u=>!u.esAdminPlataforma).map(u=>u.nombre||u.email).sort((a,b)=>(a||'').localeCompare(b||'','es'));
+  const i = nombres.indexOf(nombre);
+  return (i>=0 && i<CXC_CHART_COLORS.length) ? CXC_CHART_COLORS[i] : CXC_OTROS_COLOR;
+}
 const equiposByClub = id => myEquipos().filter(e => e.clubId === id);
 const equiposByCat  = id => myEquipos().filter(e => e.catId === id && e.estado === 'activo');
 const prospectosByCat = id => S.prospectos.filter(p => p.catId === id);
@@ -3307,6 +3317,25 @@ function renderTorneosOperativo() {
         <span class="text-[11px] w-14 text-right ${c.disp===0?'text-emerald-600 font-semibold':c.disp<=2?'text-amber-600':'text-slate-400'}">${c.semTxt}</span>
       </div>`).join('');
 
+    // Desempeño por vendedor: quién inscribió cada equipo (barras horizontales)
+    const eqTorneo = myEquipos().filter(e=>e.torneoId===t.id && e.estado==='activo');
+    const porVendedor = {};
+    eqTorneo.forEach(e=>{ const n=equipoRegistranteNombre(e); porVendedor[n]=(porVendedor[n]||0)+1; });
+    const vendedores = Object.keys(porVendedor).sort((a,b)=>porVendedor[b]-porVendedor[a]);
+    const maxV = Math.max(...vendedores.map(n=>porVendedor[n]), 1);
+    const vendedorBars = vendedores.length ? `
+      <div class="px-5 py-3 border-t border-slate-100">
+        <p class="text-[10px] text-slate-400 uppercase font-semibold mb-2">Inscritos por vendedor</p>
+        ${vendedores.map(n=>`
+          <div class="flex items-center gap-2 mb-1.5 last:mb-0">
+            <span class="text-xs text-slate-600 truncate shrink-0" style="width:100px" title="${n}">${n}</span>
+            <div class="flex-1 bg-slate-100 rounded-full h-3 overflow-hidden">
+              <div class="h-3 rounded-full" style="width:${Math.round(porVendedor[n]/maxV*100)}%;background:${vendedorColor(n)}"></div>
+            </div>
+            <span class="text-xs font-bold text-slate-700 mono shrink-0" style="width:22px;text-align:right">${porVendedor[n]}</span>
+          </div>`).join('')}
+      </div>` : '';
+
     return `<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
       <div class="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
         <div>
@@ -3336,6 +3365,7 @@ function renderTorneosOperativo() {
       <div class="px-5 py-3">
         ${cats.length ? catRows : '<p class="text-xs text-slate-400 py-2">Sin categorías configuradas.</p>'}
       </div>
+      ${vendedorBars}
     </div>`;
   }
 
@@ -6205,7 +6235,7 @@ async function crearClub() {
     const arb    = soloInsc ? 0 : (tc?.arbitraje || 0);
     const fechas = soloInsc ? 0 : (tc?.fechas || 0);
     const monto  = soloInsc ? insc : insc + arb * fechas;
-    const localEq = {id:S.nextId++,torneoId:S.torneoSelId,clubId:nuevo.id,catId,nombre:'',inscripcion:insc,arbitraje:arb,fechas,monto,invitado:false,estado:'activo',orgId:myOrgId()};
+    const localEq = {id:S.nextId++,torneoId:S.torneoSelId,clubId:nuevo.id,catId,nombre:'',inscripcion:insc,arbitraje:arb,fechas,monto,invitado:false,estado:'activo',createdBy:S.usuarioActual?.id,orgId:myOrgId()};
     S.equipos.push(localEq);
     if(sbOn()){
       SB().data.inscribirEquipo({torneo_id:S.torneoSelId,club_id:nuevo.id,cat_id:catId,nombre:'',inscripcion:insc,arbitraje:arb,fechas,monto,invitado:false,estado:'activo',org_id:myOrgId()})
@@ -6645,7 +6675,7 @@ function addCategoria() {
   );
   if(existe){ toast('Ya existe un equipo con ese nombre en esta categoría/modalidad. Asigna un nombre diferente (ej. "Equipo B").'); return; }
   const montoFinal = insc + arb * fechas;
-  const localEq = {id:S.nextId++,torneoId,clubId,catId,modalidad,nombre,inscripcion:insc,arbitraje:arb,fechas,monto:montoFinal,invitado:false,estado:'activo',orgId:myOrgId()};
+  const localEq = {id:S.nextId++,torneoId,clubId,catId,modalidad,nombre,inscripcion:insc,arbitraje:arb,fechas,monto:montoFinal,invitado:false,estado:'activo',createdBy:S.usuarioActual?.id,orgId:myOrgId()};
   S.equipos.push(localEq);
   document.getElementById('acClub').disabled = false;
   closeModal('addCatModal');
@@ -6691,7 +6721,7 @@ async function sbHydrate(){
   const catsByT = {};
   (d.torneo_categorias||[]).forEach(tc=>{ (catsByT[tc.torneo_id] = catsByT[tc.torneo_id]||[]).push({catId:tc.cat_id,nombre:catNombre(tc.cat_id),modalidad:tc.modalidad,aforo:tc.aforo,fechas:tc.fechas,inscripcion:_num(tc.inscripcion),arbitraje:_num(tc.arbitraje)}); });
   S.torneos = (d.torneos||[]).map(t=>({id:t.id,nombre:t.nombre,sede:t.sede,esquema:t.esquema,estado:t.estado,inicio:t.inicio,fin:t.fin,fechaVenc:t.fecha_venc,label:t.label,headerUrl:t.header_url,snap:t.snap,orgId:t.org_id,cats:catsByT[t.id]||[]}));
-  S.equipos = (d.equipos||[]).map(e=>({id:e.id,torneoId:e.torneo_id,clubId:e.club_id,catId:e.cat_id,modalidad:e.modalidad||'',nombre:e.nombre,inscripcion:_num(e.inscripcion),arbitraje:_num(e.arbitraje),fechas:e.fechas,monto:_num(e.monto),invitado:e.invitado||false,estado:e.estado,orgId:e.org_id}));
+  S.equipos = (d.equipos||[]).map(e=>({id:e.id,torneoId:e.torneo_id,clubId:e.club_id,catId:e.cat_id,modalidad:e.modalidad||'',nombre:e.nombre,inscripcion:_num(e.inscripcion),arbitraje:_num(e.arbitraje),fechas:e.fechas,monto:_num(e.monto),invitado:e.invitado||false,estado:e.estado,createdBy:e.created_by,orgId:e.org_id}));
   S.pagos = (d.pagos||[]).map(p=>({id:p.id,torneoId:p.torneo_id,clubId:p.club_id,monto:_num(p.monto),medio:p.medio,fecha:p.fecha,nroOp:p.nro_op,desc:p.descripcion,voucherUrl:p.voucher_url,estado:p.estado,motivo:p.motivo,op:'',createdBy:p.created_by,regEn:p.created_at,procPor:'',procEn:p.processed_at,orgId:p.org_id}));
   // Ingresos por Fecha (detalle financiero de cada jornada)
   _ifData = {};

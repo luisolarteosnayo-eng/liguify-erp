@@ -145,6 +145,7 @@ create table if not exists public.equipos (
   monto       numeric(12,2) default 0,  -- inscripcion + arbitraje * fechas
   invitado    boolean not null default false,  -- equipo invitado: sin costo
   estado      text not null default 'activo' check (estado in ('activo','inactivo')),
+  created_by  uuid references public.profiles(id),   -- vendedor/usuario que inscribió el equipo
   org_id      bigint not null references public.organizaciones(id) on delete cascade,
   created_at  timestamptz not null default now()
 );
