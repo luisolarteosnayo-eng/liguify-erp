@@ -5818,9 +5818,11 @@ function renderCxcTabla() {
       }</td></tr>`;
 }
 
+let _faTorneoId = null;
 function abrirFormatoArbitrajes(torneoId) {
   const t = S.torneos.find(x=>+x.id===+torneoId);
   if(!t) return;
+  _faTorneoId = torneoId;
 
   document.getElementById('fa_subtitle').textContent = `${t.nombre} · ${t.label||''}`;
 
@@ -5891,25 +5893,72 @@ function abrirFormatoArbitrajes(torneoId) {
   openModal('formatoArbitrajesModal');
 }
 
+// Formato de arbitraje (monto sin símbolo): entero o 2 decimales
+function _numArb(v){ v = +v||0; return Number.isInteger(v) ? String(v) : v.toFixed(2); }
+
+// Documento de impresión: agrupado por Equipo/Club, filas por categoría, con
+// columnas en blanco (POS/EFE/OBS) para llenar a mano. Se imprime / guarda como PDF.
 function imprimirArbitrajes() {
-  const body  = document.getElementById('fa_body').innerHTML;
+  const torneoId = _faTorneoId;
+  const t = S.torneos.find(x=>+x.id===+torneoId);
   const title = document.getElementById('fa_subtitle').textContent;
-  const win   = window.open('','_blank');
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Arbitrajes · ${title}</title>
+  const equipos = myEquipos().filter(e=>+e.torneoId===+torneoId && e.estado==='activo' && !e.invitado);
+
+  // Agrupar por club
+  const porClub = {};
+  equipos.forEach(e=>{
+    const nombreClub = clubById(e.clubId)?.nombre || '—';
+    (porClub[nombreClub] = porClub[nombreClub] || []).push(e);
+  });
+  const clubes = Object.keys(porClub).sort((a,b)=>a.localeCompare(b,'es',{numeric:true}));
+
+  let total = 0;
+  const filas = clubes.map((nombreClub, idx)=>{
+    const rows = porClub[nombreClub].slice().sort((a,b)=>{
+      const ca = catById(a.catId)?.nombre||''; const cb = catById(b.catId)?.nombre||'';
+      return cb.localeCompare(ca, 'es', {numeric:true});   // categoría descendente (2019→2015)
+    });
+    const alt = idx % 2 === 1 ? ' class="alt"' : '';
+    return rows.map((e, i)=>{
+      const arb = e.arbitraje||0; total += arb;
+      const cat = catById(e.catId)?.nombre || '—';
+      const equipoCell = i===0 ? `<td rowspan="${rows.length}" class="equipo">${nombreClub}</td>` : '';
+      return `<tr${alt}>${equipoCell}<td class="cat">${cat}</td><td class="arb">${_numArb(arb)}</td><td></td><td></td><td></td></tr>`;
+    }).join('');
+  }).join('');
+
+  const win = window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Formato de Arbitrajes · ${title}</title>
   <style>
-    body{font-family:Arial,sans-serif;font-size:12px;padding:20px;color:#1e293b}
-    h2{margin-bottom:4px;font-size:16px}p.sub{color:#64748b;font-size:11px;margin-bottom:16px}
-    table{width:100%;border-collapse:collapse;margin-bottom:16px}
-    th{background:#18324F;color:#fff;padding:6px 8px;text-align:left;font-size:10px;text-transform:uppercase}
-    td{padding:6px 8px;border-bottom:1px solid #e2e8f0}
-    .total-cat td{background:#fef3c7;font-weight:bold;border-top:2px solid #f59e0b}
-    .total-global{margin-top:12px;text-align:right;font-size:14px;font-weight:bold;background:#18324F;color:#fff;padding:10px 16px;border-radius:8px;display:inline-block}
-    .mono{font-family:monospace}
-    .cat-header{background:#18324F;color:#fff;padding:8px 10px;font-weight:bold;margin-bottom:0;border-radius:6px 6px 0 0}
-    @media print{button{display:none}}
+    @page { size: A4; margin: 12mm; }
+    *{box-sizing:border-box}
+    body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:0;margin:0}
+    h2{margin:0 0 2px;font-size:16px}
+    p.sub{color:#444;font-size:11px;margin:0 0 14px}
+    table{width:100%;border-collapse:collapse}
+    th,td{border:1px solid #000;padding:6px 8px;height:26px}
+    th{background:#f0f0f0;text-align:center;font-size:11px;text-transform:uppercase;font-weight:bold}
+    td.equipo{font-weight:bold;vertical-align:middle}
+    td.cat{text-align:center}
+    td.arb{text-align:right;font-weight:bold}
+    tr.alt td{background:#d9d9d9}
+    tr.total td{background:#d9d9d9;font-weight:bold}
+    tr.total td.tlabel{text-align:right;text-transform:uppercase}
+    /* Anchos: dejar POS/EFE/OBS amplios para escribir */
+    col.c-eq{width:26%} col.c-cat{width:12%} col.c-arb{width:12%} col.c-w{width:16.66%}
+    @media print{ .noprint{display:none} }
   </style></head><body>
   <h2>Formato de Arbitrajes</h2><p class="sub">${title}</p>
-  ${body}
+  <table>
+    <colgroup><col class="c-eq"><col class="c-cat"><col class="c-arb"><col class="c-w"><col class="c-w"><col class="c-w"></colgroup>
+    <thead><tr>
+      <th>Equipo</th><th>Categoría</th><th>Arbitraje</th><th>POS</th><th>EFE</th><th>OBS</th>
+    </tr></thead>
+    <tbody>
+      ${filas || '<tr><td colspan="6" style="text-align:center;padding:20px">No hay equipos con arbitraje en este torneo.</td></tr>'}
+      <tr class="total"><td></td><td class="tlabel">Total</td><td class="arb">${_numArb(total)}</td><td></td><td></td><td></td></tr>
+    </tbody>
+  </table>
   </body></html>`);
   win.document.close();
   win.focus();
