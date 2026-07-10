@@ -3363,7 +3363,7 @@ function renderP1Detalle() {
   <div class="flex items-center gap-2 mb-3">
     <p class="text-xs text-slate-400">Esquema de cobro:</p>${esquemaLabel}
   </div>
-  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+  <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
     <div class="bg-white rounded-xl border border-blue-100 p-4 shadow-sm">
       <p class="text-[10px] text-blue-500 mb-1 uppercase font-semibold">Total Inscripciones</p>
       <p class="font-bold mono text-blue-700 text-lg">${fmt(f.totalInsc)}</p>
@@ -3372,12 +3372,17 @@ function renderP1Detalle() {
     <div class="bg-emerald-50 rounded-xl border border-emerald-100 p-4 shadow-sm">
       <p class="text-[10px] text-emerald-600 mb-1 uppercase font-semibold">Recaudado</p>
       <p class="font-bold mono text-emerald-700 text-lg">${fmt(f.recaudado)}</p>
-      <p class="text-[10px] text-slate-300 mt-1">Inscripciones cobradas</p>
+      <p class="text-[10px] text-slate-300 mt-1">Pagos aprobados</p>
     </div>
-    <div class="${f.porRecaudar>0?'bg-rose-50 border-rose-100':'bg-emerald-50 border-emerald-100'} rounded-xl border p-4 shadow-sm">
-      <p class="text-[10px] ${f.porRecaudar>0?'text-rose-600':'text-emerald-600'} mb-1 uppercase font-semibold">Por Recaudar</p>
-      <p class="font-bold mono ${f.porRecaudar>0?'text-rose-700':'text-emerald-700'} text-lg">${fmt(f.porRecaudar)}</p>
-      <p class="text-[10px] text-slate-300 mt-1">Inscripciones pendientes</p>
+    <div class="bg-amber-50 rounded-xl border border-amber-100 p-4 shadow-sm">
+      <p class="text-[10px] text-amber-600 mb-1 uppercase font-semibold">Pendiente de Aprobar</p>
+      <p class="font-bold mono text-amber-700 text-lg">${fmt(f.pendienteAprobar||0)}</p>
+      <p class="text-[10px] text-slate-300 mt-1">En revisión de Tesorería</p>
+    </div>
+    <div class="${(f.pendienteCobro||0)>0?'bg-rose-50 border-rose-100':'bg-emerald-50 border-emerald-100'} rounded-xl border p-4 shadow-sm">
+      <p class="text-[10px] ${(f.pendienteCobro||0)>0?'text-rose-600':'text-emerald-600'} mb-1 uppercase font-semibold">Pendiente de Cobro</p>
+      <p class="font-bold mono ${(f.pendienteCobro||0)>0?'text-rose-700':'text-emerald-700'} text-lg">${fmt(f.pendienteCobro||0)}</p>
+      <p class="text-[10px] text-slate-300 mt-1">Falta cobrar</p>
     </div>
     ${(()=>{ const _d=_ifData[t.id]||{}; const _util=_utilFechas(_d); const nF=Object.keys(_d).length; const uc=_util>=0?'text-emerald-700':'text-rose-700'; const bc=_util>=0?'bg-emerald-50 border-emerald-100':'bg-rose-50 border-rose-100'; return `<div class="${bc} rounded-xl border p-4 shadow-sm cursor-pointer hover:opacity-80 transition" onclick="abrirIngresosFecha(${t.id})"><p class="text-[10px] text-slate-500 mb-1 uppercase font-semibold">Utilidad por Fecha</p><p class="font-bold mono ${uc} text-lg">${fmt(_util)}</p><p class="text-[10px] text-slate-300 mt-1">${nF} fecha${nF!==1?'s':''} registrada${nF!==1?'s':''}</p></div>`; })()}
   </div>` : '';
@@ -4651,13 +4656,19 @@ function torneoFinancials(t) {
     const totalInsc = equipos.reduce((s,e)=>s+(e.inscripcion||0), 0);
     const totalArb  = equipos.reduce((s,e)=>s+(e.arbitraje||0)*(e.fechas||0), 0);
     const clubIds   = [...new Set(equipos.map(e=>e.clubId))];
-    const recaudado = myPagos().filter(p=>p.estado==='aprobado'&&+p.torneoId===+t.id&&clubIds.includes(+p.clubId||p.clubId)).reduce((s,p)=>s+p.monto,0);
-    return {total: totalInsc, totalInsc, totalArb, recaudado, porRecaudar: Math.max(0, totalInsc-recaudado),
-            esquema: t.esquema||'inscripcion_arbitraje'};
+    const enTorneo  = p => +p.torneoId===+t.id && clubIds.includes(+p.clubId||p.clubId);
+    // 3 estados del dinero: recaudado (aprobado) · pendiente de aprobar · pendiente de cobro
+    const recaudado        = myPagos().filter(p=>p.estado==='aprobado'&&enTorneo(p)).reduce((s,p)=>s+p.monto,0);
+    const pendienteAprobar = myPagos().filter(p=>p.estado==='pendiente'&&enTorneo(p)).reduce((s,p)=>s+p.monto,0);
+    const pendienteCobro   = Math.max(0, totalInsc - recaudado - pendienteAprobar);
+    return {total: totalInsc, totalInsc, totalArb, recaudado, pendienteAprobar, pendienteCobro,
+            porRecaudar: Math.max(0, totalInsc-recaudado), esquema: t.esquema||'inscripcion_arbitraje'};
   }
   const totalInsc = t.snap?.total    || 0;
   const recaudado = t.snap?.recaudado|| 0;
-  return {total: totalInsc, totalInsc, totalArb: 0, recaudado, porRecaudar: Math.max(0, totalInsc-recaudado), esquema:'inscripcion_arbitraje'};
+  const pendienteCobro = Math.max(0, totalInsc-recaudado);
+  return {total: totalInsc, totalInsc, totalArb: 0, recaudado, pendienteAprobar: 0, pendienteCobro,
+          porRecaudar: pendienteCobro, esquema:'inscripcion_arbitraje'};
 }
 
 function sumKpis(torneoIds) {
@@ -4668,13 +4679,15 @@ function sumKpis(torneoIds) {
     // totalArb = total - totalInsc (arbitraje puro)
     const arb = (f.total||0) - (f.totalInsc||0);
     return {
-      total:      acc.total      + (f.total||0),
-      totalInsc:  acc.totalInsc  + (f.totalInsc||0),
-      totalArb:   acc.totalArb   + arb,
-      recaudado:  acc.recaudado  + (f.recaudado||0),
-      porRecaudar:acc.porRecaudar+ (f.porRecaudar||0),
+      total:            acc.total            + (f.total||0),
+      totalInsc:        acc.totalInsc        + (f.totalInsc||0),
+      totalArb:         acc.totalArb         + arb,
+      recaudado:        acc.recaudado        + (f.recaudado||0),
+      pendienteAprobar: acc.pendienteAprobar + (f.pendienteAprobar||0),
+      pendienteCobro:   acc.pendienteCobro   + (f.pendienteCobro||0),
+      porRecaudar:      acc.porRecaudar      + (f.porRecaudar||0),
     };
-  }, {total:0, totalInsc:0, totalArb:0, recaudado:0, porRecaudar:0});
+  }, {total:0, totalInsc:0, totalArb:0, recaudado:0, pendienteAprobar:0, pendienteCobro:0, porRecaudar:0});
 }
 
 function kpiBlock(label, sublabel, kpi, color, torneoId) {
@@ -4690,19 +4703,29 @@ function kpiBlock(label, sublabel, kpi, color, torneoId) {
       </div>
       <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-${color}-50 text-${color}-700">${pct}% inscripción cobrada</span>
     </div>
-    <div class="grid grid-cols-3 gap-2 mb-2">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 mb-2">
       <div class="bg-blue-50 rounded-lg p-3">
         <div class="text-[10px] text-blue-500 mb-1 uppercase font-semibold">Total Inscripciones</div>
         <div class="font-bold mono text-blue-700">${fmt(kpi.totalInsc)}</div>
         <div class="text-[10px] text-slate-300 mt-0.5">${nEq!==''?nEq+' equipos':''}</div>
       </div>
+      <div class="bg-emerald-50 rounded-lg p-3">
+        <div class="text-[10px] text-emerald-600 mb-1 uppercase font-semibold">Recaudado</div>
+        <div class="font-bold mono text-emerald-700">${fmt(kpi.recaudado)}</div>
+        <div class="text-[10px] text-slate-300 mt-0.5">Pagos aprobados</div>
+      </div>
+      <div class="bg-amber-50 rounded-lg p-3">
+        <div class="text-[10px] text-amber-600 mb-1 uppercase font-semibold">Pend. de Aprobar</div>
+        <div class="font-bold mono text-amber-700">${fmt(kpi.pendienteAprobar||0)}</div>
+        <div class="text-[10px] text-slate-300 mt-0.5">En revisión</div>
+      </div>
+      <div class="${(kpi.pendienteCobro||0)>0?'bg-rose-50':'bg-emerald-50'} rounded-lg p-3">
+        <div class="text-[10px] ${(kpi.pendienteCobro||0)>0?'text-rose-600':'text-emerald-600'} mb-1 uppercase font-semibold">Pend. de Cobro</div>
+        <div class="font-bold mono ${(kpi.pendienteCobro||0)>0?'text-rose-700':'text-emerald-700'}">${fmt(kpi.pendienteCobro||0)}</div>
+        <div class="text-[10px] text-slate-300 mt-0.5">Falta cobrar</div>
+      </div>
       <div class="${(()=>{let u=0;Object.values(_ifData).forEach(td=>u+=_utilFechas(td));return u>=0?'bg-emerald-50':'bg-rose-50';})()} rounded-lg p-3">
         ${(()=>{let u=0;Object.values(_ifData).forEach(td=>u+=_utilFechas(td));const uc=u>=0?'text-emerald-600':'text-rose-600';const uv=u>=0?'text-emerald-700':'text-rose-700';return `<div class="text-[10px] ${uc} mb-1 uppercase font-semibold">Utilidad por Fecha</div><div class="font-bold mono ${uv}">${fmt(u)}</div><div class="text-[10px] text-slate-300 mt-0.5">Todas las fechas</div>`;})()}
-      </div>
-      <div class="${kpi.porRecaudar>0?'bg-rose-50':'bg-emerald-50'} rounded-lg p-3">
-        <div class="text-[10px] ${kpi.porRecaudar>0?'text-rose-600':'text-emerald-600'} mb-1 uppercase font-semibold">Por Recaudar</div>
-        <div class="font-bold mono ${kpi.porRecaudar>0?'text-rose-700':'text-emerald-700'}">${fmt(kpi.porRecaudar)}</div>
-        <div class="text-[10px] text-slate-300 mt-0.5">Pendiente</div>
       </div>
     </div>
     <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mt-3">
@@ -4763,11 +4786,19 @@ function renderTorneosList() {
           <div class="text-[10px] text-blue-500 mb-0.5 font-semibold uppercase">Total Inscripciones</div>
           <div class="font-bold mono text-blue-700 text-xs">${fmt(f.totalInsc)}</div>
         </div>
-        ${(()=>{const u=_utilFechas(_ifData[t.id]||{});const uc=u>=0?'text-emerald-600':'text-rose-600';const uv=u>=0?'text-emerald-700':'text-rose-700';const bg=u>=0?'bg-emerald-50':'bg-rose-50';return `<div class="${bg} rounded-lg px-3 py-2"><div class="text-[10px] ${uc} mb-0.5 font-semibold uppercase">Utilidad Fechas</div><div class="font-bold mono ${uv} text-xs">${fmt(u)}</div></div>`;})()}
-        <div class="${f.porRecaudar>0?'bg-rose-50':'bg-emerald-50'} rounded-lg px-3 py-2">
-          <div class="text-[10px] ${f.porRecaudar>0?'text-rose-600':'text-emerald-600'} mb-0.5 font-semibold uppercase">Por Recaudar</div>
-          <div class="font-bold mono ${f.porRecaudar>0?'text-rose-700':'text-emerald-700'} text-xs">${fmt(f.porRecaudar)}</div>
+        <div class="bg-emerald-50 rounded-lg px-3 py-2">
+          <div class="text-[10px] text-emerald-600 mb-0.5 font-semibold uppercase">Recaudado</div>
+          <div class="font-bold mono text-emerald-700 text-xs">${fmt(f.recaudado)}</div>
         </div>
+        <div class="bg-amber-50 rounded-lg px-3 py-2">
+          <div class="text-[10px] text-amber-600 mb-0.5 font-semibold uppercase">Pend. Aprobar</div>
+          <div class="font-bold mono text-amber-700 text-xs">${fmt(f.pendienteAprobar||0)}</div>
+        </div>
+        <div class="${(f.pendienteCobro||0)>0?'bg-rose-50':'bg-emerald-50'} rounded-lg px-3 py-2">
+          <div class="text-[10px] ${(f.pendienteCobro||0)>0?'text-rose-600':'text-emerald-600'} mb-0.5 font-semibold uppercase">Pend. Cobro</div>
+          <div class="font-bold mono ${(f.pendienteCobro||0)>0?'text-rose-700':'text-emerald-700'} text-xs">${fmt(f.pendienteCobro||0)}</div>
+        </div>
+        ${(()=>{const u=_utilFechas(_ifData[t.id]||{});const uc=u>=0?'text-emerald-600':'text-rose-600';const uv=u>=0?'text-emerald-700':'text-rose-700';const bg=u>=0?'bg-emerald-50':'bg-rose-50';return `<div class="${bg} rounded-lg px-3 py-2"><div class="text-[10px] ${uc} mb-0.5 font-semibold uppercase">Utilidad Fechas</div><div class="font-bold mono ${uv} text-xs">${fmt(u)}</div></div>`;})()}
       </div>
       <div class="flex items-center gap-2">
         <div class="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
@@ -5613,16 +5644,42 @@ function setCxcTorneoFilter(torneoId) {
   }
 }
 
+// Filas de cobranza: deuda real por club+torneo = inscripción − (pagos aprobados + pendientes).
+// Los pagos PENDIENTES de aprobación ya cubren la deuda (el club ya envió el dinero); solo un
+// pago RECHAZADO deja de contar. Así un club que ya pagó no aparece en cobranza, y reaparece
+// únicamente si le rechazan un pago y queda un faltante. Devuelve las filas con deuda > 0.
+function cxcRows() {
+  const hoy = new Date().toISOString().slice(0,10);
+  return myClubs().flatMap(c => {
+    const torneoIds = [...new Set(myEquipos().filter(e=>+e.clubId===+c.id&&e.estado==='activo').map(e=>e.torneoId))];
+    return torneoIds.flatMap(tid => {
+      const torneo  = myTorneos().find(t=>+t.id===+tid) || S.torneos.find(t=>+t.id===+tid);
+      const equipos = myEquipos().filter(e=>+e.clubId===+c.id&&+e.torneoId===+tid&&e.estado==='activo');
+      const insc    = equipos.reduce((s,e)=>s+(e.inscripcion||0), 0);
+      const pagado  = myPagos().filter(p=>+p.clubId===+c.id&&+p.torneoId===+tid&&p.estado!=='rechazado').reduce((s,p)=>s+p.monto, 0);
+      const deuda   = insc - pagado;
+      if(deuda <= 0) return [];
+      const fechaVenc = torneo?.fechaVenc || null;
+      const vencido   = fechaVenc && fechaVenc < hoy;
+      return [{c, tid, torneo, deuda, fechaVenc, vencido}];
+    });
+  });
+}
+
 function renderCxc() {
   _cxcTorneoFilter = null;
   document.getElementById('cxcFiltroBar').classList.add('hidden');
   setCxcVencFilter('todos');
 
-  // Por cobrar por torneo (el max(0,...) se aplica por torneo, sin netear saldos a favor entre torneos)
-  const torneoKpisAll = myTorneos().map(t => ({ torneo: t, porRecaudar: torneoFinancials(t).porRecaudar || 0 }));
-  // Total global = suma exacta de las tarjetas por torneo (consistente con la pantalla Financiero)
-  const totalGlobal = torneoKpisAll.reduce((s, x) => s + x.porRecaudar, 0);
-  const torneoKpis  = torneoKpisAll.filter(x => x.porRecaudar > 0);
+  // Deuda de cobranza (inclusiva de pendientes) agregada por torneo.
+  const rows = cxcRows();
+  const totalGlobal = rows.reduce((s, r) => s + r.deuda, 0);
+  const porTorneo = {};
+  rows.forEach(r => { porTorneo[r.tid] = (porTorneo[r.tid] || 0) + r.deuda; });
+  const torneoKpis = Object.keys(porTorneo).map(tid => ({
+    torneo: myTorneos().find(t => +t.id === +tid) || S.torneos.find(t => +t.id === +tid),
+    porRecaudar: porTorneo[tid],
+  })).filter(x => x.torneo).sort((a, b) => b.porRecaudar - a.porRecaudar);
 
   let kpiHtml = `<div class="grid gap-4" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr))">
     <div class="bg-rose-600 text-white rounded-xl p-4 cursor-pointer hover:bg-rose-700 transition" onclick="setCxcTorneoFilter(null)">
@@ -5653,37 +5710,19 @@ function renderCxc() {
 
 function renderCxcTabla() {
   const tId  = _cxcTorneoFilter;
-  const hoy  = new Date().toISOString().slice(0,10);
 
-  // Para cada club calculamos deuda y, si hay filtro vencidos, si algún torneo está vencido.
-  // Orden alfabético ascendente por nombre de club.
-  const filas = [...myClubs()].sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'', 'es', {sensitivity:'base', numeric:true})).flatMap(c => {
-    // Torneos donde el club tiene equipos activos (respeta filtro por torneo)
-    const torneoIds = [...new Set(
-      myEquipos().filter(e=>+e.clubId===+c.id&&e.estado==='activo'&&(!tId||+e.torneoId===+tId)).map(e=>e.torneoId)
-    )];
-    if(!torneoIds.length) return [];
+  // Filas de cobranza (deuda inclusiva de pendientes). Filtrar por torneo si aplica.
+  let filas = cxcRows();
+  if(tId) filas = filas.filter(f=>+f.tid===+tId);
 
-    return torneoIds.flatMap(tid => {
-      const torneo  = myTorneos().find(t=>+t.id===+tid)||S.torneos.find(t=>+t.id===+tid);
-      const equipos = myEquipos().filter(e=>+e.clubId===+c.id&&+e.torneoId===+tid&&e.estado==='activo');
-      const insc    = equipos.reduce((s,e)=>s+(e.inscripcion||0), 0);
-      const pagado  = myPagos().filter(p=>+p.clubId===+c.id&&+p.torneoId===+tid&&p.estado==='aprobado').reduce((s,p)=>s+p.monto, 0);
-      const deuda   = insc - pagado;
-      if(deuda <= 0) return [];
-      const fechaVenc = torneo?.fechaVenc || null;
-      const vencido   = fechaVenc && fechaVenc < hoy;
-      return [{c, tid, torneo, deuda, fechaVenc, vencido}];
-    });
-  });
-
-  // Aplicar filtro
+  // Aplicar filtro por vencimiento
   const manana7 = new Date(); manana7.setDate(manana7.getDate()+7);
   const en7 = manana7.toISOString().slice(0,10);
   const filasFiltradas = _cxcVencFilter==='vencidos' ? filas.filter(f=>f.vencido)
     : _cxcVencFilter==='semana' ? filas.filter(f=>f.fechaVenc && !f.vencido && f.fechaVenc<=en7)
     : filas;
-  filasFiltradas.sort((a,b) => b.deuda - a.deuda);
+  // Orden alfabético ascendente por nombre de club
+  filasFiltradas.sort((a,b) => (a.c.nombre||'').localeCompare(b.c.nombre||'', 'es', {sensitivity:'base', numeric:true}));
 
   const vencBadge = (f) => {
     if(!f.fechaVenc) return `<span class="text-[10px] text-slate-300">Sin fecha</span>`;
@@ -5825,9 +5864,10 @@ function abrirCxcClub(clubId) {
     const esquema  = torneo?.esquema || 'inscripcion_arbitraje';
     const equipos  = myEquipos().filter(e=>e.clubId===clubId&&e.torneoId===tId&&e.estado==='activo');
     const totalInsc = equipos.reduce((s,e)=>s+(e.inscripcion||0), 0);
-    const pagado   = myPagos().filter(p=>p.clubId===clubId&&p.torneoId===tId&&p.estado==='aprobado').reduce((s,p)=>s+p.monto, 0);
-    const deuda    = totalInsc - pagado;
-    if(deuda <= 0) return ''; // sin deuda en este torneo
+    const aprobado  = myPagos().filter(p=>p.clubId===clubId&&p.torneoId===tId&&p.estado==='aprobado').reduce((s,p)=>s+p.monto, 0);
+    const pendiente = myPagos().filter(p=>p.clubId===clubId&&p.torneoId===tId&&p.estado==='pendiente').reduce((s,p)=>s+p.monto, 0);
+    const deuda     = totalInsc - aprobado - pendiente;   // los pendientes ya cubren la deuda de cobranza
+    if(deuda <= 0) return ''; // ya pagó (aprobado o pendiente): fuera de cobranza
     totalDeuda += deuda;
 
     const badge = badgeTorneo(torneo?.estado);
@@ -5863,8 +5903,12 @@ function abrirCxcClub(clubId) {
           </tr>
           <tr>
             <td colspan="2" class="py-2 px-3 text-xs text-emerald-600 font-semibold">Pagado (aprobado)</td>
-            <td class="py-2 px-3 text-right mono text-sm text-emerald-600 font-semibold">− ${fmt(pagado)}</td>
+            <td class="py-2 px-3 text-right mono text-sm text-emerald-600 font-semibold">− ${fmt(aprobado)}</td>
           </tr>
+          ${pendiente>0 ? `<tr>
+            <td colspan="2" class="py-2 px-3 text-xs text-amber-600 font-semibold">En revisión (pendiente de aprobar)</td>
+            <td class="py-2 px-3 text-right mono text-sm text-amber-600 font-semibold">− ${fmt(pendiente)}</td>
+          </tr>` : ''}
           <tr class="bg-rose-50">
             <td colspan="2" class="py-2 px-3 text-xs text-rose-700 font-bold">Deuda pendiente</td>
             <td class="py-2 px-3 text-right mono text-sm text-rose-700 font-extrabold">${fmt(deuda)}</td>
