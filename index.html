@@ -69,7 +69,7 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
 
   async function loadAll() {
     const tablas = ['organizaciones','profiles','categorias','complejos','medios_pago',
-                    'clubes','torneos','torneo_categorias','equipos','pagos','conceptos','ingresos_fecha'];
+                    'clubes','torneos','torneo_categorias','equipos','prospectos','pagos','conceptos','ingresos_fecha'];
     const out = {};
     for (const t of tablas) {
       const { data, error } = await sb.from(t).select('*');
@@ -112,6 +112,16 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
       const fila = { ...equipo, created_by: equipo.created_by || user?.id };
       const { data, error } = await sb.from('equipos').insert(fila).select().single();
       if (error) throw error; return data;
+    },
+    async crearProspecto(prosp) {
+      const user = await auth.getUser();
+      const fila = { ...prosp, created_by: prosp.created_by || user?.id };
+      const { data, error } = await sb.from('prospectos').insert(fila).select().single();
+      if (error) throw error; return data;
+    },
+    async eliminarProspecto(id) {
+      const { error } = await sb.from('prospectos').delete().eq('id', id);
+      if (error) throw error;
     },
     async registrarPago(pago) {
       const user = await auth.getUser();
@@ -6231,16 +6241,23 @@ function crearInteresado() {
   const ya = S.prospectos.find(p=>p.torneoId===S.torneoSelId &&
     (clubId ? p.clubId===clubId : (p.clubNombre||'').toLowerCase()===nombre.toLowerCase()));
   if(ya){ toast(`${nombre} ya está en la lista de interesados.`,'error'); return; }
-  S.prospectos.push({id:S.nextId++, torneoId:S.torneoSelId, clubId, clubNombre:nombre, catIds, delegado, telefono:tel, nota});
+  const local = {id:S.nextId++, torneoId:S.torneoSelId, clubId, clubNombre:nombre, catIds, delegado, telefono:tel, nota, orgId:myOrgId()};
+  S.prospectos.push(local);
   closeModal('interesadoModal');
   renderP1b();
   toast(`${nombre} añadido como interesado ✓`, 'success');
+  if(sbOn()){
+    SB().data.crearProspecto({torneo_id:S.torneoSelId, club_id:clubId||null, club_nombre:nombre, cat_ids:catIds, delegado, telefono:tel, nota, org_id:myOrgId()})
+      .then(p=>{ local.id=p.id; })
+      .catch(e=>toast('⚠ No se guardó el interesado: '+e.message,'error'));
+  }
 }
 
 function eliminarProspecto(id) {
   S.prospectos = S.prospectos.filter(x=>x.id!==id);
   renderP1b();
   toast('Interesado eliminado.','success');
+  if(sbOn()) SB().data.eliminarProspecto(id).catch(e=>toast('⚠ '+e.message,'error'));
 }
 
 let _ciProspectoId = null;
@@ -6294,7 +6311,7 @@ function confirmarInscripcion(prospectoId) {
   openModal('confirmarInscripcionModal');
 }
 
-function doConfirmarInscripcion() {
+async function doConfirmarInscripcion() {
   const p = S.prospectos.find(x=>x.id===_ciProspectoId);
   if(!p) return;
   const torneoId = p.torneoId;
@@ -6302,13 +6319,15 @@ function doConfirmarInscripcion() {
   // Crear club si es nuevo
   let club = p.clubId ? S.clubes.find(c=>c.id===p.clubId)
     : S.clubes.find(c=>c.nombre.toLowerCase()===(p.clubNombre||'').toLowerCase());
+  let clubNuevo = null;
   if(!club){
-    club = {id:S.nextId++, nombre:p.clubNombre, delegado:p.delegado, telefono:p.telefono, provincia:'Lima', orgId:S.organizacionActual?.id||1};
+    club = {id:S.nextId++, nombre:p.clubNombre, delegado:p.delegado, telefono:p.telefono, provincia:'Lima', orgId:myOrgId()};
     S.clubes.push(club);
+    clubNuevo = club;
   }
 
   // Leer precios por fila
-  let inscritos = 0;
+  const nuevosEq = [];
   document.querySelectorAll('#ci_cats_tbody tr[data-cat]').forEach(row=>{
     const catId = parseInt(row.dataset.cat);
     const cat   = catById(catId);
@@ -6323,15 +6342,33 @@ function doConfirmarInscripcion() {
     const arb    = parseFloat(row.querySelector('[data-field="arbitraje"]').value)||0;
     const fechas = parseInt(row.querySelector('[data-field="fechas"]')?.value)||cat?.fechas||6;
     const monto  = insc + arb * fechas;
-    S.equipos.push({id:S.nextId++, torneoId, clubId:club.id, catId, nombre:'', inscripcion:insc, arbitraje:arb, fechas, monto, estado:'activo', orgId:S.organizacionActual?.id||1});
-    inscritos++;
+    const eq = {id:S.nextId++, torneoId, clubId:club.id, catId, modalidad:_tc?.modalidad||'', nombre:'', inscripcion:insc, arbitraje:arb, fechas, monto, invitado:false, estado:'activo', createdBy:S.usuarioActual?.id, orgId:myOrgId()};
+    S.equipos.push(eq);
+    nuevosEq.push(eq);
   });
 
-  S.prospectos = S.prospectos.filter(x=>x.id!==_ciProspectoId);
+  const prospId = _ciProspectoId;
+  S.prospectos = S.prospectos.filter(x=>x.id!==prospId);
   _ciProspectoId = null;
   closeModal('confirmarInscripcionModal');
   renderP1b(); renderCatGrid(); renderEquiposGlobal();
-  if(inscritos>0) toast(`${club.nombre} inscrito en ${inscritos} categoría(s) ✓`,'success');
+  if(nuevosEq.length>0) toast(`${club.nombre} inscrito en ${nuevosEq.length} categoría(s) ✓`,'success');
+
+  // Persistir en Supabase: club nuevo -> equipos -> borrar prospecto
+  if(sbOn()){
+    try {
+      if(clubNuevo){
+        const c = await SB().data.crearClub({nombre:clubNuevo.nombre, delegado:clubNuevo.delegado, telefono:clubNuevo.telefono, provincia:clubNuevo.provincia, org_id:myOrgId()});
+        clubNuevo.id = c.id;
+        nuevosEq.forEach(eq=>{ eq.clubId = c.id; });
+      }
+      for(const eq of nuevosEq){
+        const saved = await SB().data.inscribirEquipo({torneo_id:eq.torneoId, club_id:eq.clubId, cat_id:eq.catId, modalidad:eq.modalidad, nombre:eq.nombre, inscripcion:eq.inscripcion, arbitraje:eq.arbitraje, fechas:eq.fechas, monto:eq.monto, invitado:false, estado:'activo', org_id:myOrgId()});
+        eq.id = saved.id;
+      }
+      await SB().data.eliminarProspecto(prospId);
+    } catch(e){ toast('⚠ Se inscribió localmente pero no se guardó todo en la BD: '+e.message,'error'); }
+  }
 }
 
 async function crearClub() {
@@ -6851,6 +6888,7 @@ async function sbHydrate(){
   (d.torneo_categorias||[]).forEach(tc=>{ (catsByT[tc.torneo_id] = catsByT[tc.torneo_id]||[]).push({catId:tc.cat_id,nombre:catNombre(tc.cat_id),modalidad:tc.modalidad,aforo:tc.aforo,fechas:tc.fechas,inscripcion:_num(tc.inscripcion),arbitraje:_num(tc.arbitraje),comision:_num(tc.comision)}); });
   S.torneos = (d.torneos||[]).map(t=>({id:t.id,nombre:t.nombre,sede:t.sede,esquema:t.esquema,estado:t.estado,inicio:t.inicio,fin:t.fin,fechaVenc:t.fecha_venc,label:t.label,headerUrl:t.header_url,snap:t.snap,orgId:t.org_id,cats:catsByT[t.id]||[]}));
   S.equipos = (d.equipos||[]).map(e=>({id:e.id,torneoId:e.torneo_id,clubId:e.club_id,catId:e.cat_id,modalidad:e.modalidad||'',nombre:e.nombre,inscripcion:_num(e.inscripcion),arbitraje:_num(e.arbitraje),fechas:e.fechas,monto:_num(e.monto),invitado:e.invitado||false,estado:e.estado,createdBy:e.created_by,orgId:e.org_id}));
+  S.prospectos = (d.prospectos||[]).map(p=>({id:p.id,torneoId:p.torneo_id,clubId:p.club_id,clubNombre:p.club_nombre,catIds:p.cat_ids||[],delegado:p.delegado,telefono:p.telefono,nota:p.nota,createdBy:p.created_by,orgId:p.org_id}));
   S.pagos = (d.pagos||[]).map(p=>({id:p.id,torneoId:p.torneo_id,clubId:p.club_id,monto:_num(p.monto),medio:p.medio,fecha:p.fecha,nroOp:p.nro_op,desc:p.descripcion,voucherUrl:p.voucher_url,estado:p.estado,motivo:p.motivo,op:'',createdBy:p.created_by,regEn:p.created_at,procPor:'',procEn:p.processed_at,orgId:p.org_id}));
   // Ingresos por Fecha (detalle financiero de cada jornada)
   _ifData = {};

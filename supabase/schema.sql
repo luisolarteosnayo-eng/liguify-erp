@@ -151,6 +151,22 @@ create table if not exists public.equipos (
   created_at  timestamptz not null default now()
 );
 
+-- Equipos interesados / prospectos (no ocupan aforo ni generan cargos)
+create table if not exists public.prospectos (
+  id          bigint generated always as identity primary key,
+  torneo_id   bigint not null references public.torneos(id) on delete cascade,
+  club_id     bigint references public.clubes(id) on delete set null,
+  club_nombre text not null,
+  cat_ids     bigint[] not null default '{}',
+  delegado    text,
+  telefono    text,
+  nota        text,
+  created_by  uuid references public.profiles(id),
+  org_id      bigint not null references public.organizaciones(id) on delete cascade,
+  created_at  timestamptz not null default now()
+);
+create index if not exists idx_prospectos_torneo on public.prospectos(torneo_id);
+
 -- ---------------------------------------------------------------------------
 -- 6. PAGOS — auditoría inmutable (sin reversión en el piloto)
 -- ---------------------------------------------------------------------------
@@ -232,6 +248,7 @@ alter table public.conceptos         enable row level security;
 alter table public.torneos           enable row level security;
 alter table public.torneo_categorias enable row level security;
 alter table public.equipos           enable row level security;
+alter table public.prospectos        enable row level security;
 alter table public.ingresos_fecha    enable row level security;
 alter table public.pagos             enable row level security;
 alter table public.pago_log          enable row level security;
@@ -271,7 +288,7 @@ declare t text;
 begin
   foreach t in array array[
     'categorias','complejos','medios_pago','clubes','conceptos',
-    'torneos','torneo_categorias','equipos','ingresos_fecha','pagos','pago_log'
+    'torneos','torneo_categorias','equipos','prospectos','ingresos_fecha','pagos','pago_log'
   ] loop
     execute format($f$
       drop policy if exists %1$s_select on public.%1$s;
