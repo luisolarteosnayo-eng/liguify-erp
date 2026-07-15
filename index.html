@@ -2300,6 +2300,19 @@ const clubById = id => S.clubes.find(c => +c.id === +id);
 const catById  = id => S.categorias.find(c => +c.id === +id);
 // Perfil del usuario (operador) que registró un pago, para contacto ante dudas
 const pagoRegistrante = p => (S.usuarios||[]).find(u => u.id === p?.createdBy) || null;
+// Detección de pago duplicado/fraude: mismo medio + fecha + N° operación ya APROBADO.
+// No aplica a Efectivo ni a pagos sin N° de operación.
+function pagoDuplicado(p){
+  if(!p) return null;
+  const medioCfg = myMediosPago().find(m=>m.nombre===p.medio);
+  const esEfectivo = (medioCfg?.tipo==='efectivo') || /efectivo/i.test(p.medio||'');
+  const op = (p.nroOp||'').trim();
+  if(esEfectivo || !op) return null;
+  return myPagos().find(x=> x.id!==p.id && x.estado==='aprobado'
+    && (x.medio||'')===(p.medio||'')
+    && (x.fecha||'')===(p.fecha||'')
+    && (x.nroOp||'').trim()===op) || null;
+}
 // Vendedor (usuario) que inscribió un equipo — para medir desempeño
 const equipoRegistranteNombre = e => { const u=(S.usuarios||[]).find(x=>x.id===e?.createdBy); return (u && (u.nombre||u.email)) || 'Sin asignar'; };
 // Color estable por vendedor (misma persona = mismo color en toda la app)
@@ -5423,7 +5436,15 @@ function abrirVoucher(pagoId) {
   const medios = myMediosPago().filter(m=>m.activo);
   const medioOpts = medios.map(m=>`<option value="${m.nombre}" ${m.nombre===p.medio?'selected':''}>${m.icon||''} ${m.nombre}</option>`).join('');
   const inputCls = 'w-full border border-slate-300 rounded-md px-2 py-1.5 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-200';
-  document.getElementById('vmFicha').innerHTML = [
+  // Validación de posible pago duplicado / fraude
+  const dup = pagoDuplicado(p);
+  const dupBanner = dup ? `
+    <div class="mb-3 rounded-lg border-2 border-rose-300 bg-rose-50 px-4 py-3">
+      <div class="flex items-center gap-2 mb-1"><span class="text-lg">⚠️</span><span class="font-extrabold text-rose-700 text-sm uppercase tracking-wide">Pago duplicado</span></div>
+      <p class="text-xs text-rose-700 mb-2">Ya existe un pago <b>aprobado</b> con el mismo medio, fecha y N° de operación (${p.medio} · ${p.fecha} · N° ${p.nroOp}) para <b>${clubById(dup.clubId)?.nombre||'otro club'}</b>. Podría ser un duplicado o fraude — verifica antes de aprobar.</p>
+      <button onclick="abrirVoucher(${dup.id})" class="text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 px-3 py-1.5 rounded-lg transition">Revisar pago inicial →</button>
+    </div>` : '';
+  document.getElementById('vmFicha').innerHTML = dupBanner + [
     ['Club', club?.nombre],
     ['Monto reportado', `<span class="font-bold mono">${fmt(p.monto)}</span>`],
     ['Descripción', p.desc||'—'],
