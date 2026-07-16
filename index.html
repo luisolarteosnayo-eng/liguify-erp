@@ -5149,30 +5149,18 @@ function kpiBlock(label, sublabel, kpi, color, torneoId) {
       </div>
       <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-${color}-50 text-${color}-700">${pct}% inscripción cobrada</span>
     </div>
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 mb-2">
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
       <div class="bg-blue-50 rounded-lg p-3">
         <div class="text-[10px] text-blue-500 mb-1 uppercase font-semibold">Total Inscripciones</div>
         <div class="font-bold mono text-blue-700">${fmt(kpi.totalInsc)}</div>
         <div class="text-[10px] text-slate-300 mt-0.5">${nEq!==''?nEq+' equipos':''}</div>
       </div>
-      <div class="bg-emerald-50 rounded-lg p-3">
-        <div class="text-[10px] text-emerald-600 mb-1 uppercase font-semibold">Recaudado</div>
-        <div class="font-bold mono text-emerald-700">${fmt(kpi.recaudado)}</div>
-        <div class="text-[10px] text-slate-300 mt-0.5">Pagos aprobados</div>
-      </div>
-      <div class="bg-amber-50 rounded-lg p-3">
-        <div class="text-[10px] text-amber-600 mb-1 uppercase font-semibold">Pend. de Aprobar</div>
-        <div class="font-bold mono text-amber-700">${fmt(kpi.pendienteAprobar||0)}</div>
-        <div class="text-[10px] text-slate-300 mt-0.5">En revisión</div>
-      </div>
       <div class="${(kpi.pendienteCobro||0)>0?'bg-rose-50':'bg-emerald-50'} rounded-lg p-3">
-        <div class="text-[10px] ${(kpi.pendienteCobro||0)>0?'text-rose-600':'text-emerald-600'} mb-1 uppercase font-semibold">Pend. de Cobro</div>
+        <div class="text-[10px] ${(kpi.pendienteCobro||0)>0?'text-rose-600':'text-emerald-600'} mb-1 uppercase font-semibold">Pendiente por Cobrar</div>
         <div class="font-bold mono ${(kpi.pendienteCobro||0)>0?'text-rose-700':'text-emerald-700'}">${fmt(kpi.pendienteCobro||0)}</div>
         <div class="text-[10px] text-slate-300 mt-0.5">Falta cobrar</div>
       </div>
-      <div class="${(()=>{let u=0;Object.values(_ifData).forEach(td=>u+=_utilFechas(td));return u>=0?'bg-emerald-50':'bg-rose-50';})()} rounded-lg p-3">
-        ${(()=>{let u=0;Object.values(_ifData).forEach(td=>u+=_utilFechas(td));const uc=u>=0?'text-emerald-600':'text-rose-600';const uv=u>=0?'text-emerald-700':'text-rose-700';return `<div class="text-[10px] ${uc} mb-1 uppercase font-semibold">Utilidad por Fecha</div><div class="font-bold mono ${uv}">${fmt(u)}</div><div class="text-[10px] text-slate-300 mt-0.5">Todas las fechas</div>`;})()}
-      </div>
+      ${(()=>{let u=0;Object.values(_ifData).forEach(td=>u+=_utilFechas(td));const costos=myCostos().reduce((s,c)=>s+(c.monto||0),0);const ut=(kpi.totalInsc||0)+u-costos;const uc=ut>=0?'text-emerald-700':'text-rose-700';const bg=ut>=0?'bg-emerald-50':'bg-rose-50';return `<div class="${bg} rounded-lg p-3"><div class="text-[10px] text-slate-600 mb-1 uppercase font-bold">Utilidad Total</div><div class="font-extrabold mono ${uc}">${fmt(ut)}</div><div class="text-[10px] text-slate-300 mt-0.5">Inscrip. + Util. fecha − Costos</div></div>`;})()}
     </div>
     <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mt-3">
       <div class="h-full rounded-full" style="width:${pct}%;background:${barColor}"></div>
@@ -5232,19 +5220,11 @@ function renderTorneosList() {
           <div class="text-[10px] text-blue-500 mb-0.5 font-semibold uppercase">Total Inscripciones</div>
           <div class="font-bold mono text-blue-700 text-xs">${fmt(f.totalInsc)}</div>
         </div>
-        <div class="bg-emerald-50 rounded-lg px-3 py-2">
-          <div class="text-[10px] text-emerald-600 mb-0.5 font-semibold uppercase">Recaudado</div>
-          <div class="font-bold mono text-emerald-700 text-xs">${fmt(f.recaudado)}</div>
-        </div>
-        <div class="bg-amber-50 rounded-lg px-3 py-2">
-          <div class="text-[10px] text-amber-600 mb-0.5 font-semibold uppercase">Pend. Aprobar</div>
-          <div class="font-bold mono text-amber-700 text-xs">${fmt(f.pendienteAprobar||0)}</div>
-        </div>
         <div class="${(f.pendienteCobro||0)>0?'bg-rose-50':'bg-emerald-50'} rounded-lg px-3 py-2">
-          <div class="text-[10px] ${(f.pendienteCobro||0)>0?'text-rose-600':'text-emerald-600'} mb-0.5 font-semibold uppercase">Pend. Cobro</div>
+          <div class="text-[10px] ${(f.pendienteCobro||0)>0?'text-rose-600':'text-emerald-600'} mb-0.5 font-semibold uppercase">Pendiente por Cobrar</div>
           <div class="font-bold mono ${(f.pendienteCobro||0)>0?'text-rose-700':'text-emerald-700'} text-xs">${fmt(f.pendienteCobro||0)}</div>
         </div>
-        ${(()=>{const u=_utilFechas(_ifData[t.id]||{});const uc=u>=0?'text-emerald-600':'text-rose-600';const uv=u>=0?'text-emerald-700':'text-rose-700';const bg=u>=0?'bg-emerald-50':'bg-rose-50';return `<div class="${bg} rounded-lg px-3 py-2"><div class="text-[10px] ${uc} mb-0.5 font-semibold uppercase">Utilidad Fechas</div><div class="font-bold mono ${uv} text-xs">${fmt(u)}</div></div>`;})()}
+        ${(()=>{const u=_utilFechas(_ifData[t.id]||{});const costos=myCostos().filter(c=>+c.torneoId===+t.id).reduce((s,c)=>s+(c.monto||0),0);const ut=(f.totalInsc||0)+u-costos;const uc=ut>=0?'text-emerald-700':'text-rose-700';const bg=ut>=0?'bg-emerald-50':'bg-rose-50';return `<div class="${bg} rounded-lg px-3 py-2"><div class="text-[10px] text-slate-600 mb-0.5 font-bold uppercase">Utilidad Total</div><div class="font-extrabold mono ${uc} text-xs">${fmt(ut)}</div></div>`;})()}
       </div>
       <div class="flex items-center gap-2">
         <div class="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
