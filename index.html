@@ -70,7 +70,7 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
   async function loadAll() {
     const tablas = ['organizaciones','profiles','categorias','complejos','medios_pago',
                     'clubes','torneos','torneo_categorias','equipos','prospectos','pagos','conceptos','ingresos_fecha',
-                    'proveedores','costos'];
+                    'proveedores','costos','clasificatorios'];
     const out = {};
     for (const t of tablas) {
       const { data, error } = await sb.from(t).select('*');
@@ -146,6 +146,18 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
     },
     async eliminarCosto(id) {
       const { error } = await sb.from('costos').delete().eq('id', id);
+      if (error) throw error;
+    },
+    async guardarClasificatorio(cl, editId) {
+      if (editId) {
+        const { data, error } = await sb.from('clasificatorios').update(cl).eq('id', editId).select().single();
+        if (error) throw error; return data;
+      }
+      const { data, error } = await sb.from('clasificatorios').insert(cl).select().single();
+      if (error) throw error; return data;
+    },
+    async eliminarClasificatorio(id) {
+      const { error } = await sb.from('clasificatorios').delete().eq('id', id);
       if (error) throw error;
     },
     async registrarPago(pago) {
@@ -844,6 +856,18 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
           <button onclick="openProveedorModal()" class="flex items-center gap-2 bg-[#18324F] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#0f253d] transition shadow-sm shrink-0">+ Nuevo Proveedor</button>
         </div>
         <div id="cfgProveedoresList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      </div>
+
+      <!-- P: Configuración — Torneos Clasificatorios -->
+      <div id="p_cfg_clasificatorios" class="screen">
+        <div class="flex items-start justify-between mb-5 gap-4">
+          <div>
+            <h1 class="text-xl font-bold mb-1">Torneos Clasificatorios</h1>
+            <p class="text-sm text-slate-400">Torneos externos que clasifican equipos y pagan su inscripción.</p>
+          </div>
+          <button onclick="openClasificatorioModal()" class="flex items-center gap-2 bg-[#18324F] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#0f253d] transition shadow-sm shrink-0">+ Nuevo Clasificatorio</button>
+        </div>
+        <div id="cfgClasificatoriosList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
       </div>
 
       <!-- P: Configuración — Categorías -->
@@ -2224,6 +2248,69 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
   </div>
 </div>
 
+<!-- clasificatorioModal (config) -->
+<div id="clasificatorioModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 fade-in">
+    <h3 class="font-bold text-base mb-4" id="clasifModalTitle">Nuevo Torneo Clasificatorio</h3>
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Nombre del torneo *</label>
+    <input type="text" id="clasifNombre" placeholder="Ej. ARRIAGOL" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 outline-none focus:ring-2 focus:ring-blue-200">
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Nombre del contacto</label>
+    <input type="text" id="clasifContacto" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 outline-none focus:ring-2 focus:ring-blue-200">
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Teléfono</label>
+    <input type="text" id="clasifTel" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-4 outline-none focus:ring-2 focus:ring-blue-200">
+    <div class="flex justify-end gap-2">
+      <button onclick="closeModal('clasificatorioModal')" class="text-sm font-medium text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">Cancelar</button>
+      <button onclick="guardarClasificatorio()" class="text-sm font-semibold text-white bg-[#18324F] px-4 py-2 rounded-lg hover:bg-[#0f253d]">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- clasifTorneoModal (equipos clasificados por torneo) -->
+<div id="clasifTorneoModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60">
+  <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full max-w-3xl fade-in max-h-[92vh] flex flex-col">
+    <div class="flex items-start justify-between px-6 py-4 border-b border-slate-100 shrink-0">
+      <div>
+        <p class="text-[10px] text-slate-400 uppercase font-semibold mb-0.5">Torneos Clasificatorios</p>
+        <h2 class="text-lg font-bold text-slate-800" id="clasifTorneoNombre">Torneo</h2>
+        <p class="text-xs text-slate-400 mt-0.5">Equipos clasificados por torneos externos y el monto que cada uno debe pagar.</p>
+      </div>
+      <button onclick="closeModal('clasifTorneoModal')" class="text-slate-300 hover:text-slate-500 text-xl leading-none mt-1">✕</button>
+    </div>
+    <div class="px-6 py-3 border-b border-slate-100 shrink-0 bg-slate-50 flex items-center justify-between">
+      <span class="text-xs text-slate-500 font-semibold uppercase">Total a pagar (todos los clasificatorios)</span>
+      <span class="mono font-extrabold text-[#18324F]" id="clasifTotalGeneral">S/. 0.00</span>
+    </div>
+    <div class="overflow-y-auto flex-1 px-6 py-5" id="clasifTorneoBody"></div>
+    <div class="px-6 py-3 border-t border-slate-100 shrink-0 flex items-center justify-between">
+      <button onclick="closeModal('clasifTorneoModal')" class="text-sm font-semibold text-slate-400 hover:text-slate-600 px-4 py-2 rounded-lg hover:bg-slate-100 transition">Cerrar</button>
+      <button onclick="openAddClasifEquipo()" class="text-sm font-bold bg-[#18324F] text-white px-5 py-2 rounded-lg hover:bg-[#0f1f33] transition shadow-sm">+ Agregar equipo clasificado</button>
+    </div>
+  </div>
+</div>
+
+<!-- addClasifEquipoModal -->
+<div id="addClasifEquipoModal" class="modal-overlay hidden fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 fade-in max-h-[92vh] overflow-y-auto">
+    <h3 class="font-bold text-base mb-4">Agregar Equipo Clasificado</h3>
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Torneo clasificatorio *</label>
+    <select id="aceClasif" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 bg-white outline-none focus:ring-2 focus:ring-blue-200"></select>
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Club *</label>
+    <div class="flex gap-2 mb-3">
+      <input type="text" id="aceClub" placeholder="Buscar club…" autocomplete="off"
+        oninput="clubACFilter(this)" onfocus="clubACAttach(this,(id)=>{_aceClubId=id;},true); clubACFilter(this)" onblur="clubACBlur(this)"
+        class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+    </div>
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Categoría *</label>
+    <select id="aceCat" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 bg-white outline-none focus:ring-2 focus:ring-blue-200"></select>
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Precio que paga el clasificatorio (S/.) *</label>
+    <input type="number" id="acePrecio" placeholder="0.00" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-4 mono outline-none focus:ring-2 focus:ring-blue-200">
+    <div class="flex justify-end gap-2">
+      <button onclick="closeModal('addClasifEquipoModal')" class="text-sm font-medium text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">Cancelar</button>
+      <button onclick="guardarClasifEquipo()" class="text-sm font-semibold text-white bg-[#18324F] px-4 py-2 rounded-lg hover:bg-[#0f253d]">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- cfgCategoriaModal -->
 <div id="cfgCategoriaModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60">
   <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 fade-in">
@@ -2279,6 +2366,7 @@ const S = {
 
   proveedores: [],
   costos: [],
+  clasificatorios: [],
 
   conceptos: [
     {id:1, nombre:'Tickets',        tipo:'ingreso', fuente:'ambos',    porDefecto:true, activo:true, orgId:1},
@@ -2410,6 +2498,7 @@ const MENU = [
     children:[
       {id:'p_cfg_complejos',label:'Complejos Deportivos',roles:['organizador']},
       {id:'p_cfg_proveedores',label:'Proveedores',roles:['organizador']},
+      {id:'p_cfg_clasificatorios',label:'Torneos Clasificatorios',roles:['organizador']},
       {id:'p_cfg_categorias',label:'Categorías',roles:['organizador']},
       {id:'p_cfg_medios',label:'Medios de Pago',roles:['organizador']},
     ]},
@@ -2464,6 +2553,8 @@ const myMediosPago = () => S.mediosPago.filter(m=>m.orgId===myOrgId());
 const myConceptos  = () => (S.conceptos||[]).filter(c=>c.orgId===myOrgId());
 const myProveedores= () => (S.proveedores||[]).filter(p=>p.orgId===myOrgId());
 const myCostos     = () => (S.costos||[]).filter(c=>c.orgId===myOrgId());
+const myClasificatorios = () => (S.clasificatorios||[]).filter(c=>c.orgId===myOrgId());
+const clasifNombre = id => (S.clasificatorios||[]).find(c=>+c.id===+id)?.nombre || '';
 
 // ---- ESTADOS DE TORNEO ----
 // activo (al crear) → en_ejecucion (en juego) → cerrado (finalizado)
@@ -3420,6 +3511,7 @@ function renderScreen(id) {
   else if(id==='p_nuevo_torneo') renderNuevoTorneo();
   else if(id==='p_cfg_complejos') renderCfgComplejos();
   else if(id==='p_cfg_proveedores') renderCfgProveedores();
+  else if(id==='p_cfg_clasificatorios') renderCfgClasificatorios();
   else if(id==='p_cfg_categorias') renderCfgCategorias();
   else if(id==='p1b') renderP1b();
   else if(id==='p2') renderP2();
@@ -3612,6 +3704,7 @@ function renderP1Detalle() {
           <td class="py-2.5 px-4 font-medium text-sm">
             ${e.nombre ? `${club?.nombre||''} <span class="text-slate-400 font-normal">· ${e.nombre}</span>` : club?.nombre||'—'}
             ${e.invitado ? '<span class="ml-1 text-[9px] font-bold bg-violet-100 text-violet-600 px-1.5 py-0.5 rounded-full">INVITADO</span>' : ''}
+            ${e.clasificatorioId ? `<span class="ml-1 text-[9px] font-bold bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full">🏆 ${clasifNombre(e.clasificatorioId)}</span>` : ''}
           </td>
           <td class="py-2.5 px-4 text-slate-400 text-xs mono">${e.invitado ? '<span class="text-violet-400">—</span>' : (e.arbitraje>0 ? `${fmt(e.arbitraje)}×${e.fechas}` : '—')}</td>
           <td class="py-2.5 px-4 text-right mono font-bold text-sm">${e.invitado ? '<span class="text-violet-500">S/.0.00</span>' : fmt(e.inscripcion)}</td>
@@ -3746,6 +3839,7 @@ function renderP1Detalle() {
         ${canEdit ? `<button onclick="openAgregarCat()" class="text-xs font-semibold text-[#18324F] border border-slate-200 bg-white px-3 py-2 rounded-lg hover:bg-slate-50 transition">+ Categoría</button>` : ''}
         <button onclick="abrirIngresosFecha(${t.id})" class="text-xs font-semibold text-emerald-700 border border-emerald-200 bg-emerald-50 px-3 py-2 rounded-lg hover:bg-emerald-100 transition">💰 Ingresos por Fecha</button>
         <button onclick="abrirCostos(${t.id})" class="text-xs font-semibold text-rose-700 border border-rose-200 bg-rose-50 px-3 py-2 rounded-lg hover:bg-rose-100 transition">🧾 Costos</button>
+        <button onclick="abrirClasifTorneo(${t.id})" class="text-xs font-semibold text-sky-700 border border-sky-200 bg-sky-50 px-3 py-2 rounded-lg hover:bg-sky-100 transition">🏆 Torneos Clasificatorios</button>
         ${canEdit ? `<button onclick="openEditTorneo()" class="text-xs font-semibold text-white bg-[#18324F] px-3 py-2 rounded-lg hover:bg-[#0f253d] transition">✏️ Editar torneo</button>` : ''}
       </div>
     </div>
@@ -4914,6 +5008,173 @@ function eliminarCostoUI(id){
   renderCostos();
   toast('Costo eliminado.','success');
   if(sbOn()) SB().data.eliminarCosto(id).catch(e=>toast('⚠ '+e.message,'error'));
+}
+
+// ============================================================================
+//  TORNEOS CLASIFICATORIOS
+// ============================================================================
+let _clasifEditId = null;
+
+function renderCfgClasificatorios(){
+  const list = document.getElementById('cfgClasificatoriosList');
+  if(!list) return;
+  const cls = myClasificatorios().slice().sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es'));
+  if(!cls.length){
+    list.innerHTML = `<div class="col-span-full bg-white rounded-xl border border-dashed border-slate-200 p-8 text-center">
+      <p class="text-slate-400 text-sm mb-3">No hay torneos clasificatorios registrados.</p>
+      <button onclick="openClasificatorioModal()" class="text-sm font-semibold text-[#4F86C6] hover:underline">+ Agregar el primero</button></div>`;
+    return;
+  }
+  list.innerHTML = cls.map(c=>`<div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+    <div class="flex items-start justify-between gap-2 mb-1">
+      <p class="font-bold text-slate-800">${c.nombre}</p>
+      <div class="flex items-center gap-1 shrink-0">
+        <button onclick="openClasificatorioModal(${c.id})" class="text-slate-300 hover:text-[#4F86C6] text-sm" title="Editar">✏️</button>
+        <button onclick="eliminarClasificatorioUI(${c.id})" class="text-slate-300 hover:text-rose-500 text-sm" title="Eliminar">✕</button>
+      </div>
+    </div>
+    <p class="text-[11px] text-slate-400">${c.contacto?`Contacto: ${c.contacto}`:''}${c.contacto&&c.telefono?' · ':''}${c.telefono?`📞 ${c.telefono}`:''}</p>
+  </div>`).join('');
+}
+
+function openClasificatorioModal(id){
+  _clasifEditId = id || null;
+  const c = id ? myClasificatorios().find(x=>+x.id===+id) : null;
+  document.getElementById('clasifModalTitle').textContent = c ? 'Editar Torneo Clasificatorio' : 'Nuevo Torneo Clasificatorio';
+  document.getElementById('clasifNombre').value = c?.nombre || '';
+  document.getElementById('clasifContacto').value = c?.contacto || '';
+  document.getElementById('clasifTel').value = c?.telefono || '';
+  openModal('clasificatorioModal');
+}
+
+function guardarClasificatorio(){
+  const nombre = document.getElementById('clasifNombre').value.trim();
+  if(!nombre){ toast('El nombre del torneo es obligatorio.','error'); return; }
+  const contacto = document.getElementById('clasifContacto').value.trim();
+  const telefono = document.getElementById('clasifTel').value.trim();
+  const dbRow = {nombre, contacto:contacto||null, telefono:telefono||null, org_id:myOrgId()};
+  if(_clasifEditId){
+    const c = S.clasificatorios.find(x=>+x.id===+_clasifEditId);
+    if(c) Object.assign(c, {nombre, contacto, telefono});
+    if(sbOn()) SB().data.guardarClasificatorio(dbRow, _clasifEditId).catch(e=>toast('⚠ '+e.message,'error'));
+  } else {
+    const local = {id:S.nextId++, nombre, contacto, telefono, orgId:myOrgId()};
+    S.clasificatorios.push(local);
+    if(sbOn()) SB().data.guardarClasificatorio(dbRow, null).then(r=>{ local.id=r.id; }).catch(e=>toast('⚠ '+e.message,'error'));
+  }
+  closeModal('clasificatorioModal');
+  toast('Torneo clasificatorio guardado ✓','success');
+  renderCfgClasificatorios();
+}
+
+function eliminarClasificatorioUI(id){
+  if(!confirm('¿Eliminar este torneo clasificatorio?')) return;
+  S.clasificatorios = S.clasificatorios.filter(x=>+x.id!==+id);
+  renderCfgClasificatorios();
+  toast('Torneo clasificatorio eliminado.','success');
+  if(sbOn()) SB().data.eliminarClasificatorio(id).catch(e=>toast('⚠ '+e.message,'error'));
+}
+
+// ---- Equipos clasificados por torneo externo (dentro del detalle del torneo) ----
+let _clasifTorneoId = null, _aceClubId = null;
+
+function abrirClasifTorneo(torneoId){
+  _clasifTorneoId = torneoId;
+  const t = S.torneos.find(x=>+x.id===+torneoId);
+  document.getElementById('clasifTorneoNombre').textContent = t?.nombre || 'Torneo';
+  renderClasifTorneo();
+  openModal('clasifTorneoModal');
+}
+
+function renderClasifTorneo(){
+  const t = _clasifTorneoId;
+  const eqs = myEquipos().filter(e=>+e.torneoId===+t && e.estado==='activo' && e.clasificatorioId);
+  const total = eqs.reduce((s,e)=>s+(e.clasifPrecio||0),0);
+  document.getElementById('clasifTotalGeneral').textContent = fmt(total);
+  const body = document.getElementById('clasifTorneoBody');
+  if(!eqs.length){
+    body.innerHTML = `<div class="text-center py-10"><p class="text-slate-400 text-sm mb-3">Aún no hay equipos clasificados por torneos externos.</p>
+      <button onclick="openAddClasifEquipo()" class="text-sm font-semibold text-[#4F86C6] hover:underline">+ Agregar el primero</button></div>`;
+    return;
+  }
+  // Agrupar por clasificatorio
+  const porCl = {};
+  eqs.forEach(e=>{ (porCl[e.clasificatorioId] = porCl[e.clasificatorioId]||[]).push(e); });
+  body.innerHTML = Object.keys(porCl).map(clId=>{
+    const cl = myClasificatorios().find(c=>+c.id===+clId);
+    const items = porCl[clId];
+    const subtotal = items.reduce((s,e)=>s+(e.clasifPrecio||0),0);
+    const filas = items.slice().sort((a,b)=>(clubById(a.clubId)?.nombre||'').localeCompare(clubById(b.clubId)?.nombre||'','es',{numeric:true})).map(e=>`
+      <tr class="border-b border-slate-50">
+        <td class="py-2 px-3 text-sm">${clubById(e.clubId)?.nombre||'—'}${e.nombre?` <span class="text-slate-400">· ${e.nombre}</span>`:''}</td>
+        <td class="py-2 px-3 text-sm text-slate-600">${catById(e.catId)?.nombre||'—'}${e.modalidad?` <span class="text-slate-400 text-xs">${e.modalidad}</span>`:''}</td>
+        <td class="py-2 px-3 text-right mono font-semibold text-slate-700">${fmt(e.clasifPrecio||0)}</td>
+        <td class="py-2 px-3 text-center"><button onclick="eliminarClasifEquipo(${e.id})" class="text-slate-300 hover:text-rose-400 text-xs">✕</button></td>
+      </tr>`).join('');
+    return `<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-4">
+      <div class="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+        <div class="flex items-center gap-2"><span class="font-bold text-sm text-slate-800">🏆 ${cl?.nombre||'Clasificatorio'}</span>${cl?.telefono?`<span class="text-[11px] text-slate-400">📞 ${cl.telefono}</span>`:''}<span class="text-[11px] text-slate-400">${items.length} equipo(s)</span></div>
+        <span class="mono font-extrabold text-[#18324F]">${fmt(subtotal)}</span>
+      </div>
+      <table class="w-full text-sm">
+        <thead><tr class="text-left text-[10px] text-slate-400 uppercase border-b border-slate-100">
+          <th class="py-1.5 px-3 font-semibold">Club</th><th class="py-1.5 px-3 font-semibold">Categoría</th>
+          <th class="py-1.5 px-3 font-semibold text-right">Precio</th><th class="py-1.5 px-3"></th>
+        </tr></thead>
+        <tbody>${filas}</tbody>
+      </table>
+    </div>`;
+  }).join('');
+}
+
+function openAddClasifEquipo(){
+  const cls = myClasificatorios().slice().sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es'));
+  if(!cls.length){ toast('Primero registra un torneo clasificatorio en Configuración.','error'); return; }
+  document.getElementById('aceClasif').innerHTML = cls.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('');
+  const t = S.torneos.find(x=>+x.id===+_clasifTorneoId);
+  document.getElementById('aceCat').innerHTML = (t?.cats||[]).map(tc=>`<option value="${tc.catId}|${tc.modalidad||''}">${catById(tc.catId)?.nombre||tc.catId}${tc.modalidad?' '+tc.modalidad:''}</option>`).join('');
+  _aceClubId = null;
+  document.getElementById('aceClub').value = '';
+  document.getElementById('acePrecio').value = '';
+  openModal('addClasifEquipoModal');
+}
+
+function guardarClasifEquipo(){
+  const clasifId = parseInt(document.getElementById('aceClasif').value)||0;
+  const [catIdStr, modalidad] = (document.getElementById('aceCat').value||'|').split('|');
+  const catId = parseInt(catIdStr)||0;
+  const precio = parseFloat(document.getElementById('acePrecio').value)||0;
+  const clubNombre = document.getElementById('aceClub').value.trim();
+  const clubId = _aceClubId || (S.clubes.find(c=>c.nombre.toLowerCase()===clubNombre.toLowerCase())?.id);
+  if(!clasifId){ toast('Selecciona el torneo clasificatorio.','error'); return; }
+  if(!clubId){ toast('Selecciona un club válido.','error'); return; }
+  if(!catId){ toast('Selecciona una categoría.','error'); return; }
+  if(precio<=0){ toast('Ingresa el precio que paga el clasificatorio.','error'); return; }
+  // Para el CLUB la inscripción es 0 (no la paga él); el precio lo paga el clasificatorio (clasifPrecio).
+  const eq = {id:S.nextId++, torneoId:_clasifTorneoId, clubId, catId, modalidad:modalidad||'', nombre:'',
+    inscripcion:0, arbitraje:0, fechas:0, monto:0, invitado:false, estado:'activo',
+    createdBy:S.usuarioActual?.id, clasificatorioId:clasifId, clasifPrecio:precio, orgId:myOrgId()};
+  S.equipos.push(eq);
+  if(sbOn()){
+    SB().data.inscribirEquipo({torneo_id:_clasifTorneoId, club_id:clubId, cat_id:catId, modalidad:modalidad||'', nombre:'',
+      inscripcion:0, arbitraje:0, fechas:0, monto:0, invitado:false, estado:'activo',
+      clasificatorio_id:clasifId, clasif_precio:precio, org_id:myOrgId()})
+      .then(r=>{ eq.id=r.id; }).catch(e=>toast('⚠ '+e.message,'error'));
+  }
+  closeModal('addClasifEquipoModal');
+  renderClasifTorneo();
+  if(typeof renderP1Detalle==='function') renderP1Detalle();
+  toast('Equipo clasificado agregado ✓','success');
+}
+
+function eliminarClasifEquipo(id){
+  if(!confirm('¿Quitar este equipo clasificado?')) return;
+  const e = S.equipos.find(x=>+x.id===+id);
+  if(e) e.estado='inactivo';
+  renderClasifTorneo();
+  if(typeof renderP1Detalle==='function') renderP1Detalle();
+  toast('Equipo quitado.','success');
+  if(sbOn()) SB().data.actualizarEquipo(id, {estado:'inactivo'}).catch(err=>toast('⚠ '+err.message,'error'));
 }
 
 // ---- CFG: COMPLEJOS DEPORTIVOS ----
@@ -7250,11 +7511,12 @@ async function sbHydrate(){
   S.conceptos      = (d.conceptos||[]).map(c=>({id:c.id,nombre:c.nombre,tipo:c.tipo,fuente:c.fuente||'ambos',porDefecto:c.por_defecto!==false,activo:c.activo!==false,orgId:c.org_id}));
   S.proveedores    = (d.proveedores||[]).map(p=>({id:p.id,nombre:p.nombre,rucDni:p.ruc_dni,telefono:p.telefono,conceptoIds:(p.concepto_ids||[]).map(Number),banco1Nombre:p.banco1_nombre,banco1Cuenta:p.banco1_cuenta,banco2Nombre:p.banco2_nombre,banco2Cuenta:p.banco2_cuenta,orgId:p.org_id}));
   S.costos         = (d.costos||[]).map(c=>({id:c.id,torneoId:c.torneo_id,conceptoId:c.concepto_id,proveedorId:c.proveedor_id,descripcion:c.descripcion,monto:_num(c.monto),adelantos:(c.adelantos||[]).map(a=>({fecha:a.fecha,monto:_num(a.monto)})),orgId:c.org_id}));
+  S.clasificatorios= (d.clasificatorios||[]).map(c=>({id:c.id,nombre:c.nombre,contacto:c.contacto,telefono:c.telefono,orgId:c.org_id}));
   S.clubes         = (d.clubes||[]).map(c=>({id:c.id,nombre:c.nombre,delegado:c.delegado,telefono:c.telefono,provincia:c.provincia,orgId:c.org_id}));
   const catsByT = {};
   (d.torneo_categorias||[]).forEach(tc=>{ (catsByT[tc.torneo_id] = catsByT[tc.torneo_id]||[]).push({catId:tc.cat_id,nombre:catNombre(tc.cat_id),modalidad:tc.modalidad,aforo:tc.aforo,fechas:tc.fechas,inscripcion:_num(tc.inscripcion),arbitraje:_num(tc.arbitraje),comision:_num(tc.comision)}); });
   S.torneos = (d.torneos||[]).map(t=>({id:t.id,nombre:t.nombre,sede:t.sede,esquema:t.esquema,estado:t.estado,inicio:t.inicio,fin:t.fin,fechaVenc:t.fecha_venc,label:t.label,headerUrl:t.header_url,snap:t.snap,orgId:t.org_id,cats:catsByT[t.id]||[]}));
-  S.equipos = (d.equipos||[]).map(e=>({id:e.id,torneoId:e.torneo_id,clubId:e.club_id,catId:e.cat_id,modalidad:e.modalidad||'',nombre:e.nombre,inscripcion:_num(e.inscripcion),arbitraje:_num(e.arbitraje),fechas:e.fechas,monto:_num(e.monto),invitado:e.invitado||false,estado:e.estado,createdBy:e.created_by,orgId:e.org_id}));
+  S.equipos = (d.equipos||[]).map(e=>({id:e.id,torneoId:e.torneo_id,clubId:e.club_id,catId:e.cat_id,modalidad:e.modalidad||'',nombre:e.nombre,inscripcion:_num(e.inscripcion),arbitraje:_num(e.arbitraje),fechas:e.fechas,monto:_num(e.monto),invitado:e.invitado||false,estado:e.estado,createdBy:e.created_by,clasificatorioId:e.clasificatorio_id,clasifPrecio:_num(e.clasif_precio),orgId:e.org_id}));
   S.prospectos = (d.prospectos||[]).map(p=>({id:p.id,torneoId:p.torneo_id,clubId:p.club_id,clubNombre:p.club_nombre,catIds:p.cat_ids||[],delegado:p.delegado,telefono:p.telefono,nota:p.nota,createdBy:p.created_by,orgId:p.org_id}));
   S.pagos = (d.pagos||[]).map(p=>({id:p.id,torneoId:p.torneo_id,clubId:p.club_id,monto:_num(p.monto),medio:p.medio,fecha:p.fecha,nroOp:p.nro_op,desc:p.descripcion,voucherUrl:p.voucher_url,estado:p.estado,motivo:p.motivo,op:'',createdBy:p.created_by,regEn:p.created_at,procPor:'',procEn:p.processed_at,orgId:p.org_id}));
   // Ingresos por Fecha (detalle financiero de cada jornada)

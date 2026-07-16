@@ -129,6 +129,16 @@ create table if not exists public.torneo_categorias (
   unique (torneo_id, cat_id, modalidad)
 );
 
+-- Torneos clasificatorios (externos que clasifican equipos y pagan su inscripción)
+create table if not exists public.clasificatorios (
+  id         bigint generated always as identity primary key,
+  nombre     text not null,
+  contacto   text,
+  telefono   text,
+  org_id     bigint not null references public.organizaciones(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
 -- ---------------------------------------------------------------------------
 -- 5. EQUIPOS (instancia de un club en una categoría de un torneo)
 --    Nunca se eliminan: solo se inactivan (trazabilidad de pagos).
@@ -147,6 +157,8 @@ create table if not exists public.equipos (
   invitado    boolean not null default false,  -- equipo invitado: sin costo
   estado      text not null default 'activo' check (estado in ('activo','inactivo')),
   created_by  uuid references public.profiles(id),   -- vendedor/usuario que inscribió el equipo
+  clasificatorio_id bigint references public.clasificatorios(id) on delete set null,  -- torneo externo que lo clasificó/paga
+  clasif_precio numeric(12,2),   -- precio que paga el clasificatorio (para el club la inscripción es 0)
   org_id      bigint not null references public.organizaciones(id) on delete cascade,
   created_at  timestamptz not null default now()
 );
@@ -275,6 +287,7 @@ alter table public.conceptos         enable row level security;
 alter table public.torneos           enable row level security;
 alter table public.torneo_categorias enable row level security;
 alter table public.equipos           enable row level security;
+alter table public.clasificatorios   enable row level security;
 alter table public.prospectos        enable row level security;
 alter table public.proveedores       enable row level security;
 alter table public.costos            enable row level security;
@@ -317,7 +330,7 @@ declare t text;
 begin
   foreach t in array array[
     'categorias','complejos','medios_pago','clubes','conceptos',
-    'torneos','torneo_categorias','equipos','prospectos','proveedores','costos','ingresos_fecha','pagos','pago_log'
+    'torneos','torneo_categorias','equipos','clasificatorios','prospectos','proveedores','costos','ingresos_fecha','pagos','pago_log'
   ] loop
     execute format($f$
       drop policy if exists %1$s_select on public.%1$s;
