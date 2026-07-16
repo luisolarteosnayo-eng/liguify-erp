@@ -3576,11 +3576,11 @@ function renderP1Detalle() {
       <p class="font-bold mono text-emerald-700 text-lg">${fmt(f.recaudado)}</p>
       <p class="text-[10px] text-slate-300 mt-1">Pagos aprobados</p>
     </div>
-    <div class="bg-amber-50 rounded-xl border border-amber-100 p-4 shadow-sm">
-      <p class="text-[10px] text-amber-600 mb-1 uppercase font-semibold">Pendiente de Aprobar</p>
-      <p class="font-bold mono text-amber-700 text-lg">${fmt(f.pendienteAprobar||0)}</p>
-      <p class="text-[10px] text-slate-300 mt-1">En revisión de Tesorería</p>
-    </div>
+    ${(()=>{ const _tc=myCostos().filter(c=>+c.torneoId===+t.id).reduce((s,c)=>s+(c.monto||0),0); return `<div class="bg-amber-50 rounded-xl border border-amber-100 p-4 shadow-sm cursor-pointer hover:opacity-80 transition" onclick="abrirCostos(${t.id})">
+      <p class="text-[10px] text-amber-600 mb-1 uppercase font-semibold">Total Costos</p>
+      <p class="font-bold mono text-amber-700 text-lg">${fmt(_tc)}</p>
+      <p class="text-[10px] text-slate-300 mt-1">Costos del torneo →</p>
+    </div>`; })()}
     <div class="${(f.pendienteCobro||0)>0?'bg-rose-50 border-rose-100':'bg-emerald-50 border-emerald-100'} rounded-xl border p-4 shadow-sm">
       <p class="text-[10px] ${(f.pendienteCobro||0)>0?'text-rose-600':'text-emerald-600'} mb-1 uppercase font-semibold">Pendiente de Cobro</p>
       <p class="font-bold mono ${(f.pendienteCobro||0)>0?'text-rose-700':'text-emerald-700'} text-lg">${fmt(f.pendienteCobro||0)}</p>
