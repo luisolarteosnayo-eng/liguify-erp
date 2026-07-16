@@ -69,7 +69,8 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
 
   async function loadAll() {
     const tablas = ['organizaciones','profiles','categorias','complejos','medios_pago',
-                    'clubes','torneos','torneo_categorias','equipos','prospectos','pagos','conceptos','ingresos_fecha'];
+                    'clubes','torneos','torneo_categorias','equipos','prospectos','pagos','conceptos','ingresos_fecha',
+                    'proveedores','costos'];
     const out = {};
     for (const t of tablas) {
       const { data, error } = await sb.from(t).select('*');
@@ -121,6 +122,30 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
     },
     async eliminarProspecto(id) {
       const { error } = await sb.from('prospectos').delete().eq('id', id);
+      if (error) throw error;
+    },
+    async guardarProveedor(prov, editId) {
+      if (editId) {
+        const { data, error } = await sb.from('proveedores').update(prov).eq('id', editId).select().single();
+        if (error) throw error; return data;
+      }
+      const { data, error } = await sb.from('proveedores').insert(prov).select().single();
+      if (error) throw error; return data;
+    },
+    async eliminarProveedor(id) {
+      const { error } = await sb.from('proveedores').delete().eq('id', id);
+      if (error) throw error;
+    },
+    async guardarCosto(costo, editId) {
+      if (editId) {
+        const { data, error } = await sb.from('costos').update(costo).eq('id', editId).select().single();
+        if (error) throw error; return data;
+      }
+      const { data, error } = await sb.from('costos').insert(costo).select().single();
+      if (error) throw error; return data;
+    },
+    async eliminarCosto(id) {
+      const { error } = await sb.from('costos').delete().eq('id', id);
       if (error) throw error;
     },
     async registrarPago(pago) {
@@ -807,6 +832,18 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
           <button onclick="openModal('cfgComplejoModal')" class="flex items-center gap-2 bg-[#18324F] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#0f253d] transition shadow-sm shrink-0">+ Nuevo Complejo</button>
         </div>
         <div id="cfgComplejosList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      </div>
+
+      <!-- P: Configuración — Proveedores -->
+      <div id="p_cfg_proveedores" class="screen">
+        <div class="flex items-start justify-between mb-5 gap-4">
+          <div>
+            <h1 class="text-xl font-bold mb-1">Proveedores</h1>
+            <p class="text-sm text-slate-400">Proveedores de bienes/servicios del torneo (medallas, trofeos, etc.) con sus cuentas bancarias.</p>
+          </div>
+          <button onclick="openProveedorModal()" class="flex items-center gap-2 bg-[#18324F] text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#0f253d] transition shadow-sm shrink-0">+ Nuevo Proveedor</button>
+        </div>
+        <div id="cfgProveedoresList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
       </div>
 
       <!-- P: Configuración — Categorías -->
@@ -2105,6 +2142,88 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
   </div>
 </div>
 
+<!-- proveedorModal -->
+<div id="proveedorModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 fade-in max-h-[92vh] overflow-y-auto">
+    <h3 class="font-bold text-base mb-4" id="provModalTitle">Nuevo Proveedor</h3>
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <div class="col-span-2">
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Nombre / Razón social *</label>
+        <input type="text" id="provNombre" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">RUC / DNI</label>
+        <input type="text" id="provRuc" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Teléfono</label>
+        <input type="text" id="provTel" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+    </div>
+    <label class="block text-xs font-semibold text-slate-600 mb-1.5">Servicios que provee (conceptos) *</label>
+    <div id="provConceptos" class="flex flex-wrap gap-2 mb-4"></div>
+    <div class="border-t border-slate-100 pt-3 mb-4">
+      <p class="text-xs font-bold text-slate-500 uppercase mb-2">Cuentas bancarias</p>
+      <div class="grid grid-cols-3 gap-2 mb-2">
+        <input type="text" id="provBanco1" placeholder="Banco 1" class="border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+        <input type="text" id="provCuenta1" placeholder="N° de cuenta / CCI" class="col-span-2 border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+      <div class="grid grid-cols-3 gap-2">
+        <input type="text" id="provBanco2" placeholder="Banco 2" class="border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+        <input type="text" id="provCuenta2" placeholder="N° de cuenta / CCI" class="col-span-2 border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+    </div>
+    <div class="flex justify-end gap-2">
+      <button onclick="closeModal('proveedorModal')" class="text-sm font-medium text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">Cancelar</button>
+      <button onclick="guardarProveedor()" class="text-sm font-semibold text-white bg-[#18324F] px-4 py-2 rounded-lg hover:bg-[#0f253d]">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- costosModal -->
+<div id="costosModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60">
+  <div class="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full max-w-3xl fade-in max-h-[92vh] flex flex-col">
+    <div class="flex items-start justify-between px-6 py-4 border-b border-slate-100 shrink-0">
+      <div>
+        <p class="text-[10px] text-slate-400 uppercase font-semibold mb-0.5">Costos del Torneo</p>
+        <h2 class="text-lg font-bold text-slate-800" id="costosTorneoNombre">Torneo</h2>
+        <p class="text-xs text-slate-400 mt-0.5">Costos únicos (medallas, trofeos, permisos…) — pagados por banco.</p>
+      </div>
+      <button onclick="closeModal('costosModal')" class="text-slate-300 hover:text-slate-500 text-xl leading-none mt-1">✕</button>
+    </div>
+    <div class="grid grid-cols-3 gap-0 border-b border-slate-100 shrink-0 divide-x divide-slate-100 bg-slate-50">
+      <div class="px-6 py-3"><p class="text-[10px] text-blue-500 uppercase font-semibold mb-1">Costo Total</p><p class="font-bold text-blue-700 mono text-base" id="costTotal">S/. 0.00</p></div>
+      <div class="px-6 py-3"><p class="text-[10px] text-emerald-600 uppercase font-semibold mb-1">Adelantado</p><p class="font-bold text-emerald-700 mono text-base" id="costAdelantado">S/. 0.00</p></div>
+      <div class="px-6 py-3"><p class="text-[10px] text-rose-500 uppercase font-semibold mb-1">Saldo por Pagar</p><p class="font-bold text-rose-700 mono text-base" id="costSaldo">S/. 0.00</p></div>
+    </div>
+    <div class="overflow-y-auto flex-1 px-6 py-5" id="costosBody"></div>
+    <div class="px-6 py-3 border-t border-slate-100 shrink-0 flex items-center justify-between">
+      <button onclick="closeModal('costosModal')" class="text-sm font-semibold text-slate-400 hover:text-slate-600 px-4 py-2 rounded-lg hover:bg-slate-100 transition">Cerrar</button>
+      <button onclick="openAddCosto()" class="text-sm font-bold bg-[#18324F] text-white px-5 py-2 rounded-lg hover:bg-[#0f1f33] transition shadow-sm">+ Agregar costo</button>
+    </div>
+  </div>
+</div>
+
+<!-- addCostoModal -->
+<div id="addCostoModal" class="modal-overlay hidden fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 fade-in max-h-[92vh] overflow-y-auto">
+    <h3 class="font-bold text-base mb-4">Agregar Costo</h3>
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Concepto *</label>
+    <select id="acostoConcepto" onchange="acostoOnConcepto()" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 bg-white outline-none focus:ring-2 focus:ring-blue-200"></select>
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Proveedor</label>
+    <select id="acostoProveedor" onchange="acostoOnProveedor()" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-2 bg-white outline-none focus:ring-2 focus:ring-blue-200"></select>
+    <div id="acostoProvInfo" class="hidden text-xs text-slate-500 bg-slate-50 rounded-lg p-3 mb-3 space-y-0.5"></div>
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Descripción <span class="text-slate-400 font-normal">(opcional)</span></label>
+    <input type="text" id="acostoDesc" placeholder="Ej. 200 medallas doradas" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 outline-none focus:ring-2 focus:ring-blue-200">
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Monto total (S/.) *</label>
+    <input type="number" id="acostoMonto" placeholder="0.00" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-4 mono outline-none focus:ring-2 focus:ring-blue-200">
+    <div class="flex justify-end gap-2">
+      <button onclick="closeModal('addCostoModal')" class="text-sm font-medium text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">Cancelar</button>
+      <button onclick="guardarCosto()" class="text-sm font-semibold text-white bg-[#18324F] px-4 py-2 rounded-lg hover:bg-[#0f253d]">Guardar costo</button>
+    </div>
+  </div>
+</div>
+
 <!-- cfgCategoriaModal -->
 <div id="cfgCategoriaModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60">
   <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 fade-in">
@@ -2157,6 +2276,9 @@ const S = {
     {id:6, nombre:'Efectivo',         tipo:'efectivo',      activo:true,  icon:'💵', orgId:1, paraInscripciones:false, paraFechas:false},
     {id:7, nombre:'Tarjeta de Crédito', tipo:'tarjeta',     activo:true,  icon:'💳', orgId:1, paraInscripciones:false, paraFechas:true},
   ],
+
+  proveedores: [],
+  costos: [],
 
   conceptos: [
     {id:1, nombre:'Tickets',        tipo:'ingreso', fuente:'ambos',    porDefecto:true, activo:true, orgId:1},
@@ -2287,6 +2409,7 @@ const MENU = [
   {id:'__cfg',label:'Configuración',icon:'⚙️',roles:['organizador'],noScreen:true,
     children:[
       {id:'p_cfg_complejos',label:'Complejos Deportivos',roles:['organizador']},
+      {id:'p_cfg_proveedores',label:'Proveedores',roles:['organizador']},
       {id:'p_cfg_categorias',label:'Categorías',roles:['organizador']},
       {id:'p_cfg_medios',label:'Medios de Pago',roles:['organizador']},
     ]},
@@ -2339,6 +2462,8 @@ const myComplejos  = () => S.complejos.filter(c=>c.orgId===myOrgId());
 const myUsuarios   = () => S.usuarios.filter(u=>u.orgId===myOrgId() && !u.esAdminPlataforma);
 const myMediosPago = () => S.mediosPago.filter(m=>m.orgId===myOrgId());
 const myConceptos  = () => (S.conceptos||[]).filter(c=>c.orgId===myOrgId());
+const myProveedores= () => (S.proveedores||[]).filter(p=>p.orgId===myOrgId());
+const myCostos     = () => (S.costos||[]).filter(c=>c.orgId===myOrgId());
 
 // ---- ESTADOS DE TORNEO ----
 // activo (al crear) → en_ejecucion (en juego) → cerrado (finalizado)
@@ -3294,6 +3419,7 @@ function renderScreen(id) {
   if(id==='p1_detalle') renderP1Detalle();
   else if(id==='p_nuevo_torneo') renderNuevoTorneo();
   else if(id==='p_cfg_complejos') renderCfgComplejos();
+  else if(id==='p_cfg_proveedores') renderCfgProveedores();
   else if(id==='p_cfg_categorias') renderCfgCategorias();
   else if(id==='p1b') renderP1b();
   else if(id==='p2') renderP2();
@@ -3618,6 +3744,7 @@ function renderP1Detalle() {
         <button onclick="abrirFormatoArbitrajes(${t.id})" class="text-xs font-semibold text-amber-700 border border-amber-200 bg-amber-50 px-3 py-2 rounded-lg hover:bg-amber-100 transition">📋 Formato Arbitrajes</button>
         ${canEdit ? `<button onclick="openAgregarCat()" class="text-xs font-semibold text-[#18324F] border border-slate-200 bg-white px-3 py-2 rounded-lg hover:bg-slate-50 transition">+ Categoría</button>` : ''}
         <button onclick="abrirIngresosFecha(${t.id})" class="text-xs font-semibold text-emerald-700 border border-emerald-200 bg-emerald-50 px-3 py-2 rounded-lg hover:bg-emerald-100 transition">💰 Ingresos por Fecha</button>
+        <button onclick="abrirCostos(${t.id})" class="text-xs font-semibold text-rose-700 border border-rose-200 bg-rose-50 px-3 py-2 rounded-lg hover:bg-rose-100 transition">🧾 Costos</button>
         ${canEdit ? `<button onclick="openEditTorneo()" class="text-xs font-semibold text-white bg-[#18324F] px-3 py-2 rounded-lg hover:bg-[#0f253d] transition">✏️ Editar torneo</button>` : ''}
       </div>
     </div>
@@ -4550,6 +4677,242 @@ function guardarTorneoCat() {
       inscripcion, arbitraje, comision, org_id: myOrgId()
     }).catch(e => toast('⚠ Error al guardar categoría: '+e.message, 'error'));
   }
+}
+
+// ============================================================================
+//  PROVEEDORES (configuración)
+// ============================================================================
+const conceptoNombre = id => (S.conceptos||[]).find(c=>+c.id===+id)?.nombre || '—';
+let _provEditId = null;
+
+function renderCfgProveedores() {
+  const list = document.getElementById('cfgProveedoresList');
+  if(!list) return;
+  const provs = myProveedores().slice().sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es'));
+  if(!provs.length){
+    list.innerHTML = `<div class="col-span-full bg-white rounded-xl border border-dashed border-slate-200 p-8 text-center">
+      <p class="text-slate-400 text-sm mb-3">No hay proveedores registrados.</p>
+      <button onclick="openProveedorModal()" class="text-sm font-semibold text-[#4F86C6] hover:underline">+ Agregar el primero</button></div>`;
+    return;
+  }
+  list.innerHTML = provs.map(p=>{
+    const servicios = (p.conceptoIds||[]).map(id=>`<span class="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">${conceptoNombre(id)}</span>`).join(' ') || '<span class="text-[11px] text-slate-300">Sin servicios</span>';
+    const cuentas = [p.banco1Nombre&&`${p.banco1Nombre}: ${p.banco1Cuenta||'—'}`, p.banco2Nombre&&`${p.banco2Nombre}: ${p.banco2Cuenta||'—'}`].filter(Boolean);
+    return `<div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+      <div class="flex items-start justify-between gap-2 mb-1">
+        <p class="font-bold text-slate-800">${p.nombre}</p>
+        <div class="flex items-center gap-1 shrink-0">
+          <button onclick="openProveedorModal(${p.id})" class="text-slate-300 hover:text-[#4F86C6] text-sm" title="Editar">✏️</button>
+          <button onclick="eliminarProveedorUI(${p.id})" class="text-slate-300 hover:text-rose-500 text-sm" title="Eliminar">✕</button>
+        </div>
+      </div>
+      <p class="text-[11px] text-slate-400 mb-2">${p.rucDni?`RUC/DNI: ${p.rucDni}`:''}${p.rucDni&&p.telefono?' · ':''}${p.telefono?`Tel: ${p.telefono}`:''}</p>
+      <div class="flex flex-wrap gap-1 mb-2">${servicios}</div>
+      ${cuentas.length?`<div class="border-t border-slate-100 pt-2 space-y-0.5">${cuentas.map(c=>`<p class="text-[11px] text-slate-500 mono">🏦 ${c}</p>`).join('')}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function openProveedorModal(id){
+  _provEditId = id || null;
+  const p = id ? myProveedores().find(x=>+x.id===+id) : null;
+  document.getElementById('provModalTitle').textContent = p ? 'Editar Proveedor' : 'Nuevo Proveedor';
+  document.getElementById('provNombre').value = p?.nombre || '';
+  document.getElementById('provRuc').value    = p?.rucDni || '';
+  document.getElementById('provTel').value    = p?.telefono || '';
+  document.getElementById('provBanco1').value = p?.banco1Nombre || '';
+  document.getElementById('provCuenta1').value= p?.banco1Cuenta || '';
+  document.getElementById('provBanco2').value = p?.banco2Nombre || '';
+  document.getElementById('provCuenta2').value= p?.banco2Cuenta || '';
+  const sel = new Set((p?.conceptoIds||[]).map(Number));
+  // Conceptos de egreso/ambos (los que pueden ser costos)
+  const cs = myConceptos().filter(c=>c.activo && c.tipo!=='ingreso');
+  document.getElementById('provConceptos').innerHTML = cs.length ? cs.map(c=>`
+    <label class="cursor-pointer"><input type="checkbox" class="prov-concepto sr-only peer" value="${c.id}" ${sel.has(+c.id)?'checked':''}>
+      <span class="block border border-slate-300 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-500 peer-checked:border-[#4F86C6] peer-checked:bg-blue-50 peer-checked:text-[#18324F] hover:bg-slate-50 transition">${c.nombre}</span>
+    </label>`).join('') : '<p class="text-xs text-slate-400">No hay conceptos de egreso. Créalos en Conceptos.</p>';
+  openModal('proveedorModal');
+}
+
+function guardarProveedor(){
+  const nombre = document.getElementById('provNombre').value.trim();
+  if(!nombre){ toast('El nombre del proveedor es obligatorio.','error'); return; }
+  const conceptoIds = [...document.querySelectorAll('.prov-concepto:checked')].map(x=>parseInt(x.value));
+  if(!conceptoIds.length){ toast('Selecciona al menos un servicio/concepto.','error'); return; }
+  const datos = {
+    nombre, rucDni:document.getElementById('provRuc').value.trim(), telefono:document.getElementById('provTel').value.trim(),
+    conceptoIds,
+    banco1Nombre:document.getElementById('provBanco1').value.trim(), banco1Cuenta:document.getElementById('provCuenta1').value.trim(),
+    banco2Nombre:document.getElementById('provBanco2').value.trim(), banco2Cuenta:document.getElementById('provCuenta2').value.trim(),
+  };
+  const dbRow = {
+    nombre, ruc_dni:datos.rucDni||null, telefono:datos.telefono||null, concepto_ids:conceptoIds,
+    banco1_nombre:datos.banco1Nombre||null, banco1_cuenta:datos.banco1Cuenta||null,
+    banco2_nombre:datos.banco2Nombre||null, banco2_cuenta:datos.banco2Cuenta||null, org_id:myOrgId()
+  };
+  if(_provEditId){
+    const p = S.proveedores.find(x=>+x.id===+_provEditId);
+    if(p) Object.assign(p, datos);
+    if(sbOn()) SB().data.guardarProveedor(dbRow, _provEditId).catch(e=>toast('⚠ '+e.message,'error'));
+  } else {
+    const local = {id:S.nextId++, ...datos, orgId:myOrgId()};
+    S.proveedores.push(local);
+    if(sbOn()) SB().data.guardarProveedor(dbRow, null).then(r=>{ local.id=r.id; }).catch(e=>toast('⚠ '+e.message,'error'));
+  }
+  closeModal('proveedorModal');
+  toast('Proveedor guardado ✓','success');
+  renderCfgProveedores();
+}
+
+function eliminarProveedorUI(id){
+  if(!confirm('¿Eliminar este proveedor?')) return;
+  S.proveedores = S.proveedores.filter(x=>+x.id!==+id);
+  renderCfgProveedores();
+  toast('Proveedor eliminado.','success');
+  if(sbOn()) SB().data.eliminarProveedor(id).catch(e=>toast('⚠ '+e.message,'error'));
+}
+
+// ============================================================================
+//  COSTOS DEL TORNEO
+// ============================================================================
+let _costosTorneoId = null;
+const _sumAdel = c => (c.adelantos||[]).reduce((s,a)=>s+(a.monto||0),0);
+
+function abrirCostos(torneoId){
+  _costosTorneoId = torneoId;
+  const t = S.torneos.find(x=>+x.id===+torneoId);
+  document.getElementById('costosTorneoNombre').textContent = t?.nombre || 'Torneo';
+  renderCostos();
+  openModal('costosModal');
+}
+
+function renderCostos(){
+  const t = _costosTorneoId;
+  const costos = myCostos().filter(c=>+c.torneoId===+t);
+  const total = costos.reduce((s,c)=>s+(c.monto||0),0);
+  const adel  = costos.reduce((s,c)=>s+_sumAdel(c),0);
+  document.getElementById('costTotal').textContent      = fmt(total);
+  document.getElementById('costAdelantado').textContent = fmt(adel);
+  document.getElementById('costSaldo').textContent      = fmt(Math.max(0,total-adel));
+
+  const body = document.getElementById('costosBody');
+  if(!costos.length){
+    body.innerHTML = `<div class="text-center py-10"><p class="text-slate-400 text-sm mb-3">Sin costos registrados para este torneo.</p>
+      <button onclick="openAddCosto()" class="text-sm font-semibold text-[#4F86C6] hover:underline">+ Agregar el primero</button></div>`;
+    return;
+  }
+  body.innerHTML = costos.map(c=>{
+    const prov = myProveedores().find(p=>+p.id===+c.proveedorId);
+    const saldo = Math.max(0, (c.monto||0) - _sumAdel(c));
+    const cuentas = prov ? [prov.banco1Nombre&&`${prov.banco1Nombre}: ${prov.banco1Cuenta||'—'}`, prov.banco2Nombre&&`${prov.banco2Nombre}: ${prov.banco2Cuenta||'—'}`].filter(Boolean) : [];
+    const adelFilas = (c.adelantos||[]).map((a,i)=>`
+      <div class="flex items-center gap-3 py-1.5 border-b border-slate-50 text-sm">
+        <span class="text-slate-500 mono w-24">${a.fecha||'—'}</span>
+        <span class="flex-1 mono text-emerald-700 font-semibold">${fmt(a.monto)}</span>
+        <button onclick="eliminarAdelanto(${c.id},${i})" class="text-slate-300 hover:text-rose-400 text-xs">✕</button>
+      </div>`).join('') || '<p class="text-xs text-slate-300 py-1.5">Sin adelantos.</p>';
+    return `<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-4">
+      <div class="flex items-start justify-between px-4 py-3 bg-slate-50 border-b border-slate-100 gap-3">
+        <div class="min-w-0">
+          <p class="font-bold text-sm text-slate-800">${conceptoNombre(c.conceptoId)}${c.descripcion?` <span class="text-slate-400 font-normal">· ${c.descripcion}</span>`:''}</p>
+          ${prov?`<p class="text-[11px] text-slate-500 mt-0.5">${prov.nombre}${prov.telefono?` · 📞 ${prov.telefono}`:''}</p>`:'<p class="text-[11px] text-slate-300 mt-0.5">Sin proveedor</p>'}
+          ${cuentas.length?`<div class="mt-1 space-y-0.5">${cuentas.map(x=>`<p class="text-[10px] text-slate-400 mono">🏦 ${x}</p>`).join('')}</div>`:''}
+        </div>
+        <div class="text-right shrink-0">
+          <p class="text-[10px] text-slate-400 uppercase font-semibold">Saldo</p>
+          <p class="mono font-extrabold ${saldo>0?'text-rose-700':'text-emerald-700'}">${fmt(saldo)}</p>
+          <button onclick="eliminarCostoUI(${c.id})" class="text-[11px] text-slate-300 hover:text-rose-500 mt-1">Eliminar</button>
+        </div>
+      </div>
+      <div class="px-4 py-3">
+        <div class="flex items-center justify-between mb-1">
+          <p class="text-[10px] text-slate-400 uppercase font-semibold">Adelantos · total costo ${fmt(c.monto)}</p>
+        </div>
+        ${adelFilas}
+        <div class="flex items-center gap-2 mt-2">
+          <input type="date" id="adelFecha_${c.id}" value="${today()}" class="border border-slate-300 rounded-lg px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-blue-200">
+          <input type="number" id="adelMonto_${c.id}" placeholder="Monto adelanto" class="flex-1 border border-slate-300 rounded-lg px-2 py-1.5 text-xs mono outline-none focus:ring-2 focus:ring-blue-200">
+          <button onclick="agregarAdelanto(${c.id})" class="text-xs font-semibold text-white bg-emerald-600 px-3 py-1.5 rounded-lg hover:bg-emerald-700 transition">+ Adelanto</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openAddCosto(){
+  // Conceptos de egreso/ambos
+  const cs = myConceptos().filter(c=>c.activo && c.tipo!=='ingreso');
+  document.getElementById('acostoConcepto').innerHTML = '<option value="">— Selecciona —</option>' +
+    cs.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('');
+  document.getElementById('acostoProveedor').innerHTML = '<option value="">— Selecciona un concepto primero —</option>';
+  document.getElementById('acostoProvInfo').classList.add('hidden');
+  document.getElementById('acostoDesc').value = '';
+  document.getElementById('acostoMonto').value = '';
+  openModal('addCostoModal');
+}
+
+function acostoOnConcepto(){
+  const cid = parseInt(document.getElementById('acostoConcepto').value)||0;
+  const provs = myProveedores().filter(p=>(p.conceptoIds||[]).map(Number).includes(cid));
+  const sel = document.getElementById('acostoProveedor');
+  sel.innerHTML = '<option value="">— Sin proveedor —</option>' +
+    provs.map(p=>`<option value="${p.id}">${p.nombre}</option>`).join('');
+  document.getElementById('acostoProvInfo').classList.add('hidden');
+}
+
+function acostoOnProveedor(){
+  const pid = parseInt(document.getElementById('acostoProveedor').value)||0;
+  const p = myProveedores().find(x=>+x.id===pid);
+  const box = document.getElementById('acostoProvInfo');
+  if(!p){ box.classList.add('hidden'); return; }
+  const cuentas = [p.banco1Nombre&&`🏦 ${p.banco1Nombre}: ${p.banco1Cuenta||'—'}`, p.banco2Nombre&&`🏦 ${p.banco2Nombre}: ${p.banco2Cuenta||'—'}`].filter(Boolean);
+  box.innerHTML = `<p><b>${p.nombre}</b>${p.rucDni?` · ${p.rucDni}`:''}</p>${p.telefono?`<p>📞 ${p.telefono}</p>`:''}${cuentas.map(c=>`<p class="mono">${c}</p>`).join('')}`;
+  box.classList.remove('hidden');
+}
+
+function guardarCosto(){
+  const conceptoId = parseInt(document.getElementById('acostoConcepto').value)||0;
+  const proveedorId= parseInt(document.getElementById('acostoProveedor').value)||null;
+  const descripcion= document.getElementById('acostoDesc').value.trim();
+  const monto      = parseFloat(document.getElementById('acostoMonto').value)||0;
+  if(!conceptoId){ toast('Selecciona un concepto.','error'); return; }
+  if(monto<=0){ toast('Ingresa el monto total del costo.','error'); return; }
+  const local = {id:S.nextId++, torneoId:_costosTorneoId, conceptoId, proveedorId, descripcion, monto, adelantos:[], orgId:myOrgId()};
+  S.costos.push(local);
+  if(sbOn()){
+    SB().data.guardarCosto({torneo_id:_costosTorneoId, concepto_id:conceptoId, proveedor_id:proveedorId, descripcion:descripcion||null, monto, adelantos:[], org_id:myOrgId()}, null)
+      .then(r=>{ local.id=r.id; }).catch(e=>toast('⚠ '+e.message,'error'));
+  }
+  closeModal('addCostoModal');
+  renderCostos();
+  toast('Costo agregado ✓','success');
+}
+
+function agregarAdelanto(costoId){
+  const c = S.costos.find(x=>+x.id===+costoId);
+  if(!c) return;
+  const fecha = document.getElementById(`adelFecha_${costoId}`).value || today();
+  const monto = parseFloat(document.getElementById(`adelMonto_${costoId}`).value)||0;
+  if(monto<=0){ toast('Ingresa el monto del adelanto.','error'); return; }
+  c.adelantos = [...(c.adelantos||[]), {fecha, monto}];
+  renderCostos();
+  if(sbOn()) SB().data.guardarCosto({adelantos:c.adelantos}, c.id).catch(e=>toast('⚠ '+e.message,'error'));
+}
+
+function eliminarAdelanto(costoId, idx){
+  const c = S.costos.find(x=>+x.id===+costoId);
+  if(!c) return;
+  c.adelantos = (c.adelantos||[]).filter((_,i)=>i!==idx);
+  renderCostos();
+  if(sbOn()) SB().data.guardarCosto({adelantos:c.adelantos}, c.id).catch(e=>toast('⚠ '+e.message,'error'));
+}
+
+function eliminarCostoUI(id){
+  if(!confirm('¿Eliminar este costo y sus adelantos?')) return;
+  S.costos = S.costos.filter(x=>+x.id!==+id);
+  renderCostos();
+  toast('Costo eliminado.','success');
+  if(sbOn()) SB().data.eliminarCosto(id).catch(e=>toast('⚠ '+e.message,'error'));
 }
 
 // ---- CFG: COMPLEJOS DEPORTIVOS ----
@@ -6904,6 +7267,8 @@ async function sbHydrate(){
   S.complejos      = (d.complejos||[]).map(c=>({id:c.id,nombre:c.nombre,direccion:c.direccion,distrito:c.distrito,orgId:c.org_id}));
   S.mediosPago     = (d.medios_pago||[]).map(m=>({id:m.id,nombre:m.nombre,tipo:m.tipo,icon:m.icon,activo:m.activo,orgId:m.org_id,paraInscripciones:m.para_inscripciones!==false,paraFechas:m.para_fechas!==false}));
   S.conceptos      = (d.conceptos||[]).map(c=>({id:c.id,nombre:c.nombre,tipo:c.tipo,fuente:c.fuente||'ambos',porDefecto:c.por_defecto!==false,activo:c.activo!==false,orgId:c.org_id}));
+  S.proveedores    = (d.proveedores||[]).map(p=>({id:p.id,nombre:p.nombre,rucDni:p.ruc_dni,telefono:p.telefono,conceptoIds:(p.concepto_ids||[]).map(Number),banco1Nombre:p.banco1_nombre,banco1Cuenta:p.banco1_cuenta,banco2Nombre:p.banco2_nombre,banco2Cuenta:p.banco2_cuenta,orgId:p.org_id}));
+  S.costos         = (d.costos||[]).map(c=>({id:c.id,torneoId:c.torneo_id,conceptoId:c.concepto_id,proveedorId:c.proveedor_id,descripcion:c.descripcion,monto:_num(c.monto),adelantos:(c.adelantos||[]).map(a=>({fecha:a.fecha,monto:_num(a.monto)})),orgId:c.org_id}));
   S.clubes         = (d.clubes||[]).map(c=>({id:c.id,nombre:c.nombre,delegado:c.delegado,telefono:c.telefono,provincia:c.provincia,orgId:c.org_id}));
   const catsByT = {};
   (d.torneo_categorias||[]).forEach(tc=>{ (catsByT[tc.torneo_id] = catsByT[tc.torneo_id]||[]).push({catId:tc.cat_id,nombre:catNombre(tc.cat_id),modalidad:tc.modalidad,aforo:tc.aforo,fechas:tc.fechas,inscripcion:_num(tc.inscripcion),arbitraje:_num(tc.arbitraje),comision:_num(tc.comision)}); });

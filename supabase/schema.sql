@@ -167,6 +167,33 @@ create table if not exists public.prospectos (
 );
 create index if not exists idx_prospectos_torneo on public.prospectos(torneo_id);
 
+-- Proveedores (catálogo por organización) — servicios por concepto + 2 cuentas bancarias
+create table if not exists public.proveedores (
+  id            bigint generated always as identity primary key,
+  nombre        text not null,
+  ruc_dni       text,
+  telefono      text,
+  concepto_ids  bigint[] not null default '{}',
+  banco1_nombre text, banco1_cuenta text,
+  banco2_nombre text, banco2_cuenta text,
+  org_id        bigint not null references public.organizaciones(id) on delete cascade,
+  created_at    timestamptz not null default now()
+);
+
+-- Costos únicos del torneo (Medallas, Trofeos, ...) con adelantos y saldo por pagar
+create table if not exists public.costos (
+  id           bigint generated always as identity primary key,
+  torneo_id    bigint not null references public.torneos(id) on delete cascade,
+  concepto_id  bigint references public.conceptos(id)   on delete set null,
+  proveedor_id bigint references public.proveedores(id) on delete set null,
+  descripcion  text,
+  monto        numeric(12,2) not null default 0,
+  adelantos    jsonb not null default '[]',
+  org_id       bigint not null references public.organizaciones(id) on delete cascade,
+  created_at   timestamptz not null default now()
+);
+create index if not exists idx_costos_torneo on public.costos(torneo_id);
+
 -- ---------------------------------------------------------------------------
 -- 6. PAGOS — auditoría inmutable (sin reversión en el piloto)
 -- ---------------------------------------------------------------------------
@@ -249,6 +276,8 @@ alter table public.torneos           enable row level security;
 alter table public.torneo_categorias enable row level security;
 alter table public.equipos           enable row level security;
 alter table public.prospectos        enable row level security;
+alter table public.proveedores       enable row level security;
+alter table public.costos            enable row level security;
 alter table public.ingresos_fecha    enable row level security;
 alter table public.pagos             enable row level security;
 alter table public.pago_log          enable row level security;
@@ -288,7 +317,7 @@ declare t text;
 begin
   foreach t in array array[
     'categorias','complejos','medios_pago','clubes','conceptos',
-    'torneos','torneo_categorias','equipos','prospectos','ingresos_fecha','pagos','pago_log'
+    'torneos','torneo_categorias','equipos','prospectos','proveedores','costos','ingresos_fecha','pagos','pago_log'
   ] loop
     execute format($f$
       drop policy if exists %1$s_select on public.%1$s;
