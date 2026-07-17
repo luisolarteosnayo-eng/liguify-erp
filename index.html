@@ -3691,12 +3691,17 @@ function renderP1Detalle() {
   <div class="flex items-center gap-2 mb-3">
     <p class="text-xs text-slate-400">Esquema de cobro:</p>${esquemaLabel}
   </div>
-  <div class="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-6">
+  <div class="grid grid-cols-2 lg:grid-cols-7 gap-3 mb-6">
     <div class="bg-white rounded-xl border border-blue-100 p-4 shadow-sm">
       <p class="text-[10px] text-blue-500 mb-1 uppercase font-semibold">Total Inscripciones</p>
       <p class="font-bold mono text-blue-700 text-lg">${fmt(f.totalInsc)}</p>
       <p class="text-[10px] text-slate-300 mt-1">${equiposByTorneo(t.id).filter(e=>e.estado==='activo').length} equipos activos</p>
     </div>
+    ${(()=>{ const _tcl=myEquipos().filter(e=>+e.torneoId===+t.id&&e.estado==='activo'&&e.clasificatorioId).reduce((s,e)=>s+(e.clasifPrecio||0),0); return `<div class="bg-sky-50 rounded-xl border border-sky-100 p-4 shadow-sm cursor-pointer hover:opacity-80 transition" onclick="abrirClasifTorneo(${t.id})">
+      <p class="text-[10px] text-sky-600 mb-1 uppercase font-semibold">Total Torneos Clasif.</p>
+      <p class="font-bold mono text-sky-700 text-lg">${fmt(_tcl)}</p>
+      <p class="text-[10px] text-slate-300 mt-1">Torneos externos →</p>
+    </div>`; })()}
     <div class="bg-emerald-50 rounded-xl border border-emerald-100 p-4 shadow-sm">
       <p class="text-[10px] text-emerald-600 mb-1 uppercase font-semibold">Recaudado</p>
       <p class="font-bold mono text-emerald-700 text-lg">${fmt(f.recaudado)}</p>
@@ -3713,7 +3718,7 @@ function renderP1Detalle() {
       <p class="text-[10px] text-slate-300 mt-1">Costos del torneo →</p>
     </div>`; })()}
     ${(()=>{ const _d=_ifData[t.id]||{}; const _util=_utilFechas(_d); const nF=Object.keys(_d).length; const uc=_util>=0?'text-emerald-700':'text-rose-700'; const bc=_util>=0?'bg-emerald-50 border-emerald-100':'bg-rose-50 border-rose-100'; return `<div class="${bc} rounded-xl border p-4 shadow-sm cursor-pointer hover:opacity-80 transition" onclick="abrirIngresosFecha(${t.id})"><p class="text-[10px] text-slate-500 mb-1 uppercase font-semibold">Utilidad por Fecha</p><p class="font-bold mono ${uc} text-lg">${fmt(_util)}</p><p class="text-[10px] text-slate-300 mt-1">${nF} fecha${nF!==1?'s':''} registrada${nF!==1?'s':''}</p></div>`; })()}
-    ${(()=>{ const _tc=myCostos().filter(c=>+c.torneoId===+t.id).reduce((s,c)=>s+(c.monto||0),0); const _util=_utilFechas(_ifData[t.id]||{}); const _ut=(f.totalInsc||0)+_util-_tc; const uc=_ut>=0?'text-emerald-700':'text-rose-700'; const bc=_ut>=0?'bg-emerald-50 border-emerald-200':'bg-rose-50 border-rose-200'; return `<div class="${bc} rounded-xl border-2 p-4 shadow-sm"><p class="text-[10px] text-slate-600 mb-1 uppercase font-bold">Utilidad Total</p><p class="font-extrabold mono ${uc} text-lg">${fmt(_ut)}</p><p class="text-[10px] text-slate-300 mt-1">Inscrip. + Util. fecha − Costos</p></div>`; })()}
+    ${(()=>{ const _tc=myCostos().filter(c=>+c.torneoId===+t.id).reduce((s,c)=>s+(c.monto||0),0); const _tcl=myEquipos().filter(e=>+e.torneoId===+t.id&&e.estado==='activo'&&e.clasificatorioId).reduce((s,e)=>s+(e.clasifPrecio||0),0); const _util=_utilFechas(_ifData[t.id]||{}); const _ut=(f.totalInsc||0)+_tcl+_util-_tc; const uc=_ut>=0?'text-emerald-700':'text-rose-700'; const bc=_ut>=0?'bg-emerald-50 border-emerald-200':'bg-rose-50 border-rose-200'; return `<div class="${bc} rounded-xl border-2 p-4 shadow-sm"><p class="text-[10px] text-slate-600 mb-1 uppercase font-bold">Utilidad Total</p><p class="font-extrabold mono ${uc} text-lg">${fmt(_ut)}</p><p class="text-[10px] text-slate-300 mt-1">Inscrip. + Clasif. + Util. fecha − Costos</p></div>`; })()}
   </div>` : '';
 
   // Categorías + equipos agrupados
