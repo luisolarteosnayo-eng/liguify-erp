@@ -6710,7 +6710,7 @@ function renderCxcTabla() {
 
   const filaHtml = (f) => {
     if(f.tipo==='clasif'){
-      return `<tr class="hover:bg-sky-50 cursor-pointer" onclick="abrirClasifTorneo(${f.tid})">
+      return `<tr class="hover:bg-sky-50 cursor-pointer" onclick="abrirCxcClasif(${f.clasifId})">
         <td class="py-3 px-4 font-semibold">${f.clasif?.nombre||'—'} <span class="ml-1 text-[9px] font-bold bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full whitespace-nowrap">🏆 Clasificatorio</span></td>
         <td class="py-3 px-4 text-slate-500 text-xs">${f.clasif?.telefono?('📞 '+f.clasif.telefono):'—'}</td>
         <td class="py-3 px-4">
@@ -6718,7 +6718,7 @@ function renderCxcTabla() {
           <div class="mt-0.5">${vencBadge(f)}</div>
         </td>
         <td class="py-3 px-4 text-right mono font-bold ${f.vencido?'text-rose-700':'text-rose-600'}">${fmt(f.deuda)}</td>
-        <td class="py-3 px-4 text-center"><button onclick="event.stopPropagation();abrirClasifTorneo(${f.tid})" class="text-xs font-semibold text-[#4F86C6] hover:underline">Ver detalle →</button></td>
+        <td class="py-3 px-4 text-center"><button onclick="event.stopPropagation();abrirCxcClasif(${f.clasifId})" class="text-xs font-semibold text-[#4F86C6] hover:underline">Ver detalle →</button></td>
       </tr>`;
     }
     return `<tr class="hover:bg-rose-50 cursor-pointer" onclick="abrirCxcClub(${f.c.id})">
@@ -6963,6 +6963,77 @@ function abrirCxcClub(clubId) {
   document.getElementById('cxcm_body').innerHTML = seccionesHtml ||
     '<p class="text-slate-400 text-sm text-center py-6">Este club no tiene deuda activa.</p>';
   openModal('cxcClubModal');
+}
+
+// Detalle de deuda de un torneo clasificatorio (solo lectura + registrar pago)
+function abrirCxcClasif(clasifId) {
+  const cl = myClasificatorios().find(c=>+c.id===+clasifId);
+  document.getElementById('cxcm_club').textContent = cl?.nombre || '—';
+  document.getElementById('cxcm_contacto').textContent =
+    `Torneo clasificatorio  ·  Contacto: ${cl?.contacto || '—'}  ·  Tel: ${cl?.telefono || '—'}`;
+
+  const torneoIds = [...new Set(myEquipos().filter(e=>+e.clasificatorioId===+clasifId&&e.estado==='activo').map(e=>e.torneoId))];
+  let totalDeuda = 0;
+  const seccionesHtml = torneoIds.map(tId => {
+    const torneo   = myTorneos().find(t=>t.id===tId) || S.torneos.find(t=>t.id===tId);
+    const equipos  = myEquipos().filter(e=>+e.clasificatorioId===+clasifId&&e.torneoId===tId&&e.estado==='activo');
+    const totalInsc = equipos.reduce((s,e)=>s+(e.clasifPrecio||0), 0);
+    const aprobado  = clasifPagado(clasifId, tId, true);
+    const pendiente = clasifPagado(clasifId, tId, false) - aprobado;
+    const deuda     = totalInsc - aprobado - pendiente;
+    if(deuda <= 0) return '';
+    totalDeuda += deuda;
+    const filas = equipos.map(e=>{
+      const cat = catById(e.catId);
+      const tc = torneo?.cats?.find(x=>x.catId===e.catId);
+      return `<tr class="hover:bg-slate-50">
+        <td class="py-2 px-3 text-sm">${clubById(e.clubId)?.nombre||'—'}</td>
+        <td class="py-2 px-3 text-xs text-slate-500">${cat?.nombre||'—'}</td>
+        <td class="py-2 px-3 text-xs text-slate-400 text-center">${tc?.modalidad||e.modalidad||''}</td>
+        <td class="py-2 px-3 text-right mono text-sm">${fmt(e.clasifPrecio||0)}</td>
+      </tr>`;
+    }).join('');
+    return `<div class="bg-white rounded-xl border border-rose-100 overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+        <div class="flex items-center gap-2">${badgeTorneo(torneo?.estado)}<span class="font-semibold text-sm text-slate-700">${torneo?.nombre||'Torneo'}</span><span class="text-[11px] text-slate-400">${torneo?.label||''}</span></div>
+        <button onclick="pagoDesdeClasif(${clasifId},${tId})" class="text-xs font-semibold text-white bg-[#18324F] px-3 py-1.5 rounded-lg hover:bg-[#0f253d] transition">+ Registrar pago</button>
+      </div>
+      <table class="w-full text-sm">
+        <thead><tr class="text-left text-[10px] text-slate-400 uppercase border-b border-slate-100">
+          <th class="py-1.5 px-3 font-semibold">Club</th>
+          <th class="py-1.5 px-3 font-semibold">Categoría</th>
+          <th class="py-1.5 px-3 font-semibold text-center">Mod.</th>
+          <th class="py-1.5 px-3 font-semibold text-right">Precio</th>
+        </tr></thead>
+        <tbody class="divide-y divide-slate-100">${filas}</tbody>
+        <tfoot class="border-t border-slate-200 bg-slate-50">
+          <tr><td colspan="3" class="py-2 px-3 text-xs text-slate-500 font-semibold">Total a pagar</td><td class="py-2 px-3 text-right mono text-sm font-semibold">${fmt(totalInsc)}</td></tr>
+          <tr><td colspan="3" class="py-2 px-3 text-xs text-emerald-600 font-semibold">Pagado (aprobado)</td><td class="py-2 px-3 text-right mono text-sm text-emerald-600 font-semibold">− ${fmt(aprobado)}</td></tr>
+          ${pendiente>0 ? `<tr><td colspan="3" class="py-2 px-3 text-xs text-amber-600 font-semibold">En revisión (pendiente de aprobar)</td><td class="py-2 px-3 text-right mono text-sm text-amber-600 font-semibold">− ${fmt(pendiente)}</td></tr>` : ''}
+          <tr class="bg-rose-50"><td colspan="3" class="py-2 px-3 text-xs text-rose-700 font-bold">Deuda pendiente</td><td class="py-2 px-3 text-right mono text-sm text-rose-700 font-extrabold">${fmt(deuda)}</td></tr>
+        </tfoot>
+      </table>
+    </div>`;
+  }).filter(Boolean).join('');
+
+  document.getElementById('cxcm_total').textContent = fmt(totalDeuda);
+  document.getElementById('cxcm_body').innerHTML = seccionesHtml ||
+    '<p class="text-slate-400 text-sm text-center py-6">Este clasificatorio no tiene deuda activa.</p>';
+  openModal('cxcClubModal');
+}
+
+function pagoDesdeClasif(clasifId, torneoId) {
+  closeModal('cxcClubModal');
+  showScreen('p2');
+  setTimeout(()=>{
+    p2SetTipo('clasif');
+    const sel = document.getElementById('clasifP2Sel');
+    if(sel){ sel.value = clasifId; p2SelectClasif(clasifId); }
+    setTimeout(()=>{
+      const tSel = document.getElementById('torneoP2Sel');
+      if(tSel){ tSel.value = torneoId; p2SelectTorneo(torneoId); }
+    }, 60);
+  }, 60);
 }
 
 // ---- ACCIONES DESDE MODALS ----
