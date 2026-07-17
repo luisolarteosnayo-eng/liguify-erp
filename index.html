@@ -108,6 +108,14 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
         .eq('modalidad', modalidad||'');
       if (error) throw error;
     },
+    async actualizarTorneoCat(torneoId, catId, modalidad, campos) {
+      const { error } = await sb.from('torneo_categorias')
+        .update(campos)
+        .eq('torneo_id', torneoId)
+        .eq('cat_id', catId)
+        .eq('modalidad', modalidad||'');
+      if (error) throw error;
+    },
     async inscribirEquipo(equipo) {
       const user = await auth.getUser();
       const fila = { ...equipo, created_by: equipo.created_by || user?.id };
@@ -4736,11 +4744,16 @@ async function guardarEditTorneo() {
   t.fin     = fin;
   t.esquema = esquema;
   t.label   = `${MESES[d0.getMonth()]} ${d0.getFullYear()} — ${MESES[d1.getMonth()]} ${d1.getFullYear()}`;
-  // Guardar aforo por categoría
+  // Guardar aforo por categoría (local + Supabase)
+  const aforoUpdates = [];
   document.querySelectorAll('.et-aforo').forEach(inp => {
     const catId = parseInt(inp.dataset.catId);
-    const tc = (t.cats||[]).find(x=>x.catId===catId);
-    if(tc) tc.aforo = Math.max(parseInt(inp.value)||1, parseInt(inp.min)||1);
+    const modalidad = inp.dataset.modalidad||'';
+    const tc = (t.cats||[]).find(x=>x.catId===catId && (x.modalidad||'')===modalidad);
+    if(tc){
+      const nuevo = Math.max(parseInt(inp.value)||1, parseInt(inp.min)||1);
+      if(nuevo !== tc.aforo){ tc.aforo = nuevo; aforoUpdates.push({catId, modalidad, aforo:nuevo}); }
+    }
   });
   // Cabecera: subir nueva imagen, quitarla, o dejarla como está
   const headerFile = document.getElementById('etHeader')?.files?.[0] || null;
@@ -4754,6 +4767,10 @@ async function guardarEditTorneo() {
       const campos = { nombre, sede, inicio, fin, esquema, label: t.label };
       if(headerChanged) campos.header_url = headerUrl;
       await SB().data.actualizarTorneo(t.id, campos);
+      // Persistir cambios de aforo por categoría
+      for(const u of aforoUpdates){
+        await SB().data.actualizarTorneoCat(t.id, u.catId, u.modalidad, { aforo: u.aforo });
+      }
     } catch(err){ toast('⚠ Cambios locales, no se guardaron en la BD: '+err.message,'warn'); }
   } else if(headerFile){
     headerUrl = URL.createObjectURL(headerFile); headerChanged = true;
