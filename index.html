@@ -206,6 +206,10 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
       const { data, error } = await sb.from('clubes').insert(club).select().single();
       if (error) throw error; return data;
     },
+    async actualizarClub(id, campos) {
+      const { data, error } = await sb.from('clubes').update(campos).eq('id', id).select().single();
+      if (error) throw error; return data;
+    },
     async guardarMedio(medio, editId) {
       if (editId) {
         const { data, error } = await sb.from('medios_pago').update(medio).eq('id', editId).select().single();
@@ -1299,6 +1303,47 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
       </div>
 
       <!-- P_cxc: Cuentas por Cobrar -->
+      <!-- P: Clubes -->
+      <div id="p_clubes" class="screen">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div>
+            <h1 class="text-xl font-bold mb-1">Clubes</h1>
+            <p class="text-xs text-slate-500">Actualiza los datos de los clubes. Busca por nombre o filtra por torneo.</p>
+          </div>
+          <button onclick="exportarClubesExcel()" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition shadow-sm shrink-0">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            Descargar Excel
+          </button>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 mb-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Buscar club</label>
+              <input id="clubesBuscar" oninput="renderClubes()" placeholder="Nombre del club…" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Torneo</label>
+              <select id="clubesTorneo" onchange="renderClubes()" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200 bg-white">
+                <option value="">Todos los torneos</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead><tr class="text-left text-[11px] text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+              <th class="py-3 px-4 font-semibold">Club</th>
+              <th class="py-3 px-4 font-semibold">Provincia</th>
+              <th class="py-3 px-4 font-semibold">Contacto</th>
+              <th class="py-3 px-4 font-semibold">Teléfono</th>
+              <th class="py-3 px-4 font-semibold text-center">Equipos</th>
+              <th class="py-3 px-4 font-semibold text-center">Acción</th>
+            </tr></thead>
+            <tbody id="clubesT" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </div>
+
       <div id="p_cxc" class="screen">
         <div class="flex items-start justify-between mb-1 gap-4">
           <div>
@@ -1475,6 +1520,31 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
     <div class="px-6 py-3 border-t border-slate-100 shrink-0 flex items-center justify-between">
       <button onclick="closeModal('confirmarInscripcionModal')" class="text-sm font-medium text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">Cancelar</button>
       <button onclick="doConfirmarInscripcion()" class="text-sm font-bold bg-emerald-600 text-white px-5 py-2 rounded-lg hover:bg-emerald-700 transition shadow-sm">Confirmar Inscripción ✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- clubEditModal -->
+<div id="clubEditModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 fade-in">
+    <h3 class="font-bold text-base mb-4">Editar Club</h3>
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Nombre del club *</label>
+    <input type="text" id="ceNombre" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 outline-none focus:ring-2 focus:ring-blue-200">
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Contacto / Delegado</label>
+    <input type="text" id="ceDelegado" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 outline-none focus:ring-2 focus:ring-blue-200">
+    <div class="grid grid-cols-2 gap-3 mb-4">
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Teléfono</label>
+        <input type="text" id="ceTel" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Provincia</label>
+        <input type="text" id="ceProv" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+    </div>
+    <div class="flex justify-end gap-2">
+      <button onclick="closeModal('clubEditModal')" class="text-sm font-medium text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">Cancelar</button>
+      <button onclick="guardarClubEdit()" class="text-sm font-semibold text-white bg-[#18324F] px-4 py-2 rounded-lg hover:bg-[#0f253d]">Guardar cambios</button>
     </div>
   </div>
 </div>
@@ -2517,6 +2587,7 @@ const MENU = [
       {id:'p_rep_pagos',label:'Reporte de Pagos',roles:['organizador','tesorero']},
     ]},
   {id:'p_cxc',label:'Cuentas por Cobrar',icon:'📊',roles:['organizador','tesorero']},
+  {id:'p_clubes',label:'Clubes',icon:'👥',roles:['organizador','operador']},
   {id:'p_seguridad',label:'Seguridad',icon:'🔐',roles:['organizador']},
   {id:'__cfg',label:'Configuración',icon:'⚙️',roles:['organizador'],noScreen:true,
     children:[
@@ -3560,6 +3631,7 @@ function renderScreen(id) {
   else if(id==='p3') renderP3();
   else if(id==='p4') renderP4(S.selectedClubId);
   else if(id==='p_cxc') renderCxc();
+  else if(id==='p_clubes') renderClubes(true);
   else if(id==='p_rep_pagos') initRepPagos();
   else if(id==='p_rep_fechas') initRepFechas();
   else if(id==='p_rep_comisiones') initRepComisiones();
@@ -6460,6 +6532,69 @@ function setCxcTorneoFilter(torneoId) {
 // Los pagos PENDIENTES de aprobación ya cubren la deuda (el club ya envió el dinero); solo un
 // pago RECHAZADO deja de contar. Así un club que ya pagó no aparece en cobranza, y reaparece
 // únicamente si le rechazan un pago y queda un faltante. Devuelve las filas con deuda > 0.
+// ============================================================================
+//  CLUBES (gestión + exportación)
+// ============================================================================
+let _clubEditId = null;
+function _clubesFiltrados(){
+  const q = (document.getElementById('clubesBuscar')?.value||'').trim().toLowerCase();
+  const tId = document.getElementById('clubesTorneo')?.value || '';
+  let clubes = myClubs();
+  if(tId){ const ids=new Set(myEquipos().filter(e=>+e.torneoId===+tId&&e.estado==='activo').map(e=>e.clubId)); clubes=clubes.filter(c=>ids.has(c.id)); }
+  if(q) clubes = clubes.filter(c=>(c.nombre||'').toLowerCase().includes(q));
+  return {clubes: clubes.slice().sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{numeric:true})), tId};
+}
+function renderClubes(initSelect){
+  if(initSelect){
+    const sel=document.getElementById('clubesTorneo');
+    if(sel){ const cur=sel.value; sel.innerHTML='<option value="">Todos los torneos</option>'+myTorneos().slice().sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{numeric:true})).map(t=>`<option value="${t.id}">${t.nombre}</option>`).join(''); sel.value=cur; }
+  }
+  const {clubes, tId} = _clubesFiltrados();
+  const nEquipos = id => myEquipos().filter(e=>+e.clubId===+id && e.estado==='activo' && (!tId||+e.torneoId===+tId)).length;
+  document.getElementById('clubesT').innerHTML = clubes.length ? clubes.map(c=>`
+    <tr class="hover:bg-slate-50">
+      <td class="py-3 px-4 font-semibold">${c.nombre}</td>
+      <td class="py-3 px-4 text-slate-500 text-xs">${c.provincia||'—'}</td>
+      <td class="py-3 px-4 text-slate-600 text-sm">${c.delegado||'—'}</td>
+      <td class="py-3 px-4 text-slate-600 text-sm mono">${c.telefono||'—'}</td>
+      <td class="py-3 px-4 text-center">${nEquipos(c.id)}</td>
+      <td class="py-3 px-4 text-center"><button onclick="editarClub(${c.id})" class="text-xs font-semibold text-[#4F86C6] hover:underline">✏️ Editar</button></td>
+    </tr>`).join('') : `<tr><td colspan="6" class="py-10 text-center text-slate-400 text-sm">No hay clubes que coincidan.</td></tr>`;
+}
+function editarClub(id){
+  const c = clubById(id); if(!c) return;
+  _clubEditId = id;
+  document.getElementById('ceNombre').value = c.nombre||'';
+  document.getElementById('ceDelegado').value = c.delegado||'';
+  document.getElementById('ceTel').value = c.telefono||'';
+  document.getElementById('ceProv').value = c.provincia||'';
+  openModal('clubEditModal');
+}
+function guardarClubEdit(){
+  const c = clubById(_clubEditId); if(!c) return;
+  const nombre = document.getElementById('ceNombre').value.trim();
+  if(!nombre){ toast('El nombre del club es obligatorio.','error'); return; }
+  c.nombre = nombre;
+  c.delegado = document.getElementById('ceDelegado').value.trim();
+  c.telefono = document.getElementById('ceTel').value.trim();
+  c.provincia = document.getElementById('ceProv').value.trim()||'Lima';
+  closeModal('clubEditModal');
+  toast('Club actualizado ✓','success');
+  renderClubes();
+  if(sbOn()) SB().data.actualizarClub(_clubEditId, {nombre:c.nombre, delegado:c.delegado, telefono:c.telefono, provincia:c.provincia}).catch(e=>toast('⚠ '+e.message,'error'));
+}
+function exportarClubesExcel(){
+  const {clubes, tId} = _clubesFiltrados();
+  const torneoNom = tId ? (myTorneos().find(t=>+t.id===+tId)?.nombre||'') : '';
+  const headers = ['Club','Contacto','Telefono','Provincia'];
+  const rows = clubes.map(c=>[c.nombre||'', c.delegado||'', c.telefono||'', c.provincia||'']);
+  const csv = '﻿' + [headers,...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const nombre = `Clubes_Liguify${torneoNom?'_'+torneoNom.replace(/[^\w]+/g,'_'):''}.csv`;
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=nombre; a.click(); URL.revokeObjectURL(url);
+  toast(`${clubes.length} clubes exportados ✓`,'success');
+}
+
 function cxcRows() {
   const hoy = new Date().toISOString().slice(0,10);
   return myClubs().flatMap(c => {
