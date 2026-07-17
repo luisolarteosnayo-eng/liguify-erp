@@ -3736,7 +3736,7 @@ function renderP1Detalle() {
     const tornCats = (t.cats||[]).map(tc => {
       const cat = S.categorias.find(c=>c.id===tc.catId);
       return cat ? {...tc, nombre: cat.nombre} : null;
-    }).filter(Boolean);
+    }).filter(Boolean).sort((a,b)=>(b.nombre||'').localeCompare(a.nombre||'','es',{numeric:true})); // descendente
 
     catsSections = tornCats.map(tc => {
       const equipos = myEquipos().filter(e=>e.torneoId===t.id && e.catId===tc.catId && (!e.modalidad || (e.modalidad||'')===(tc.modalidad||'')) && e.estado==='activo')
@@ -3827,7 +3827,10 @@ function renderP1Detalle() {
   }
 
   // ---- semáforo de cupos ----
-  const semaforoCards = isActivo ? (t.cats||[]).map(tc=>{
+  const semaforoCards = isActivo ? [...(t.cats||[])].sort((a,b)=>{
+      const na=S.categorias.find(c=>c.id===a.catId)?.nombre||'', nb=S.categorias.find(c=>c.id===b.catId)?.nombre||'';
+      return nb.localeCompare(na,'es',{numeric:true});   // descendente: 2020, 2019, ...
+    }).map(tc=>{
     const cat = S.categorias.find(c=>c.id===tc.catId);
     if(!cat) return '';
     const inscritos = myEquipos().filter(e=>e.torneoId===t.id&&e.catId===tc.catId&&(!e.modalidad || (e.modalidad||'')===(tc.modalidad||''))&&e.estado==='activo').length;
