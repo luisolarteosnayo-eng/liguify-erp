@@ -6369,18 +6369,38 @@ function cxcRows() {
       if(deuda <= 0) return [];
       const fechaVenc = torneo?.fechaVenc || null;
       const vencido   = fechaVenc && fechaVenc < hoy;
-      return [{c, tid, torneo, deuda, fechaVenc, vencido}];
+      return [{tipo:'club', c, tid, torneo, deuda, fechaVenc, vencido}];
     });
   });
 }
+
+// Deuda de los torneos clasificatorios = suma de clasif_precio de sus equipos.
+// (Sin pagos aún: la deuda es el total. Agrupado por clasificatorio + torneo.)
+function cxcClasifRows() {
+  const hoy = new Date().toISOString().slice(0,10);
+  const map = {};
+  myEquipos().filter(e=>e.estado==='activo' && e.clasificatorioId && (e.clasifPrecio||0)>0).forEach(e=>{
+    const key = e.clasificatorioId+'|'+e.torneoId;
+    (map[key] = map[key] || {clasifId:e.clasificatorioId, tid:e.torneoId, deuda:0}).deuda += (e.clasifPrecio||0);
+  });
+  return Object.values(map).map(r=>{
+    const clasif = myClasificatorios().find(c=>+c.id===+r.clasifId);
+    const torneo = myTorneos().find(t=>+t.id===+r.tid) || S.torneos.find(t=>+t.id===+r.tid);
+    const fechaVenc = torneo?.fechaVenc || null;
+    return {tipo:'clasif', clasif, clasifId:r.clasifId, tid:r.tid, torneo, deuda:r.deuda, fechaVenc, vencido: fechaVenc && fechaVenc<hoy};
+  }).filter(r=>r.clasif && r.deuda>0);
+}
+
+// Todas las filas de cobranza (clubes + clasificatorios)
+function cxcAllRows() { return [...cxcRows(), ...cxcClasifRows()]; }
 
 function renderCxc() {
   _cxcTorneoFilter = null;
   document.getElementById('cxcFiltroBar').classList.add('hidden');
   setCxcVencFilter('todos');
 
-  // Deuda de cobranza (inclusiva de pendientes) agregada por torneo.
-  const rows = cxcRows();
+  // Deuda de cobranza (clubes + torneos clasificatorios) agregada por torneo.
+  const rows = cxcAllRows();
   const totalGlobal = rows.reduce((s, r) => s + r.deuda, 0);
   const porTorneo = {};
   rows.forEach(r => { porTorneo[r.tid] = (porTorneo[r.tid] || 0) + r.deuda; });
@@ -6587,8 +6607,8 @@ function renderRepComisiones(){
 function renderCxcTabla() {
   const tId  = _cxcTorneoFilter;
 
-  // Filas de cobranza (deuda inclusiva de pendientes). Filtrar por torneo si aplica.
-  let filas = cxcRows();
+  // Filas de cobranza: clubes + torneos clasificatorios. Filtrar por torneo si aplica.
+  let filas = cxcAllRows();
   if(tId) filas = filas.filter(f=>+f.tid===+tId);
 
   // Aplicar filtro por vencimiento
@@ -6597,8 +6617,9 @@ function renderCxcTabla() {
   const filasFiltradas = _cxcVencFilter==='vencidos' ? filas.filter(f=>f.vencido)
     : _cxcVencFilter==='semana' ? filas.filter(f=>f.fechaVenc && !f.vencido && f.fechaVenc<=en7)
     : filas;
-  // Orden alfabético ascendente por nombre de club
-  filasFiltradas.sort((a,b) => (a.c.nombre||'').localeCompare(b.c.nombre||'', 'es', {sensitivity:'base', numeric:true}));
+  // Orden alfabético ascendente por nombre (club o clasificatorio)
+  const nombreFila = f => f.tipo==='clasif' ? (f.clasif?.nombre||'') : (f.c?.nombre||'');
+  filasFiltradas.sort((a,b) => nombreFila(a).localeCompare(nombreFila(b), 'es', {sensitivity:'base', numeric:true}));
 
   const vencBadge = (f) => {
     if(!f.fechaVenc) return `<span class="text-[10px] text-slate-300">Sin fecha</span>`;
@@ -6606,23 +6627,37 @@ function renderCxcTabla() {
     return `<span class="text-[10px] text-slate-500">Vence ${f.fechaVenc}</span>`;
   };
 
+  const filaHtml = (f) => {
+    if(f.tipo==='clasif'){
+      return `<tr class="hover:bg-sky-50 cursor-pointer" onclick="abrirClasifTorneo(${f.tid})">
+        <td class="py-3 px-4 font-semibold">${f.clasif?.nombre||'—'} <span class="ml-1 text-[9px] font-bold bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full whitespace-nowrap">🏆 Clasificatorio</span></td>
+        <td class="py-3 px-4 text-slate-500 text-xs">${f.clasif?.telefono?('📞 '+f.clasif.telefono):'—'}</td>
+        <td class="py-3 px-4">
+          <p class="text-xs font-medium text-slate-700 truncate max-w-[200px]">${f.torneo?.nombre||'—'}</p>
+          <div class="mt-0.5">${vencBadge(f)}</div>
+        </td>
+        <td class="py-3 px-4 text-right mono font-bold ${f.vencido?'text-rose-700':'text-rose-600'}">${fmt(f.deuda)}</td>
+        <td class="py-3 px-4 text-center"><button onclick="event.stopPropagation();abrirClasifTorneo(${f.tid})" class="text-xs font-semibold text-[#4F86C6] hover:underline">Ver detalle →</button></td>
+      </tr>`;
+    }
+    return `<tr class="hover:bg-rose-50 cursor-pointer" onclick="abrirCxcClub(${f.c.id})">
+      <td class="py-3 px-4 font-semibold">${f.c.nombre}</td>
+      <td class="py-3 px-4 text-slate-500 text-xs">${f.c.provincia||'—'}</td>
+      <td class="py-3 px-4">
+        <p class="text-xs font-medium text-slate-700 truncate max-w-[200px]">${f.torneo?.nombre||'—'}</p>
+        <div class="mt-0.5">${vencBadge(f)}</div>
+      </td>
+      <td class="py-3 px-4 text-right mono font-bold ${f.vencido?'text-rose-700':'text-rose-600'}">${fmt(f.deuda)}</td>
+      <td class="py-3 px-4 text-center"><button onclick="event.stopPropagation();abrirCxcClub(${f.c.id})" class="text-xs font-semibold text-[#4F86C6] hover:underline">Ver detalle →</button></td>
+    </tr>`;
+  };
+
   document.getElementById('cxcT').innerHTML = filasFiltradas.length
-    ? filasFiltradas.map(f =>
-        `<tr class="hover:bg-rose-50 cursor-pointer" onclick="abrirCxcClub(${f.c.id})">
-          <td class="py-3 px-4 font-semibold">${f.c.nombre}</td>
-          <td class="py-3 px-4 text-slate-500 text-xs">${f.c.provincia||'—'}</td>
-          <td class="py-3 px-4">
-            <p class="text-xs font-medium text-slate-700 truncate max-w-[200px]">${f.torneo?.nombre||'—'}</p>
-            <div class="mt-0.5">${vencBadge(f)}</div>
-          </td>
-          <td class="py-3 px-4 text-right mono font-bold ${f.vencido?'text-rose-700':'text-rose-600'}">${fmt(f.deuda)}</td>
-          <td class="py-3 px-4 text-center"><button onclick="event.stopPropagation();abrirCxcClub(${f.c.id})" class="text-xs font-semibold text-[#4F86C6] hover:underline">Ver detalle →</button></td>
-        </tr>`
-      ).join('')
+    ? filasFiltradas.map(filaHtml).join('')
     : `<tr><td colspan="5" class="py-10 text-center text-slate-400 text-sm">${
         _cxcVencFilter==='vencidos' ? 'No hay deudas vencidas ✓'
         : _cxcVencFilter==='semana' ? 'No hay deudas que venzan esta semana ✓'
-        : 'No hay clubes con deuda pendiente ✓'
+        : 'No hay deudas pendientes ✓'
       }</td></tr>`;
 }
 
