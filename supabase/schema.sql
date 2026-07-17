@@ -212,7 +212,8 @@ create index if not exists idx_costos_torneo on public.costos(torneo_id);
 create table if not exists public.pagos (
   id           bigint generated always as identity primary key,
   torneo_id    bigint not null references public.torneos(id) on delete restrict,
-  club_id      bigint not null references public.clubes(id) on delete restrict,
+  club_id      bigint references public.clubes(id) on delete restrict,          -- pago de club (o null si es de clasificatorio)
+  clasificatorio_id bigint references public.clasificatorios(id) on delete set null, -- pago de torneo clasificatorio
   monto        numeric(12,2) not null check (monto >= 0),
   medio        text,
   fecha        date not null default current_date,

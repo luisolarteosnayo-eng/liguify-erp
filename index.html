@@ -989,20 +989,35 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
         <div class="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-5">
           <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
 
-            <!-- Campo 1: Club -->
-            <label class="block text-xs font-semibold text-slate-600 mb-1">Club *</label>
-            <div class="flex items-center gap-2 mb-4">
-              <div class="relative flex-1">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
-                <input type="text" id="clubSel" placeholder="Buscar club…" autocomplete="off"
-                  oninput="clubACFilter(this)" onfocus="clubACAttach(this, id=>{ if(id) p2SelectClub(id); }, false); clubACFilter(this)"
-                  onblur="clubACBlur(this)"
-                  class="w-full border border-slate-300 rounded-lg pl-9 pr-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 bg-white">
-              </div>
-              <button onclick="openModal('nuevoClubModal')" class="flex items-center gap-1 text-xs font-semibold text-[#18324F] border border-slate-300 px-3 py-2.5 rounded-lg hover:bg-slate-50 whitespace-nowrap">+ Nuevo</button>
+            <!-- Tipo de pagador -->
+            <label class="block text-xs font-semibold text-slate-600 mb-1.5">Pagador *</label>
+            <div class="flex gap-2 mb-4">
+              <button type="button" id="p2tipo_club" onclick="p2SetTipo('club')" class="flex-1 border-2 border-[#4F86C6] bg-blue-50 text-[#18324F] rounded-lg py-2 text-xs font-bold transition">Club</button>
+              <button type="button" id="p2tipo_clasif" onclick="p2SetTipo('clasif')" class="flex-1 border-2 border-slate-200 text-slate-500 rounded-lg py-2 text-xs font-bold hover:bg-slate-50 transition">🏆 Torneo Clasificatorio</button>
             </div>
 
-            <!-- Campo 2: Torneo (se activa tras seleccionar club) -->
+            <!-- Campo 1a: Club (modo club) -->
+            <div id="p2_club_block">
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Club *</label>
+              <div class="flex items-center gap-2 mb-4">
+                <div class="relative flex-1">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
+                  <input type="text" id="clubSel" placeholder="Buscar club…" autocomplete="off"
+                    oninput="clubACFilter(this)" onfocus="clubACAttach(this, id=>{ if(id) p2SelectClub(id); }, false); clubACFilter(this)"
+                    onblur="clubACBlur(this)"
+                    class="w-full border border-slate-300 rounded-lg pl-9 pr-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 bg-white">
+                </div>
+                <button onclick="openModal('nuevoClubModal')" class="flex items-center gap-1 text-xs font-semibold text-[#18324F] border border-slate-300 px-3 py-2.5 rounded-lg hover:bg-slate-50 whitespace-nowrap">+ Nuevo</button>
+              </div>
+            </div>
+
+            <!-- Campo 1b: Clasificatorio (modo clasif) -->
+            <div id="p2_clasif_block" class="hidden mb-4">
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Torneo clasificatorio *</label>
+              <select id="clasifP2Sel" onchange="p2SelectClasif(parseInt(this.value))" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 bg-white"></select>
+            </div>
+
+            <!-- Campo 2: Torneo (se activa tras seleccionar pagador) -->
             <div id="p2_torneo_row" class="hidden mb-4">
               <label class="block text-xs font-semibold text-slate-600 mb-1">Torneo *</label>
               <select id="torneoP2Sel" onchange="p2SelectTorneo(parseInt(this.value))" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200 bg-white"></select>
@@ -2592,6 +2607,24 @@ function saldoCxcClub(id, torneoId) {
   const pagado  = myPagos().filter(p=>+p.clubId===+id&&p.estado==='aprobado'&&(!torneoId||+p.torneoId===+torneoId)).reduce((s,p)=>s+p.monto, 0);
   return insc - pagado;
 }
+// ---- Totales/saldo de un torneo clasificatorio ----
+function clasifTotalTorneo(clasifId, torneoId) {
+  return myEquipos().filter(e=>+e.clasificatorioId===+clasifId && +e.torneoId===+torneoId && e.estado==='activo')
+    .reduce((s,e)=>s+(e.clasifPrecio||0), 0);
+}
+function clasifPagado(clasifId, torneoId, soloAprobado) {
+  return myPagos().filter(p=>+p.clasificatorioId===+clasifId && +p.torneoId===+torneoId &&
+      (soloAprobado ? p.estado==='aprobado' : p.estado!=='rechazado'))
+    .reduce((s,p)=>s+p.monto, 0);
+}
+// Saldo de cobranza del clasificatorio (aprobado only) — para el modal de aprobación
+function saldoClasif(clasifId, torneoId) {
+  return clasifTotalTorneo(clasifId, torneoId) - clasifPagado(clasifId, torneoId, true);
+}
+// Nombre del pagador de un pago (club o clasificatorio)
+const pagoPayerNombre = p => p?.clasificatorioId
+  ? ('🏆 ' + (clasifNombre(p.clasificatorioId) || 'Clasificatorio'))
+  : (clubById(p?.clubId)?.nombre || '—');
 
 function badgeEstado(e) {
   const m = {pendiente:'bg-amber-100 text-amber-700',aprobado:'bg-emerald-100 text-emerald-700',rechazado:'bg-rose-100 text-rose-700'};
@@ -5711,10 +5744,44 @@ function renderP1b() {
 // ---- PANTALLA P2: REGISTRAR PAGO ----
 
 let _p2TorneoId = null; // torneo activo en p2
+let _p2Tipo = 'club', _p2ClasifId = null;
+
+function p2SetTipo(tipo){
+  _p2Tipo = tipo;
+  const on='border-[#4F86C6] bg-blue-50 text-[#18324F]', off='border-slate-200 text-slate-500';
+  const bC=document.getElementById('p2tipo_club'), bK=document.getElementById('p2tipo_clasif');
+  if(bC) bC.className=`flex-1 border-2 rounded-lg py-2 text-xs font-bold transition ${tipo==='club'?on:off}`;
+  if(bK) bK.className=`flex-1 border-2 rounded-lg py-2 text-xs font-bold hover:bg-slate-50 transition ${tipo==='clasif'?on:off}`;
+  document.getElementById('p2_club_block').classList.toggle('hidden', tipo!=='club');
+  document.getElementById('p2_clasif_block').classList.toggle('hidden', tipo!=='clasif');
+  document.getElementById('p2_torneo_row').classList.add('hidden');
+  document.getElementById('p2_detalle').classList.add('hidden');
+  _p2TorneoId=null; _p2ClasifId=null;
+  if(tipo==='clasif'){
+    S.selectedClubId=null;
+    const cls=myClasificatorios().slice().sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es'));
+    document.getElementById('clasifP2Sel').innerHTML='<option value="">— Selecciona un clasificatorio —</option>'+cls.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('');
+  } else {
+    const cs=document.getElementById('clubSel'); if(cs) cs.value='';
+  }
+}
+
+function p2SelectClasif(clasifId){
+  _p2ClasifId = clasifId || null;
+  if(!clasifId){ document.getElementById('p2_torneo_row').classList.add('hidden'); document.getElementById('p2_detalle').classList.add('hidden'); return; }
+  const torneoIds=[...new Set(myEquipos().filter(e=>+e.clasificatorioId===+clasifId && e.estado==='activo').map(e=>e.torneoId))];
+  const torneos=torneoIds.map(tid=>myTorneos().find(t=>+t.id===+tid)||S.torneos.find(t=>+t.id===+tid)).filter(Boolean);
+  const tSel=document.getElementById('torneoP2Sel');
+  tSel.innerHTML='<option value="">— Selecciona un torneo —</option>'+torneos.map(t=>`<option value="${t.id}">${t.nombre}</option>`).join('');
+  document.getElementById('p2_torneo_row').classList.remove('hidden');
+  document.getElementById('p2_detalle').classList.add('hidden');
+  if(torneos.length===1){ tSel.value=torneos[0].id; p2SelectTorneo(torneos[0].id); } else { _p2TorneoId=null; }
+}
 
 function renderP2() {
   renderMediosBtns();
   document.getElementById('p2badge').innerHTML = roleTag('operador');
+  p2SetTipo('club');
   // Inicializar input de club con autocomplete
   const clubSel = document.getElementById('clubSel');
   if(clubSel) {
@@ -5771,30 +5838,37 @@ function p2SelectTorneo(torneoId) {
 }
 
 function p2RenderDetalle() {
+  const esClasif = _p2Tipo==='clasif';
   const clubId   = S.selectedClubId;
   const torneoId = _p2TorneoId;
   const torneo   = myTorneos().find(t=>t.id===torneoId) || S.torneos.find(t=>t.id===torneoId);
-  const equipos  = myEquipos().filter(e=>e.clubId===clubId && e.torneoId===torneoId && e.estado==='activo');
-  const soloInsc = (torneo?.esquema||'inscripcion_arbitraje')==='solo_inscripcion';
+  const equipos  = esClasif
+    ? myEquipos().filter(e=>+e.clasificatorioId===+_p2ClasifId && e.torneoId===torneoId && e.estado==='activo')
+    : myEquipos().filter(e=>e.clubId===clubId && e.torneoId===torneoId && e.estado==='activo');
 
-  // Tabla categorías
+  // Tabla categorías (para clasif, el monto es el precio que paga el clasificatorio)
   document.getElementById('p2_cats_tbody').innerHTML = equipos.length>0
     ? equipos.map(e=>{
         const cat = catById(e.catId);
         const tc  = torneo?.cats?.find(x=>x.catId===e.catId);
-        const nombre = e.nombre || clubById(clubId)?.nombre || '—';
+        const nombre = esClasif ? (clubById(e.clubId)?.nombre||'—') : (e.nombre || clubById(clubId)?.nombre || '—');
+        const monto  = esClasif ? (e.clasifPrecio||0) : e.inscripcion;
         return `<tr class="hover:bg-slate-50">
           <td class="py-2 text-sm font-medium">${nombre}</td>
           <td class="py-2 text-sm text-slate-600">${cat?.nombre||'—'}</td>
           <td class="py-2 text-center"><span class="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">${tc?.modalidad||'—'}</span></td>
-          <td class="py-2 text-right mono font-bold text-blue-700">${fmt(e.inscripcion)}</td>
+          <td class="py-2 text-right mono font-bold text-blue-700">${fmt(monto)}</td>
         </tr>`;
       }).join('')
     : `<tr><td colspan="4" class="py-4 text-center text-slate-300 text-xs">Sin equipos activos en este torneo.</td></tr>`;
 
   // KPIs
-  const totalInsc = equipos.reduce((s,e)=>s+(e.inscripcion||0),0);
-  const pagosClub = myPagos().filter(p=>p.clubId===clubId && p.torneoId===torneoId && p.estado!=='rechazado');
+  const totalInsc = esClasif
+    ? equipos.reduce((s,e)=>s+(e.clasifPrecio||0),0)
+    : equipos.reduce((s,e)=>s+(e.inscripcion||0),0);
+  const pagosClub = esClasif
+    ? myPagos().filter(p=>+p.clasificatorioId===+_p2ClasifId && p.torneoId===torneoId && p.estado!=='rechazado')
+    : myPagos().filter(p=>p.clubId===clubId && p.torneoId===torneoId && p.estado!=='rechazado');
   const pagado    = pagosClub.reduce((s,p)=>s+p.monto,0);
   const pendiente = Math.max(0, totalInsc - pagado);
 
@@ -5807,7 +5881,9 @@ function p2RenderDetalle() {
   pendLb.className   = `text-[10px] font-semibold uppercase mb-1 ${pendiente>0?'text-rose-500':'text-emerald-600'}`;
 
   // Historial de pagos
-  const todosPagos = myPagos().filter(p=>p.clubId===clubId && p.torneoId===torneoId);
+  const todosPagos = esClasif
+    ? myPagos().filter(p=>+p.clasificatorioId===+_p2ClasifId && p.torneoId===torneoId)
+    : myPagos().filter(p=>p.clubId===clubId && p.torneoId===torneoId);
   const badgePago = st => st==='aprobado'
     ? '<span class="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Aprobado</span>'
     : st==='rechazado'
@@ -5895,7 +5971,9 @@ function selMedio(medio, btn) {
   btn.classList.add('sel');
 }
 async function registrarPago() {
-  if(!S.selectedClubId){ toast('Selecciona un club antes de registrar el pago.','error'); return; }
+  const esClasif = _p2Tipo==='clasif';
+  if(esClasif){ if(!_p2ClasifId){ toast('Selecciona un torneo clasificatorio.','error'); return; } }
+  else { if(!S.selectedClubId){ toast('Selecciona un club antes de registrar el pago.','error'); return; } }
   if(!_p2TorneoId){ toast('Selecciona un torneo antes de registrar el pago.','error'); return; }
   const monto = parseFloat(document.getElementById('pMonto').value)||0;
   if(monto<=0) { toast('El monto debe ser mayor a S/. 0','error'); return; }
@@ -5903,8 +5981,10 @@ async function registrarPago() {
   if(!S.voucherUploaded) { document.getElementById('verr').classList.remove('hidden'); return; }
 
   const nuevo = {
-    id: S.nextId++, torneoId: _p2TorneoId, clubId: S.selectedClubId, monto,
-    medio: S.medioSeleccionado,
+    id: S.nextId++, torneoId: _p2TorneoId,
+    clubId: esClasif ? null : S.selectedClubId,
+    clasificatorioId: esClasif ? _p2ClasifId : null,
+    monto, medio: S.medioSeleccionado,
     fecha: document.getElementById('pFecha').value||today(),
     nroOp: document.getElementById('pNroOp').value||'—',
     desc: document.getElementById('pDesc').value||'',
@@ -5913,6 +5993,7 @@ async function registrarPago() {
     orgId: S.organizacionActual?.id||1,
     voucherUrl: null,
   };
+  const pagadorNombre = esClasif ? (clasifNombre(_p2ClasifId)||'clasificatorio') : (clubById(S.selectedClubId)?.nombre||'club');
   const fileToUpload = _voucherFile; // guardar antes de removeVoucher()
   S.pagos.push(nuevo);
   removeVoucher();
@@ -5921,19 +6002,17 @@ async function registrarPago() {
   document.getElementById('pDesc').value = '';
   p2RenderDetalle();
   toast(`Pago de ${fmt(monto)} registrado y enviado a Tesorería ✓`,'success');
-  addNotif(`Pago de ${fmt(monto)} para ${clubById(S.selectedClubId)?.nombre} enviado a Tesorería.`,'info');
+  addNotif(`Pago de ${fmt(monto)} de ${pagadorNombre} enviado a Tesorería.`,'info');
 
   if(sbOn()){
     try {
-      // 1. Subir voucher a Storage
       let voucherUrl = null;
       if(fileToUpload){
         voucherUrl = await SB().data.subirVoucher(fileToUpload, myOrgId());
         nuevo.voucherUrl = voucherUrl;
       }
-      // 2. Guardar pago con voucher_url
       const p = await SB().data.registrarPago({
-        torneo_id: nuevo.torneoId, club_id: nuevo.clubId, monto: nuevo.monto,
+        torneo_id: nuevo.torneoId, club_id: nuevo.clubId, clasificatorio_id: nuevo.clasificatorioId, monto: nuevo.monto,
         medio: nuevo.medio, fecha: nuevo.fecha, nro_op: nuevo.nroOp,
         descripcion: nuevo.desc, voucher_url: voucherUrl, org_id: myOrgId()
       });
@@ -6025,11 +6104,10 @@ function renderP3() {
   const pends = pendientes();
   document.getElementById('p3_nPend').textContent = pends.length || '';
   document.getElementById('pendientesT').innerHTML = pends.length ? pends.map(p => {
-    const club   = clubById(p.clubId);
     const torneo = myTorneos().find(t=>t.id===p.torneoId) || S.torneos.find(t=>t.id===p.torneoId);
     return `<tr class="hover:bg-slate-50">
       <td class="py-3 px-4 mono text-xs text-slate-500">${p.fecha}</td>
-      <td class="py-3 px-4 font-medium">${club?.nombre||'—'}</td>
+      <td class="py-3 px-4 font-medium">${pagoPayerNombre(p)}</td>
       <td class="py-3 px-4 text-xs text-slate-400 max-w-[140px] truncate">${torneo?.nombre||'—'}</td>
       <td class="py-3 px-4 mono font-semibold text-right">${fmt(p.monto)}</td>
       <td class="py-3 px-4"><span class="bg-slate-100 text-slate-600 text-[11px] px-2 py-0.5 rounded font-medium">${p.medio}</span></td>
@@ -6044,12 +6122,13 @@ function renderP3() {
 function abrirVoucher(pagoId) {
   S.selectedPagoId = pagoId;
   const p = S.pagos.find(x=>x.id===pagoId);
-  const club = clubById(p.clubId);
-  document.getElementById('vmTitle').textContent = `Validación de Pago — ${club?.nombre}`;
+  const esClasif = !!p.clasificatorioId;
+  const payer = pagoPayerNombre(p);
+  document.getElementById('vmTitle').textContent = `Validación de Pago — ${payer}`;
   document.getElementById('vmBanco').textContent = `${p.medio} — Comprobante de transferencia`;
   document.getElementById('vmMonto').textContent = fmt(p.monto);
   document.getElementById('vmFecha').textContent = p.fecha;
-  const saldo = saldoCxcClub(p.clubId, p.torneoId);
+  const saldo = esClasif ? saldoClasif(p.clasificatorioId, p.torneoId) : saldoCxcClub(p.clubId, p.torneoId);
   const canAprobar = ['organizador','tesorero'].includes(S.role);
   const medios = myMediosPago().filter(m=>m.activo);
   const medioOpts = medios.map(m=>`<option value="${m.nombre}" ${m.nombre===p.medio?'selected':''}>${m.icon||''} ${m.nombre}</option>`).join('');
@@ -6059,11 +6138,11 @@ function abrirVoucher(pagoId) {
   const dupBanner = dup ? `
     <div class="mb-3 rounded-lg border-2 border-rose-300 bg-rose-50 px-4 py-3">
       <div class="flex items-center gap-2 mb-1"><span class="text-lg">⚠️</span><span class="font-extrabold text-rose-700 text-sm uppercase tracking-wide">Pago duplicado</span></div>
-      <p class="text-xs text-rose-700 mb-2">Ya existe un pago <b>aprobado</b> con el mismo medio, fecha y N° de operación (${p.medio} · ${p.fecha} · N° ${p.nroOp}) para <b>${clubById(dup.clubId)?.nombre||'otro club'}</b>. Podría ser un duplicado o fraude — verifica antes de aprobar.</p>
+      <p class="text-xs text-rose-700 mb-2">Ya existe un pago <b>aprobado</b> con el mismo medio, fecha y N° de operación (${p.medio} · ${p.fecha} · N° ${p.nroOp}) para <b>${pagoPayerNombre(dup)}</b>. Podría ser un duplicado o fraude — verifica antes de aprobar.</p>
       <button onclick="abrirVoucher(${dup.id})" class="text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 px-3 py-1.5 rounded-lg transition">Revisar pago inicial →</button>
     </div>` : '';
   document.getElementById('vmFicha').innerHTML = dupBanner + [
-    ['Club', club?.nombre],
+    [esClasif?'Torneo clasificatorio':'Club', payer],
     ['Monto reportado', `<span class="font-bold mono">${fmt(p.monto)}</span>`],
     ['Descripción', p.desc||'—'],
     ['Registrado por', (()=>{ const r=pagoRegistrante(p); return r ? `${r.nombre||'—'}${r.email?` · <a href="mailto:${r.email}" class="text-[#4F86C6] hover:underline">${r.email}</a>`:''}` : (p.op||'—'); })()],
@@ -6125,7 +6204,7 @@ async function aprobarPago() {
   p.estado='aprobado'; p.procPor=ROLES[S.role]?.nombre||'Tesorero'; p.procEn=now();
   closeModal('voucherModal');
   toast(`Pago de ${fmt(p.monto)} aprobado ✓`,'success');
-  addNotif(`✓ Tu pago de ${fmt(p.monto)} para ${clubById(p.clubId)?.nombre} fue APROBADO por ${p.procPor}.`,'success');
+  addNotif(`✓ Tu pago de ${fmt(p.monto)} de ${pagoPayerNombre(p)} fue APROBADO por ${p.procPor}.`,'success');
   renderP3();
   if(sbOn()){
     try {
@@ -6152,7 +6231,7 @@ function confirmarRechazo() {
   p.estado='rechazado'; p.procPor=ROLES[S.role]?.nombre||'Tesorero'; p.procEn=now(); p.motivo=motivo;
   closeModal('rechazoModal');
   toast(`Pago rechazado. El Operador fue notificado.`,'warn');
-  addNotif(`✕ Tu pago de ${fmt(p.monto)} para ${clubById(p.clubId)?.nombre} fue RECHAZADO. Motivo: ${motivo}`,'error');
+  addNotif(`✕ Tu pago de ${fmt(p.monto)} de ${pagoPayerNombre(p)} fue RECHAZADO. Motivo: ${motivo}`,'error');
   renderP3();
   if(sbOn()){
     SB().data.rechazarPago(p.id, myOrgId(), motivo)
@@ -6387,7 +6466,9 @@ function cxcClasifRows() {
     const clasif = myClasificatorios().find(c=>+c.id===+r.clasifId);
     const torneo = myTorneos().find(t=>+t.id===+r.tid) || S.torneos.find(t=>+t.id===+r.tid);
     const fechaVenc = torneo?.fechaVenc || null;
-    return {tipo:'clasif', clasif, clasifId:r.clasifId, tid:r.tid, torneo, deuda:r.deuda, fechaVenc, vencido: fechaVenc && fechaVenc<hoy};
+    // Deuda = total − pagos no rechazados (aprobados + pendientes)
+    const deuda = r.deuda - clasifPagado(r.clasifId, r.tid, false);
+    return {tipo:'clasif', clasif, clasifId:r.clasifId, tid:r.tid, torneo, deuda, fechaVenc, vencido: fechaVenc && fechaVenc<hoy};
   }).filter(r=>r.clasif && r.deuda>0);
 }
 
@@ -7592,7 +7673,7 @@ async function sbHydrate(){
   S.torneos = (d.torneos||[]).map(t=>({id:t.id,nombre:t.nombre,sede:t.sede,esquema:t.esquema,estado:t.estado,inicio:t.inicio,fin:t.fin,fechaVenc:t.fecha_venc,label:t.label,headerUrl:t.header_url,snap:t.snap,orgId:t.org_id,cats:catsByT[t.id]||[]}));
   S.equipos = (d.equipos||[]).map(e=>({id:e.id,torneoId:e.torneo_id,clubId:e.club_id,catId:e.cat_id,modalidad:e.modalidad||'',nombre:e.nombre,inscripcion:_num(e.inscripcion),arbitraje:_num(e.arbitraje),fechas:e.fechas,monto:_num(e.monto),invitado:e.invitado||false,estado:e.estado,createdBy:e.created_by,clasificatorioId:e.clasificatorio_id,clasifPrecio:_num(e.clasif_precio),orgId:e.org_id}));
   S.prospectos = (d.prospectos||[]).map(p=>({id:p.id,torneoId:p.torneo_id,clubId:p.club_id,clubNombre:p.club_nombre,catIds:p.cat_ids||[],delegado:p.delegado,telefono:p.telefono,nota:p.nota,createdBy:p.created_by,orgId:p.org_id}));
-  S.pagos = (d.pagos||[]).map(p=>({id:p.id,torneoId:p.torneo_id,clubId:p.club_id,monto:_num(p.monto),medio:p.medio,fecha:p.fecha,nroOp:p.nro_op,desc:p.descripcion,voucherUrl:p.voucher_url,estado:p.estado,motivo:p.motivo,op:'',createdBy:p.created_by,regEn:p.created_at,procPor:'',procEn:p.processed_at,orgId:p.org_id}));
+  S.pagos = (d.pagos||[]).map(p=>({id:p.id,torneoId:p.torneo_id,clubId:p.club_id,clasificatorioId:p.clasificatorio_id,monto:_num(p.monto),medio:p.medio,fecha:p.fecha,nroOp:p.nro_op,desc:p.descripcion,voucherUrl:p.voucher_url,estado:p.estado,motivo:p.motivo,op:'',createdBy:p.created_by,regEn:p.created_at,procPor:'',procEn:p.processed_at,orgId:p.org_id}));
   // Ingresos por Fecha (detalle financiero de cada jornada)
   _ifData = {};
   (d.ingresos_fecha||[]).forEach(r=>{
