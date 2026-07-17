@@ -2299,6 +2299,7 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
       <input type="text" id="aceClub" placeholder="Buscar club…" autocomplete="off"
         oninput="clubACFilter(this)" onfocus="clubACAttach(this,(id)=>{_aceClubId=id;},true); clubACFilter(this)" onblur="clubACBlur(this)"
         class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      <button onclick="abrirNuevoClubDesdeClasif()" class="shrink-0 text-xs font-semibold text-[#18324F] border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-50 transition">+ Nuevo club</button>
     </div>
     <label class="block text-xs font-semibold text-slate-600 mb-1">Categoría *</label>
     <select id="aceCat" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 bg-white outline-none focus:ring-2 focus:ring-blue-200"></select>
@@ -7037,6 +7038,19 @@ async function crearClub() {
     renderP1Detalle();
     setTimeout(() => openEstadoCuenta(nuevo.id, S.torneoSelId), 120);
   }
+
+  // Vino del botón "+ Nuevo club" dentro del modal de equipo clasificado
+  if(_nuevoClubDesdeClasif) {
+    _nuevoClubDesdeClasif = false;
+    openAddClasifEquipo();               // repuebla selects y limpia campos
+    if(_clasifSaved){                    // restaurar lo ya elegido
+      const s1=document.getElementById('aceClasif'); if(s1) s1.value=_clasifSaved.clasifId;
+      const s2=document.getElementById('aceCat');    if(s2) s2.value=_clasifSaved.catVal;
+      const s3=document.getElementById('acePrecio'); if(s3) s3.value=_clasifSaved.precio;
+    }
+    _aceClubId = nuevo.id;               // seleccionar el club recién creado
+    const ci=document.getElementById('aceClub'); if(ci) ci.value = nuevo.nombre;
+  }
 }
 
 function toggleInvitado(inv) {
@@ -7381,6 +7395,19 @@ function abrirNuevoClubDesdeAddCat() {
   _nuevoClubDesdeAddCat = true;
   _addCatSavedCatId = parseInt(document.getElementById('acCat')?.value) || null;
   closeModal('addCatModal');
+  openModal('nuevoClubModal');
+}
+
+// Crear club nuevo desde el flujo de "Agregar equipo clasificado"
+let _nuevoClubDesdeClasif = false, _clasifSaved = null;
+function abrirNuevoClubDesdeClasif() {
+  _nuevoClubDesdeClasif = true;
+  _clasifSaved = {
+    clasifId: document.getElementById('aceClasif')?.value || '',
+    catVal:   document.getElementById('aceCat')?.value || '',
+    precio:   document.getElementById('acePrecio')?.value || ''
+  };
+  closeModal('addClasifEquipoModal');
   openModal('nuevoClubModal');
 }
 
