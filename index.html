@@ -7134,7 +7134,7 @@ function renderEstadoCuenta() {
                class="w-full border border-slate-200 rounded px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-blue-200">`
           : `<span class="text-sm font-medium">${nombreEquipo}</span>`}
       </td>
-      <td class="py-2 text-sm font-medium text-slate-700">${cat?.nombre||'—'}</td>
+      <td class="py-2 text-sm font-medium text-slate-700">${cat?.nombre||'—'}${e.clasificatorioId?`<span class="ml-1 text-[9px] font-bold bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full whitespace-nowrap">🏆 ${clasifNombre(e.clasificatorioId)}</span>`:''}</td>
       <td class="py-2 text-center">
         <span class="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">${tc?.modalidad||'—'}</span>
       </td>
