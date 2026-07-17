@@ -5472,7 +5472,7 @@ function kpiBlock(label, sublabel, kpi, color, torneoId) {
         <div class="font-bold mono ${(kpi.pendienteCobro||0)>0?'text-rose-700':'text-emerald-700'}">${fmt(kpi.pendienteCobro||0)}</div>
         <div class="text-[10px] text-slate-300 mt-0.5">Falta cobrar</div>
       </div>
-      ${(()=>{let u=0;Object.values(_ifData).forEach(td=>u+=_utilFechas(td));const costos=myCostos().reduce((s,c)=>s+(c.monto||0),0);const ut=(kpi.totalInsc||0)+u-costos;const uc=ut>=0?'text-emerald-700':'text-rose-700';const bg=ut>=0?'bg-emerald-50':'bg-rose-50';return `<div class="${bg} rounded-lg p-3"><div class="text-[10px] text-slate-600 mb-1 uppercase font-bold">Utilidad Total</div><div class="font-extrabold mono ${uc}">${fmt(ut)}</div><div class="text-[10px] text-slate-300 mt-0.5">Inscrip. + Util. fecha − Costos</div></div>`;})()}
+      ${(()=>{let u=0;Object.values(_ifData).forEach(td=>u+=_utilFechas(td));const costos=myCostos().reduce((s,c)=>s+(c.monto||0),0);const clasif=myEquipos().filter(e=>e.estado==='activo'&&e.clasificatorioId).reduce((s,e)=>s+(e.clasifPrecio||0),0);const ut=(kpi.totalInsc||0)+clasif+u-costos;const uc=ut>=0?'text-emerald-700':'text-rose-700';const bg=ut>=0?'bg-emerald-50':'bg-rose-50';return `<div class="${bg} rounded-lg p-3"><div class="text-[10px] text-slate-600 mb-1 uppercase font-bold">Utilidad Total</div><div class="font-extrabold mono ${uc}">${fmt(ut)}</div><div class="text-[10px] text-slate-300 mt-0.5">Inscrip. + Clasif. + Util. fecha − Costos</div></div>`;})()}
     </div>
     <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mt-3">
       <div class="h-full rounded-full" style="width:${pct}%;background:${barColor}"></div>
@@ -5536,7 +5536,7 @@ function renderTorneosList() {
           <div class="text-[10px] ${(f.pendienteCobro||0)>0?'text-rose-600':'text-emerald-600'} mb-0.5 font-semibold uppercase">Pendiente por Cobrar</div>
           <div class="font-bold mono ${(f.pendienteCobro||0)>0?'text-rose-700':'text-emerald-700'} text-xs">${fmt(f.pendienteCobro||0)}</div>
         </div>
-        ${(()=>{const u=_utilFechas(_ifData[t.id]||{});const costos=myCostos().filter(c=>+c.torneoId===+t.id).reduce((s,c)=>s+(c.monto||0),0);const ut=(f.totalInsc||0)+u-costos;const uc=ut>=0?'text-emerald-700':'text-rose-700';const bg=ut>=0?'bg-emerald-50':'bg-rose-50';return `<div class="${bg} rounded-lg px-3 py-2"><div class="text-[10px] text-slate-600 mb-0.5 font-bold uppercase">Utilidad Total</div><div class="font-extrabold mono ${uc} text-xs">${fmt(ut)}</div></div>`;})()}
+        ${(()=>{const u=_utilFechas(_ifData[t.id]||{});const costos=myCostos().filter(c=>+c.torneoId===+t.id).reduce((s,c)=>s+(c.monto||0),0);const clasif=myEquipos().filter(e=>+e.torneoId===+t.id&&e.estado==='activo'&&e.clasificatorioId).reduce((s,e)=>s+(e.clasifPrecio||0),0);const ut=(f.totalInsc||0)+clasif+u-costos;const uc=ut>=0?'text-emerald-700':'text-rose-700';const bg=ut>=0?'bg-emerald-50':'bg-rose-50';return `<div class="${bg} rounded-lg px-3 py-2"><div class="text-[10px] text-slate-600 mb-0.5 font-bold uppercase">Utilidad Total</div><div class="font-extrabold mono ${uc} text-xs">${fmt(ut)}</div></div>`;})()}
       </div>
       <div class="flex items-center gap-2">
         <div class="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
