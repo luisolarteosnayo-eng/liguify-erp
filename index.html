@@ -3599,7 +3599,7 @@ function renderTorneosOperativo() {
       const sem = disp===0 ? 'bg-emerald-500' : disp<=2 ? 'bg-amber-400' : 'bg-rose-400';
       const semTxt = disp===0 ? 'Lleno' : disp<=2 ? `${disp} disp.` : `${disp} disp.`;
       return {nombre: cat?.nombre||tc.catId, inscritos, aforo, disp, pct, sem, semTxt};
-    });
+    }).sort((a,b)=>String(b.nombre).localeCompare(String(a.nombre),'es',{numeric:true})); // descendente
 
     const totalCats    = cats.length;
     const totalInsc    = cats.reduce((s,c)=>s+c.inscritos, 0);
