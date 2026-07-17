@@ -1655,6 +1655,12 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
         </table>
       </div>
 
+      <!-- Condiciones del torneo -->
+      <div id="ec_condiciones_wrap" class="hidden pt-3 mt-2 border-t border-slate-100">
+        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Condiciones</p>
+        <p id="ec_condiciones" class="text-[11px] text-slate-500 leading-relaxed"></p>
+      </div>
+
       <!-- Sello (solo visible al exportar la imagen) -->
       <div id="ec_stamp" class="pt-3 mt-2 border-t border-slate-100 text-[10px] text-slate-400 text-center">
         Generado el <span id="ec_stamp_fecha"></span> · <span id="ec_stamp_org"></span> · Liguify
@@ -2189,6 +2195,10 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
         </div>
       </label>
     </div>
+    <div class="mb-4">
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Condiciones <span class="text-slate-400 font-normal">(aparece al pie del Estado de Cuenta)</span></label>
+      <textarea id="etCondiciones" rows="3" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-200 resize-y"></textarea>
+    </div>
     <div id="etCategoriasWrap" class="mb-4 hidden">
       <label class="block text-xs font-semibold text-slate-600 mb-2">Cupos disponibles por categoría</label>
       <div id="etCategorias" class="border border-slate-200 rounded-lg overflow-hidden divide-y divide-slate-100"></div>
@@ -2606,6 +2616,7 @@ const today = () => new Date().toISOString().slice(0,10);
 const now = () => { const d = new Date(); return d.toISOString().slice(0,10) + ' ' + d.toTimeString().slice(0,5); };
 const clubById = id => S.clubes.find(c => +c.id === +id);
 const catById  = id => S.categorias.find(c => +c.id === +id);
+const CONDICIONES_DEFAULT = 'El pago de Reserva es por el concepto de separación de vacantes durante un tiempo determinado, no se harán devoluciones en caso el equipo no pueda o desista de participar en el torneo.';
 // Perfil del usuario (operador) que registró un pago, para contacto ante dudas
 const pagoRegistrante = p => (S.usuarios||[]).find(u => u.id === p?.createdBy) || null;
 // Detección de pago duplicado/fraude: mismo medio + fecha + N° operación ya APROBADO.
@@ -4746,6 +4757,7 @@ function openEditTorneo() {
   const t = S.torneos.find(x=>x.id===S.torneoSelId);
   if(!t) return;
   document.getElementById('etNombre').value = t.nombre;
+  document.getElementById('etCondiciones').value = (t.condiciones!=null ? t.condiciones : CONDICIONES_DEFAULT);
   // Cabecera: precargar preview con la imagen actual (si tiene)
   _etHeaderRemove = false;
   const etH = document.getElementById('etHeader'); if(etH) etH.value='';
@@ -4819,6 +4831,7 @@ async function guardarEditTorneo() {
   t.inicio  = inicio;
   t.fin     = fin;
   t.esquema = esquema;
+  t.condiciones = document.getElementById('etCondiciones').value.trim();
   t.label   = `${MESES[d0.getMonth()]} ${d0.getFullYear()} — ${MESES[d1.getMonth()]} ${d1.getFullYear()}`;
   // Guardar aforo por categoría (local + Supabase)
   const aforoUpdates = [];
@@ -4840,7 +4853,7 @@ async function guardarEditTorneo() {
       else if(_etHeaderRemove){ headerUrl = null; headerChanged = true; }
     } catch(err){ toast('⚠ No se pudo actualizar la imagen: '+err.message,'warn'); }
     try {
-      const campos = { nombre, sede, inicio, fin, esquema, label: t.label };
+      const campos = { nombre, sede, inicio, fin, esquema, label: t.label, condiciones: t.condiciones };
       if(headerChanged) campos.header_url = headerUrl;
       await SB().data.actualizarTorneo(t.id, campos);
       // Persistir cambios de aforo por categoría
@@ -7468,6 +7481,11 @@ function renderEstadoCuenta() {
   const recaudado = pagosClub.filter(p=>p.estado!=='rechazado').reduce((s,p)=>s+p.monto, 0);
   const pendiente = Math.max(0, totalInsc - recaudado);
 
+  // Condiciones del torneo (texto configurable; por defecto el estándar)
+  const cond = (torneo.condiciones!=null && torneo.condiciones!=='') ? torneo.condiciones : CONDICIONES_DEFAULT;
+  const condWrap = document.getElementById('ec_condiciones_wrap');
+  if(condWrap){ document.getElementById('ec_condiciones').textContent = cond; condWrap.classList.toggle('hidden', !cond); }
+
   // Banner de cabecera del torneo (si tiene imagen)
   const bannerImg = document.getElementById('ec_header_img');
   if(bannerImg){
@@ -7911,7 +7929,7 @@ async function sbHydrate(){
   S.clubes         = (d.clubes||[]).map(c=>({id:c.id,nombre:c.nombre,delegado:c.delegado,telefono:c.telefono,provincia:c.provincia,orgId:c.org_id}));
   const catsByT = {};
   (d.torneo_categorias||[]).forEach(tc=>{ (catsByT[tc.torneo_id] = catsByT[tc.torneo_id]||[]).push({catId:tc.cat_id,nombre:catNombre(tc.cat_id),modalidad:tc.modalidad,aforo:tc.aforo,fechas:tc.fechas,inscripcion:_num(tc.inscripcion),arbitraje:_num(tc.arbitraje),comision:_num(tc.comision)}); });
-  S.torneos = (d.torneos||[]).map(t=>({id:t.id,nombre:t.nombre,sede:t.sede,esquema:t.esquema,estado:t.estado,inicio:t.inicio,fin:t.fin,fechaVenc:t.fecha_venc,label:t.label,headerUrl:t.header_url,snap:t.snap,orgId:t.org_id,cats:catsByT[t.id]||[]}));
+  S.torneos = (d.torneos||[]).map(t=>({id:t.id,nombre:t.nombre,sede:t.sede,esquema:t.esquema,estado:t.estado,inicio:t.inicio,fin:t.fin,fechaVenc:t.fecha_venc,label:t.label,headerUrl:t.header_url,condiciones:t.condiciones,snap:t.snap,orgId:t.org_id,cats:catsByT[t.id]||[]}));
   S.equipos = (d.equipos||[]).map(e=>({id:e.id,torneoId:e.torneo_id,clubId:e.club_id,catId:e.cat_id,modalidad:e.modalidad||'',nombre:e.nombre,inscripcion:_num(e.inscripcion),arbitraje:_num(e.arbitraje),fechas:e.fechas,monto:_num(e.monto),invitado:e.invitado||false,estado:e.estado,createdBy:e.created_by,clasificatorioId:e.clasificatorio_id,clasifPrecio:_num(e.clasif_precio),orgId:e.org_id}));
   S.prospectos = (d.prospectos||[]).map(p=>({id:p.id,torneoId:p.torneo_id,clubId:p.club_id,clubNombre:p.club_nombre,catIds:p.cat_ids||[],delegado:p.delegado,telefono:p.telefono,nota:p.nota,createdBy:p.created_by,orgId:p.org_id}));
   S.pagos = (d.pagos||[]).map(p=>({id:p.id,torneoId:p.torneo_id,clubId:p.club_id,clasificatorioId:p.clasificatorio_id,monto:_num(p.monto),medio:p.medio,fecha:p.fecha,nroOp:p.nro_op,desc:p.descripcion,voucherUrl:p.voucher_url,estado:p.estado,motivo:p.motivo,op:'',createdBy:p.created_by,regEn:p.created_at,procPor:'',procEn:p.processed_at,orgId:p.org_id}));
