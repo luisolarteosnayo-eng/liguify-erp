@@ -7294,7 +7294,8 @@ function confirmarInscripcion(prospectoId) {
     const defFec  = cat?.fechas    || 6;
     const mod     = tc?.modalidad  || '';
     const afoBase = tc?.aforo || cat?.aforo || 8;
-    const aforo   = cat ? afoBase - equiposByCat(catId).length : null;
+    const _cnt    = myEquipos().filter(e=>+e.torneoId===+torneo.id && +e.catId===+catId && (!e.modalidad || (e.modalidad||'')===mod) && e.estado==='activo').length;
+    const aforo   = cat ? afoBase - _cnt : null;
     const afoTag  = aforo!==null && aforo<=0
       ? `<span class="text-[10px] font-bold text-rose-500 ml-1">Aforo lleno</span>`
       : aforo!==null && aforo<=2
@@ -7343,7 +7344,9 @@ async function doConfirmarInscripcion() {
     const _torn = myTorneos().find(t=>+t.id===+torneoId) || S.torneos.find(t=>+t.id===+torneoId);
     const _tc   = _torn?.cats?.find(x=>x.catId===catId);
     const afoBase = _tc?.aforo || cat?.aforo || 8;
-    const count = equiposByCat(catId).length;
+    const _mod  = _tc?.modalidad || '';
+    // Contar solo equipos de ESTE torneo y esta categoría/modalidad (no de todos los torneos)
+    const count = myEquipos().filter(e=>+e.torneoId===+torneoId && +e.catId===+catId && (!e.modalidad || (e.modalidad||'')===_mod) && e.estado==='activo').length;
     if(afoBase && count>=afoBase){ toast(`${cat?.nombre}: aforo completo, omitido.`,'error'); return; }
     const ya = S.equipos.find(e=>e.torneoId===torneoId&&e.clubId===club.id&&e.catId===catId&&e.estado==='activo');
     if(ya) return;
