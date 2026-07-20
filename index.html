@@ -3974,6 +3974,7 @@ function renderP1Detalle() {
         <button onclick="abrirIngresosFecha(${t.id})" class="text-xs font-semibold text-emerald-700 border border-emerald-200 bg-emerald-50 px-3 py-2 rounded-lg hover:bg-emerald-100 transition">💰 Ingresos por Fecha</button>
         <button onclick="abrirCostos(${t.id})" class="text-xs font-semibold text-rose-700 border border-rose-200 bg-rose-50 px-3 py-2 rounded-lg hover:bg-rose-100 transition">🧾 Costos</button>
         <button onclick="abrirClasifTorneo(${t.id})" class="text-xs font-semibold text-sky-700 border border-sky-200 bg-sky-50 px-3 py-2 rounded-lg hover:bg-sky-100 transition">🏆 Torneos Clasificatorios</button>
+        <button onclick="exportarEquiposTorneoExcel(${t.id})" class="text-xs font-semibold text-emerald-700 border border-emerald-200 bg-emerald-50 px-3 py-2 rounded-lg hover:bg-emerald-100 transition">📊 Excel Equipos</button>
         ${canEdit ? `<button onclick="openEditTorneo()" class="text-xs font-semibold text-white bg-[#18324F] px-3 py-2 rounded-lg hover:bg-[#0f253d] transition">✏️ Editar torneo</button>` : ''}
       </div>
     </div>
@@ -6616,6 +6617,43 @@ function exportarClubesExcel(){
     const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=nombre.replace('.xlsx','.csv'); a.click(); URL.revokeObjectURL(url);
   }
   toast(`${clubes.length} clubes exportados ✓`,'success');
+}
+
+// Exportar a Excel los equipos de un torneo (por categoría, con teléfono y monto).
+// Sirve de insumo para la programación de partidos.
+function exportarEquiposTorneoExcel(torneoId){
+  const t = S.torneos.find(x=>+x.id===+torneoId);
+  if(!t){ toast('Torneo no encontrado.','error'); return; }
+  const catNom = id => catById(id)?.nombre || '';
+  const equipos = myEquipos().filter(e=>+e.torneoId===+torneoId && e.estado==='activo')
+    .slice().sort((a,b)=>{
+      const c = catNom(b.catId).localeCompare(catNom(a.catId),'es',{numeric:true});   // categoría desc
+      if(c!==0) return c;
+      return (clubById(a.clubId)?.nombre||'').localeCompare(clubById(b.clubId)?.nombre||'','es',{numeric:true});
+    });
+  const rows = equipos.map(e=>{
+    const club = clubById(e.clubId);
+    const tc = t.cats?.find(x=>+x.catId===+e.catId && (!e.modalidad || (x.modalidad||'')===(e.modalidad||'')));
+    return [
+      catNom(e.catId),
+      tc?.modalidad || e.modalidad || '',
+      club?.nombre || '—',
+      e.nombre || '',
+      club?.delegado || '',
+      club?.telefono || '',
+      Number(e.inscripcion||0),
+      e.clasificatorioId ? (clasifNombre(e.clasificatorioId)||'') : ''
+    ];
+  });
+  const headers = ['Categoria','Modalidad','Club','Equipo','Contacto','Telefono','Inscripcion','Clasificatorio'];
+  const nombre = `Equipos_${(t.nombre||'Torneo').replace(/[^\w]+/g,'_')}.xlsx`;
+  if(typeof XLSX==='undefined'){ toast('⚠ Librería Excel no cargada.','error'); return; }
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  ws['!cols'] = [{wch:14},{wch:10},{wch:34},{wch:20},{wch:20},{wch:16},{wch:13},{wch:24}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Equipos');
+  XLSX.writeFile(wb, nombre);
+  toast(`${rows.length} equipos exportados ✓`,'success');
 }
 
 function cxcRows() {
