@@ -6641,15 +6641,16 @@ function exportarEquiposTorneoExcel(torneoId){
       e.nombre || '',
       club?.delegado || '',
       club?.telefono || '',
+      club?.provincia || '',
       Number(e.inscripcion||0),
       e.clasificatorioId ? (clasifNombre(e.clasificatorioId)||'') : ''
     ];
   });
-  const headers = ['Categoria','Modalidad','Club','Equipo','Contacto','Telefono','Inscripcion','Clasificatorio'];
+  const headers = ['Categoria','Modalidad','Club','Equipo','Contacto','Telefono','Provincia','Inscripcion','Clasificatorio'];
   const nombre = `Equipos_${(t.nombre||'Torneo').replace(/[^\w]+/g,'_')}.xlsx`;
   if(typeof XLSX==='undefined'){ toast('⚠ Librería Excel no cargada.','error'); return; }
   const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-  ws['!cols'] = [{wch:14},{wch:10},{wch:34},{wch:20},{wch:20},{wch:16},{wch:13},{wch:24}];
+  ws['!cols'] = [{wch:14},{wch:10},{wch:34},{wch:20},{wch:20},{wch:16},{wch:16},{wch:13},{wch:24}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Equipos');
   XLSX.writeFile(wb, nombre);
