@@ -8160,13 +8160,16 @@ function clubACFilter(el) {
   const hi = t => q ? t.replace(new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi'),
     '<mark class="bg-yellow-100 not-italic">$1</mark>') : t;
 
-  let html = matches.map(c =>
-    `<div class="px-3 py-2.5 hover:bg-blue-50 cursor-pointer text-sm flex justify-between items-center gap-2"
-          onmousedown="clubACPick(${c.id})">
-       <span class="font-medium">${hi(c.nombre)}</span>
-       <span class="text-[11px] text-slate-400 shrink-0">${c.provincia||''}</span>
-     </div>`
-  ).join('');
+  let html = matches.map(c => {
+    const sub = [c.delegado && ('👤 '+c.delegado), c.telefono && ('📞 '+c.telefono)].filter(Boolean).join('  ·  ');
+    return `<div class="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm" onmousedown="clubACPick(${c.id})">
+       <div class="flex justify-between items-center gap-2">
+         <span class="font-medium">${hi(c.nombre)}</span>
+         <span class="text-[11px] text-slate-400 shrink-0">${c.provincia||''}</span>
+       </div>
+       ${sub ? `<div class="text-[11px] text-slate-400 mt-0.5">${sub}</div>` : ''}
+     </div>`;
+  }).join('');
 
   if (!matches.length && !_cac.allowNew) { drop.classList.add('hidden'); return; }
 
