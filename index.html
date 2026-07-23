@@ -5656,7 +5656,13 @@ function renderTorneosList() {
   </div>`;
 
   // ---- Tarjetas de torneos seleccionables ----
-  const cards = myTorneos().map(t=>{
+  // Orden: primero por Estado (Activo → En Ejecución → Cerrado), luego por fecha de inicio (más próximo primero).
+  const _ordenEstado = { activo:0, en_ejecucion:1, cerrado:2 };
+  const cards = myTorneos().slice().sort((a,b)=>{
+    const ea = _ordenEstado[a.estado] ?? 9, eb = _ordenEstado[b.estado] ?? 9;
+    if(ea !== eb) return ea - eb;
+    return (a.inicio||'9999').localeCompare(b.inicio||'9999');
+  }).map(t=>{
     const f = torneoFinancials(t);
     const pct = f.total>0 ? Math.round(f.recaudado/f.total*100) : 100;
     const barColor = pct>=100?'#16a34a':pct>=60?'#4F86C6':'#D97706';
