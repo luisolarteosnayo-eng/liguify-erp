@@ -3753,6 +3753,10 @@ function renderTorneosOperativo() {
         <div>
           <p class="font-bold text-slate-800">${t.nombre}</p>
           <p class="text-[11px] text-slate-400 mt-0.5">${t.label||''} · ${t.sede||''}</p>
+          <div class="flex flex-wrap items-center gap-1.5 mt-1.5">
+            <span class="text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full">📅 Inicio: ${t.inicio||'—'}</span>
+            <span class="text-[10px] font-semibold ${t.fechaVenc?'text-rose-700 bg-rose-50 border-rose-100':'text-slate-400 bg-slate-50 border-slate-200'} border px-2 py-0.5 rounded-full">⏰ Límite pago: ${t.fechaVenc||'—'}</span>
+          </div>
         </div>
         <button onclick="selTorneo(${t.id})" class="text-xs font-semibold text-[#4F86C6] hover:underline shrink-0">Ver detalle →</button>
       </div>
