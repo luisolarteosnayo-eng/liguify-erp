@@ -1462,11 +1462,14 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
 
     <!-- Club: autocomplete (existente o nuevo) -->
     <label class="block text-xs font-semibold text-slate-600 mb-1">Club *</label>
-    <input type="text" id="iClubInput" placeholder="Buscar club existente o escribir nombre nuevo…" autocomplete="off"
-      oninput="clubACFilter(this)"
-      onfocus="clubACAttach(this, iOnClubACSelect, true); clubACFilter(this)"
-      onblur="clubACBlur(this)"
-      class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mb-4 outline-none focus:ring-2 focus:ring-blue-200">
+    <div class="flex gap-2 mb-4">
+      <input type="text" id="iClubInput" placeholder="Buscar club existente o escribir nombre nuevo…" autocomplete="off"
+        oninput="clubACFilter(this)"
+        onfocus="clubACAttach(this, iOnClubACSelect, true); clubACFilter(this)"
+        onblur="clubACBlur(this)"
+        class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      <button onclick="abrirNuevoClubDesdeInteresado()" class="shrink-0 text-xs font-semibold text-[#18324F] border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-50 transition">+ Nuevo club</button>
+    </div>
     <p id="iClubHint" class="hidden -mt-3 mb-3 text-[11px] text-emerald-600 font-medium">✓ Club existente seleccionado</p>
 
     <!-- Categorías (multiselect checkboxes) -->
@@ -7471,6 +7474,18 @@ async function crearClub() {
     setTimeout(() => openEstadoCuenta(nuevo.id, S.torneoSelId), 120);
   }
 
+  // Vino del botón "+ Nuevo club" dentro del modal de Club Interesado
+  if(_nuevoClubDesdeInteresado) {
+    _nuevoClubDesdeInteresado = false;
+    openModal('interesadoModal');     // re-mostrar sin resetear el formulario
+    _iClubId = nuevo.id;
+    const ci = document.getElementById('iClubInput'); if(ci) ci.value = nuevo.nombre;
+    document.getElementById('iClubHint')?.classList.remove('hidden');
+    // Prellenar contacto/teléfono con los del club si están vacíos
+    const dEl = document.getElementById('iDelegado'); if(dEl && !dEl.value) dEl.value = nuevo.delegado||'';
+    const tEl = document.getElementById('iTel');      if(tEl && !tEl.value) tEl.value = nuevo.telefono||'';
+  }
+
   // Vino del botón "+ Nuevo club" dentro del modal de equipo clasificado
   if(_nuevoClubDesdeClasif) {
     _nuevoClubDesdeClasif = false;
@@ -7838,6 +7853,14 @@ function abrirNuevoClubDesdeAddCat() {
   _nuevoClubDesdeAddCat = true;
   _addCatSavedCatId = parseInt(document.getElementById('acCat')?.value) || null;
   closeModal('addCatModal');
+  openModal('nuevoClubModal');
+}
+
+// Crear club nuevo desde el modal de "Club Interesado" (conserva el resto del formulario)
+let _nuevoClubDesdeInteresado = false;
+function abrirNuevoClubDesdeInteresado() {
+  _nuevoClubDesdeInteresado = true;
+  closeModal('interesadoModal');   // solo oculta; el DOM del formulario se conserva
   openModal('nuevoClubModal');
 }
 
