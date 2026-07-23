@@ -3724,10 +3724,12 @@ function renderTorneosOperativo() {
       const aforo  = tc.aforo || cat?.aforo || 8;
       const disp   = Math.max(0, aforo - inscritos);
       const pct    = Math.round(inscritos/aforo*100);
+      // Interesados (prospectos) registrados en esta categoría de este torneo
+      const interesados = S.prospectos.filter(p=>p.torneoId===t.id && (p.catIds||[]).includes(tc.catId)).length;
       // Semáforo
       const sem = disp===0 ? 'bg-emerald-500' : disp<=2 ? 'bg-amber-400' : 'bg-rose-400';
       const semTxt = disp===0 ? 'Lleno' : disp<=2 ? `${disp} disp.` : `${disp} disp.`;
-      return {nombre: cat?.nombre||tc.catId, inscritos, aforo, disp, pct, sem, semTxt};
+      return {nombre: cat?.nombre||tc.catId, inscritos, aforo, disp, pct, sem, semTxt, interesados};
     }).sort((a,b)=>String(b.nombre).localeCompare(String(a.nombre),'es',{numeric:true})); // descendente
 
     const totalCats    = cats.length;
@@ -3748,6 +3750,11 @@ function renderTorneosOperativo() {
           <div class="h-1.5 rounded-full ${c.disp===0?'bg-emerald-500':c.disp<=2?'bg-amber-400':'bg-[#4F86C6]'}" style="width:${c.pct}%"></div>
         </div>
         <span class="text-[11px] w-14 text-right ${c.disp===0?'text-emerald-600 font-semibold':c.disp<=2?'text-amber-600':'text-slate-400'}">${c.semTxt}</span>
+        <span class="w-16 text-right shrink-0" title="Clubes interesados registrados en esta categoría">${
+          c.interesados>0
+            ? `<span class="text-[11px] font-bold text-violet-700 bg-violet-50 border border-violet-100 px-2 py-0.5 rounded-full">★ ${c.interesados} inter.</span>`
+            : `<span class="text-[11px] text-slate-300">—</span>`
+        }</span>
       </div>`).join('');
 
     // Desempeño por vendedor: quién inscribió cada equipo (barras horizontales)
