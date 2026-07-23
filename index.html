@@ -3692,8 +3692,9 @@ function renderP1View(vista) {
 }
 
 function renderTorneosOperativo() {
-  // Operativo: solo torneos en estado Activo (abiertos a inscripción).
-  const activos  = myTorneos().filter(t=>t.estado==='activo');
+  // Operativo: solo torneos Activos, ordenados por fecha de inicio (los que inician antes, primero).
+  const activos  = myTorneos().filter(t=>t.estado==='activo')
+    .slice().sort((a,b)=>(a.inicio||'9999').localeCompare(b.inicio||'9999'));
 
   function tarjetaTorneo(t) {
     const cats = (t.cats||[]).map(tc=>{
