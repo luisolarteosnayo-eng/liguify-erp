@@ -2191,6 +2191,10 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
         <input type="date" id="etFin" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
       </div>
     </div>
+    <div class="mb-4">
+      <label class="block text-xs font-semibold text-slate-600 mb-1">⏰ Fecha límite de pago <span class="text-slate-400 font-normal">(vencimiento de cuentas por cobrar)</span></label>
+      <input type="date" id="etFechaVenc" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+    </div>
     <label class="block text-xs font-semibold text-slate-600 mb-1.5">Esquema de cobro</label>
     <div class="flex gap-3 mb-4">
       <label class="flex-1"><input type="radio" name="etEsquema" value="inscripcion_arbitraje" class="sr-only peer">
@@ -4814,6 +4818,7 @@ function openEditTorneo() {
   else { etHP.src=''; etHP.classList.add('hidden'); if(etHQ) etHQ.classList.add('hidden'); }
   document.getElementById('etInicio').value = t.inicio;
   document.getElementById('etFin').value    = t.fin;
+  document.getElementById('etFechaVenc').value = t.fechaVenc || '';
   const sedeEl = document.getElementById('etSede');
   sedeEl.innerHTML = '<option value="">— Sin sede asignada —</option>' +
     myComplejos().map(c=>`<option value="${c.nombre}">${c.nombre}${c.distrito?' ('+c.distrito+')':''}</option>`).join('');
@@ -4869,6 +4874,7 @@ async function guardarEditTorneo() {
   const sede    = document.getElementById('etSede').value;
   const inicio  = document.getElementById('etInicio').value;
   const fin     = document.getElementById('etFin').value;
+  const fechaVenc = document.getElementById('etFechaVenc').value || null;
   const esquema = document.querySelector('input[name="etEsquema"]:checked')?.value||'inscripcion_arbitraje';
   if(!nombre||!inicio||!fin) { toast('⚠ Completa todos los campos requeridos.'); return; }
   const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
@@ -4877,6 +4883,7 @@ async function guardarEditTorneo() {
   t.sede    = sede;
   t.inicio  = inicio;
   t.fin     = fin;
+  t.fechaVenc = fechaVenc;
   t.esquema = esquema;
   t.condiciones = document.getElementById('etCondiciones').value.trim();
   t.label   = `${MESES[d0.getMonth()]} ${d0.getFullYear()} — ${MESES[d1.getMonth()]} ${d1.getFullYear()}`;
@@ -4900,7 +4907,7 @@ async function guardarEditTorneo() {
       else if(_etHeaderRemove){ headerUrl = null; headerChanged = true; }
     } catch(err){ toast('⚠ No se pudo actualizar la imagen: '+err.message,'warn'); }
     try {
-      const campos = { nombre, sede, inicio, fin, esquema, label: t.label, condiciones: t.condiciones };
+      const campos = { nombre, sede, inicio, fin, fecha_venc: fechaVenc, esquema, label: t.label, condiciones: t.condiciones };
       if(headerChanged) campos.header_url = headerUrl;
       await SB().data.actualizarTorneo(t.id, campos);
       // Persistir cambios de aforo por categoría
