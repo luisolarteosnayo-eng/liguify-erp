@@ -3691,6 +3691,23 @@ function renderP1View(vista) {
   else renderTorneosList();
 }
 
+// Badge de alerta con la cuenta regresiva al inicio del torneo (FALTAN X DÍAS).
+function cuentaRegresivaBadge(inicio){
+  if(!inicio) return '';
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const ini = new Date(inicio+'T00:00:00');
+  if(isNaN(ini)) return '';
+  const dias = Math.round((ini - hoy)/86400000);
+  let txt, cls;
+  if(dias < 0){ txt='EN CURSO'; cls='text-slate-600 bg-slate-100 border-slate-200'; }
+  else if(dias === 0){ txt='¡HOY!'; cls='text-white bg-rose-600 border-rose-600'; }
+  else if(dias === 1){ txt='¡MAÑANA!'; cls='text-white bg-rose-600 border-rose-600'; }
+  else if(dias <= 7){ txt='FALTAN '+dias+' DÍAS'; cls='text-white bg-orange-500 border-orange-500'; }
+  else if(dias <= 30){ txt='Faltan '+dias+' días'; cls='text-amber-800 bg-amber-100 border-amber-200'; }
+  else { txt='Faltan '+dias+' días'; cls='text-emerald-700 bg-emerald-50 border-emerald-200'; }
+  return `<span class="text-[10px] font-bold border px-2 py-0.5 rounded-full ${cls}">${txt}</span>`;
+}
+
 function renderTorneosOperativo() {
   // Operativo: solo torneos Activos, ordenados por fecha de inicio (los que inician antes, primero).
   const activos  = myTorneos().filter(t=>t.estado==='activo')
@@ -3755,6 +3772,7 @@ function renderTorneosOperativo() {
           <p class="text-[11px] text-slate-400 mt-0.5">${t.label||''} · ${t.sede||''}</p>
           <div class="flex flex-wrap items-center gap-1.5 mt-1.5">
             <span class="text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full">📅 Inicio: ${t.inicio||'—'}</span>
+            ${cuentaRegresivaBadge(t.inicio)}
             <span class="text-[10px] font-semibold ${t.fechaVenc?'text-rose-700 bg-rose-50 border-rose-100':'text-slate-400 bg-slate-50 border-slate-200'} border px-2 py-0.5 rounded-full">⏰ Límite pago: ${t.fechaVenc||'—'}</span>
           </div>
         </div>
