@@ -1250,12 +1250,22 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
         </div>
         <!-- Filtros -->
         <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 mb-4">
-          <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             <div>
               <label class="block text-xs font-semibold text-slate-500 mb-1">Torneo</label>
               <select id="repTorneo" onchange="renderRepPagos()" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200 bg-white">
                 <option value="">Todos los torneos</option>
               </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Medio de pago</label>
+              <details id="repMedioDd" class="relative">
+                <summary id="repMedioSummary" class="list-none cursor-pointer w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white flex items-center justify-between gap-2 select-none">
+                  <span class="truncate">Todos los medios</span>
+                  <span class="text-slate-400 text-xs">▾</span>
+                </summary>
+                <div id="repMedioOpts" class="absolute z-30 mt-1 w-full min-w-[12rem] max-h-60 overflow-auto bg-white border border-slate-200 rounded-lg shadow-lg p-2 space-y-1"></div>
+              </details>
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-500 mb-1">Estado</label>
@@ -3283,8 +3293,36 @@ function initRepPagos() {
   if(!sel) return;
   const opts = myTorneos().map(t=>`<option value="${t.id}">${t.nombre}</option>`).join('');
   sel.innerHTML = '<option value="">Todos los torneos</option>' + opts;
+  // Poblar filtro de medios de pago (todos los medios presentes en pagos + los configurados)
+  const cont = document.getElementById('repMedioOpts');
+  if(cont){
+    const mediosPagos = new Set(myPagos().map(p=>p.medio).filter(Boolean));
+    myMediosPago().forEach(m=>mediosPagos.add(m.nombre));
+    const medios = [...mediosPagos].sort((a,b)=>a.localeCompare(b,'es'));
+    cont.innerHTML = medios.length
+      ? medios.map(m=>`<label class="flex items-center gap-1.5 text-sm cursor-pointer select-none px-1 py-0.5 rounded hover:bg-slate-50">
+          <input type="checkbox" class="rep-medio accent-[#4F86C6]" value="${m.replace(/"/g,'&quot;')}" checked onchange="onRepMedioChange()"> ${m}
+        </label>`).join('')
+      : '<p class="text-xs text-slate-400 px-1 py-2">Sin medios registrados</p>';
+  }
+  actualizarRepMedioSummary();
   // Rango por defecto: mes actual
   setRepRango('mes');
+}
+
+// Actualiza el texto del resumen del dropdown de medios y re-renderiza.
+function onRepMedioChange(){
+  actualizarRepMedioSummary();
+  renderRepPagos();
+}
+function actualizarRepMedioSummary(){
+  const sum = document.getElementById('repMedioSummary')?.querySelector('span');
+  if(!sum) return;
+  const todos    = [...document.querySelectorAll('.rep-medio')];
+  const marcados = todos.filter(c=>c.checked);
+  sum.textContent = (marcados.length===0 || marcados.length===todos.length)
+    ? 'Todos los medios'
+    : marcados.length===1 ? marcados[0].value : `${marcados.length} medios`;
 }
 
 function setRepRango(rango) {
@@ -3311,12 +3349,16 @@ function setRepRango(rango) {
 function _filtrarRepPagos() {
   const torneoId = document.getElementById('repTorneo')?.value || '';
   const estados  = [...document.querySelectorAll('.rep-estado:checked')].map(c=>c.value);
+  const medios   = [...document.querySelectorAll('.rep-medio:checked')].map(c=>c.value);
+  const totalMedios = document.querySelectorAll('.rep-medio').length;
   const desde    = document.getElementById('repDesde')?.value || '';
   const hasta    = document.getElementById('repHasta')?.value || '';
   return myPagos().filter(p => {
     if(torneoId && +p.torneoId !== +torneoId) return false;
     // Si no hay ninguno marcado, no se filtra por estado (muestra todos).
     if(estados.length && !estados.includes(p.estado)) return false;
+    // Medio: si todos o ninguno marcado, no filtra; si es subconjunto, filtra.
+    if(medios.length && medios.length < totalMedios && !medios.includes(p.medio)) return false;
     if(desde && p.fecha < desde) return false;
     if(hasta && p.fecha > hasta) return false;
     return true;
