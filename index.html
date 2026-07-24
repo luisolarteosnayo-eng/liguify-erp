@@ -1293,6 +1293,8 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
         </div>
         <!-- KPIs resumen -->
         <div id="repKpis" class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4"></div>
+        <!-- Gráfico: recaudado por día -->
+        <div id="repChart" class="mb-4"></div>
         <!-- Tabla -->
         <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
           <table class="w-full text-sm min-w-[700px]">
@@ -1304,6 +1306,7 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
               <th class="py-3 px-4 font-semibold">N° Op.</th>
               <th class="py-3 px-4 font-semibold text-right">Monto</th>
               <th class="py-3 px-4 font-semibold text-center">Estado</th>
+              <th class="py-3 px-4 font-semibold text-center">Detalle</th>
             </tr></thead>
             <tbody id="repPagosTbody" class="divide-y divide-slate-100"></tbody>
           </table>
@@ -3358,6 +3361,7 @@ function renderRepPagos() {
   if(!pagos.length) {
     tbody.innerHTML = '';
     vacio.classList.remove('hidden');
+    renderRepChart();
     return;
   }
   vacio.classList.add('hidden');
@@ -3370,7 +3374,10 @@ function renderRepPagos() {
       <td class="py-3 px-4 text-slate-400 text-xs font-mono">${p.nroOp||'—'}</td>
       <td class="py-3 px-4 text-right font-bold text-slate-800">S/.${(p.monto||0).toFixed(2)}</td>
       <td class="py-3 px-4 text-center">${estadoBadge(p.estado)}</td>
+      <td class="py-3 px-4 text-center"><button onclick="abrirVoucher(${p.id})" class="text-xs font-semibold text-[#4F86C6] hover:underline whitespace-nowrap">Ver detalle →</button></td>
     </tr>`).join('');
+
+  renderRepChart();
 }
 
 function exportarPagosExcel() {
@@ -6825,6 +6832,12 @@ function renderCxcChart(){
   const cont = document.getElementById('cxcChart');
   if(!cont) return;
   const pagos = myPagos().filter(p => p.estado!=='rechazado' && p.fecha && (p.monto||0) > 0);
+  _renderChartRecaudado(cont, pagos, 'Últimos %N% día(s) con pagos · incluye pendientes de aprobar');
+}
+
+// Render genérico del gráfico de barras apiladas por día (usado por CxC y Reporte de Pagos).
+function _renderChartRecaudado(cont, pagos, subtituloTpl){
+  if(!cont) return;
   if(!pagos.length){ cont.innerHTML = ''; return; }
 
   // Trabajadores en orden alfabético fijo -> color estable. El 9.º+ cae en "Otros" (gris).
@@ -6870,11 +6883,19 @@ function renderCxcChart(){
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
       <div class="flex items-center justify-between mb-1 flex-wrap gap-2">
         <h3 class="text-sm font-bold text-slate-700">Recaudado por día · por trabajador</h3>
-        <span class="text-[11px] text-slate-400">Últimos ${dias.length} día(s) con pagos · incluye pendientes de aprobar</span>
+        <span class="text-[11px] text-slate-400">${(subtituloTpl||'Últimos %N% día(s) con pagos').replace('%N%', dias.length)}</span>
       </div>
       <div class="flex items-end gap-1.5 mt-4" style="height:${H+28}px">${columnas}</div>
       <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3 pt-3 border-t border-slate-100">${leyenda}</div>
     </div>`;
+}
+
+// Gráfico de barras por día para el Reporte de Pagos (respeta los filtros activos).
+function renderRepChart(){
+  const cont = document.getElementById('repChart');
+  if(!cont) return;
+  const pagos = _filtrarRepPagos().filter(p => p.fecha && (p.monto||0) > 0);
+  _renderChartRecaudado(cont, pagos, 'Últimos %N% día(s) con pagos · según filtros aplicados');
 }
 
 // ---- REPORTE DE COMISIONES POR VENDEDOR ----
