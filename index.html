@@ -1259,12 +1259,17 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-500 mb-1">Estado</label>
-              <select id="repEstado" onchange="renderRepPagos()" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200 bg-white">
-                <option value="">Todos</option>
-                <option value="aprobado">Aprobados</option>
-                <option value="pendiente">Pendientes</option>
-                <option value="rechazado">Rechazados</option>
-              </select>
+              <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 border border-slate-200 rounded-lg px-3 py-2 bg-white">
+                <label class="flex items-center gap-1.5 text-sm cursor-pointer select-none">
+                  <input type="checkbox" class="rep-estado accent-emerald-600" value="aprobado" checked onchange="renderRepPagos()"> Aprobados
+                </label>
+                <label class="flex items-center gap-1.5 text-sm cursor-pointer select-none">
+                  <input type="checkbox" class="rep-estado accent-amber-500" value="pendiente" checked onchange="renderRepPagos()"> Pendientes
+                </label>
+                <label class="flex items-center gap-1.5 text-sm cursor-pointer select-none">
+                  <input type="checkbox" class="rep-estado accent-rose-500" value="rechazado" onchange="renderRepPagos()"> Rechazados
+                </label>
+              </div>
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-500 mb-1">Desde</label>
@@ -3302,12 +3307,13 @@ function setRepRango(rango) {
 
 function _filtrarRepPagos() {
   const torneoId = document.getElementById('repTorneo')?.value || '';
-  const estado   = document.getElementById('repEstado')?.value || '';
+  const estados  = [...document.querySelectorAll('.rep-estado:checked')].map(c=>c.value);
   const desde    = document.getElementById('repDesde')?.value || '';
   const hasta    = document.getElementById('repHasta')?.value || '';
   return myPagos().filter(p => {
     if(torneoId && +p.torneoId !== +torneoId) return false;
-    if(estado && p.estado !== estado) return false;
+    // Si no hay ninguno marcado, no se filtra por estado (muestra todos).
+    if(estados.length && !estados.includes(p.estado)) return false;
     if(desde && p.fecha < desde) return false;
     if(hasta && p.fecha > hasta) return false;
     return true;
