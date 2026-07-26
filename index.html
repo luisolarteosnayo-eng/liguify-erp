@@ -5640,7 +5640,13 @@ function torneoFinancials(t) {
     // 3 estados del dinero: recaudado (aprobado) · pendiente de aprobar · pendiente de cobro
     const recaudado        = myPagos().filter(p=>p.estado==='aprobado'&&enTorneo(p)).reduce((s,p)=>s+p.monto,0);
     const pendienteAprobar = myPagos().filter(p=>p.estado==='pendiente'&&enTorneo(p)).reduce((s,p)=>s+p.monto,0);
-    const pendienteCobro   = Math.max(0, totalInsc - recaudado - pendienteAprobar);
+    // Pendiente de cobro = suma de la deuda POSITIVA por club (igual criterio que Cuentas por Cobrar).
+    // El saldo a favor/exceso de un club NO compensa la deuda de otro, por eso se floorea por club.
+    const pendienteCobro   = clubIds.reduce((s,cid)=>{
+      const inscC = equipos.filter(e=>+e.clubId===+cid).reduce((a,e)=>a+(e.inscripcion||0),0);
+      const pagC  = myPagos().filter(p=>+p.torneoId===+t.id && +p.clubId===+cid && p.estado!=='rechazado').reduce((a,p)=>a+p.monto,0);
+      return s + Math.max(0, inscC - pagC);
+    }, 0);
     return {total: totalInsc, totalInsc, totalArb, recaudado, pendienteAprobar, pendienteCobro,
             porRecaudar: Math.max(0, totalInsc-recaudado), esquema: t.esquema||'inscripcion_arbitraje'};
   }
