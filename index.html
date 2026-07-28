@@ -7508,19 +7508,20 @@ async function doConfirmarInscripcion() {
   const p = S.prospectos.find(x=>x.id===_ciProspectoId);
   if(!p) return;
   const torneoId = p.torneoId;
+  const prospId  = _ciProspectoId;
 
-  // Crear club si es nuevo
+  // Resolver club (existente por id, por nombre, o nuevo). Aún NO se muta el estado.
   let club = p.clubId ? S.clubes.find(c=>c.id===p.clubId)
     : S.clubes.find(c=>c.nombre.toLowerCase()===(p.clubNombre||'').toLowerCase());
   let clubNuevo = null;
   if(!club){
     club = {id:S.nextId++, nombre:p.clubNombre, delegado:p.delegado, telefono:p.telefono, provincia:'Lima', orgId:myOrgId()};
-    S.clubes.push(club);
     clubNuevo = club;
   }
 
-  // Leer precios por fila
-  const nuevosEq = [];
+  // Leer precios por fila -> lista de equipos a crear (sin tocar S.equipos todavía)
+  const aCrear = [];
+  let algunoOmitido = false;
   document.querySelectorAll('#ci_cats_tbody tr[data-cat]').forEach(row=>{
     const catId = parseInt(row.dataset.cat);
     const cat   = catById(catId);
@@ -7530,40 +7531,53 @@ async function doConfirmarInscripcion() {
     const _mod  = _tc?.modalidad || '';
     // Contar solo equipos de ESTE torneo y esta categoría/modalidad (no de todos los torneos)
     const count = myEquipos().filter(e=>+e.torneoId===+torneoId && +e.catId===+catId && (!e.modalidad || (e.modalidad||'')===_mod) && e.estado==='activo').length;
-    if(afoBase && count>=afoBase){ toast(`${cat?.nombre}: aforo completo, omitido.`,'error'); return; }
+    if(afoBase && count>=afoBase){ toast(`${cat?.nombre}: aforo completo, omitido.`,'error'); algunoOmitido=true; return; }
     const ya = S.equipos.find(e=>e.torneoId===torneoId&&e.clubId===club.id&&e.catId===catId&&e.estado==='activo');
     if(ya) return;
     const insc   = parseFloat(row.querySelector('[data-field="inscripcion"]').value)||0;
     const arb    = parseFloat(row.querySelector('[data-field="arbitraje"]').value)||0;
     const fechas = parseInt(row.querySelector('[data-field="fechas"]')?.value)||cat?.fechas||6;
     const monto  = insc + arb * fechas;
-    const eq = {id:S.nextId++, torneoId, clubId:club.id, catId, modalidad:_tc?.modalidad||'', nombre:'', inscripcion:insc, arbitraje:arb, fechas, monto, invitado:false, estado:'activo', createdBy:S.usuarioActual?.id, orgId:myOrgId()};
-    S.equipos.push(eq);
-    nuevosEq.push(eq);
+    aCrear.push({torneoId, catId, modalidad:_mod, insc, arb, fechas, monto});
   });
 
-  const prospId = _ciProspectoId;
-  S.prospectos = S.prospectos.filter(x=>x.id!==prospId);
-  _ciProspectoId = null;
-  closeModal('confirmarInscripcionModal');
-  renderP1b(); renderCatGrid(); renderEquiposGlobal();
-  if(nuevosEq.length>0) toast(`${club.nombre} inscrito en ${nuevosEq.length} categoría(s) ✓`,'success');
+  // Nada que inscribir: NO se borra el prospecto (evita perder al interesado).
+  if(!aCrear.length){
+    toast(algunoOmitido ? 'No se inscribió: aforo completo.' : 'No hay categorías para inscribir.','error');
+    return;
+  }
 
-  // Persistir en Supabase: club nuevo -> equipos -> borrar prospecto
+  // ---- Persistir en Supabase PRIMERO. Solo si todo se guarda se actualiza la pantalla. ----
   if(sbOn()){
     try {
       if(clubNuevo){
         const c = await SB().data.crearClub({nombre:clubNuevo.nombre, delegado:clubNuevo.delegado, telefono:clubNuevo.telefono, provincia:clubNuevo.provincia, org_id:myOrgId()});
         clubNuevo.id = c.id;
-        nuevosEq.forEach(eq=>{ eq.clubId = c.id; });
       }
-      for(const eq of nuevosEq){
-        const saved = await SB().data.inscribirEquipo({torneo_id:eq.torneoId, club_id:eq.clubId, cat_id:eq.catId, modalidad:eq.modalidad, nombre:eq.nombre, inscripcion:eq.inscripcion, arbitraje:eq.arbitraje, fechas:eq.fechas, monto:eq.monto, invitado:false, estado:'activo', org_id:myOrgId()});
-        eq.id = saved.id;
+      for(const item of aCrear){
+        const saved = await SB().data.inscribirEquipo({torneo_id:item.torneoId, club_id:club.id, cat_id:item.catId, modalidad:item.modalidad, nombre:'', inscripcion:item.insc, arbitraje:item.arb, fechas:item.fechas, monto:item.monto, invitado:false, estado:'activo', org_id:myOrgId()});
+        item.savedId = saved.id;
       }
       await SB().data.eliminarProspecto(prospId);
-    } catch(e){ toast('⚠ Se inscribió localmente pero no se guardó todo en la BD: '+e.message,'error'); }
+    } catch(e){
+      // Falló la grabación: el equipo permanece como interesado y se muestra el error real.
+      toast('⚠ No se pudo inscribir en la base de datos: '+(e.message||e)+'. El equipo sigue como interesado.','error');
+      return;
+    }
   }
+
+  // ---- Éxito (o modo demo): recién ahora se muta el estado local ----
+  if(clubNuevo && !S.clubes.some(c=>c.id===clubNuevo.id)) S.clubes.push(clubNuevo);
+  const nuevosEq = aCrear.map(item=>{
+    const eq = {id:item.savedId||S.nextId++, torneoId:item.torneoId, clubId:club.id, catId:item.catId, modalidad:item.modalidad, nombre:'', inscripcion:item.insc, arbitraje:item.arb, fechas:item.fechas, monto:item.monto, invitado:false, estado:'activo', createdBy:S.usuarioActual?.id, orgId:myOrgId()};
+    S.equipos.push(eq);
+    return eq;
+  });
+  S.prospectos = S.prospectos.filter(x=>x.id!==prospId);
+  _ciProspectoId = null;
+  closeModal('confirmarInscripcionModal');
+  renderP1b(); renderCatGrid(); renderEquiposGlobal();
+  toast(`${club.nombre} inscrito en ${nuevosEq.length} categoría(s) ✓`,'success');
 }
 
 async function crearClub() {
