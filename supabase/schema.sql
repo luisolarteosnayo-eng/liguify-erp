@@ -151,6 +151,8 @@ create table if not exists public.equipos (
   cat_id      bigint not null references public.categorias(id) on delete restrict,
   modalidad   text default '',          -- 'F7' | 'F9' | etc. (heredado de torneo_categorias)
   nombre      text default '',          -- sub-nombre opcional ("Cara A", "Cara B")
+  contacto          text,               -- delegado/pagador de ESTE equipo (puede variar por categoría)
+  contacto_telefono text,               -- teléfono del contacto pagador del equipo
   inscripcion numeric(12,2) default 0,
   arbitraje   numeric(12,2) default 0,
   fechas      int default 0,
@@ -220,6 +222,7 @@ create table if not exists public.pagos (
   fecha        date not null default current_date,
   nro_op       text,
   descripcion  text,
+  contacto     text,                    -- a qué contacto/pagador del club se le cobró este pago
   voucher_url  text,                    -- imagen del voucher (Storage)
   estado       text not null default 'pendiente'
                check (estado in ('pendiente','aprobado','rechazado')),

@@ -1753,6 +1753,19 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
         class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
     </div>
 
+    <div class="grid grid-cols-2 gap-2 mb-3">
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Contacto (pagador) <span class="text-slate-400 font-normal">de esta categoría</span></label>
+        <input type="text" id="acContacto" placeholder="Nombre del delegado que paga"
+          class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Teléfono del contacto</label>
+        <input type="text" id="acContactoTel" placeholder="9xx xxx xxx"
+          class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200 mono">
+      </div>
+    </div>
+
     <label class="block text-xs font-semibold text-slate-600 mb-1">Categoría *</label>
     <select id="acCat" onchange="acOnCatChange()" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mb-3 outline-none focus:ring-2 focus:ring-blue-200 bg-white"></select>
 
@@ -3948,6 +3961,7 @@ function renderP1Detalle() {
             ${e.nombre ? `${club?.nombre||''} <span class="text-slate-400 font-normal">· ${e.nombre}</span>` : club?.nombre||'—'}
             ${e.invitado ? '<span class="ml-1 text-[9px] font-bold bg-violet-100 text-violet-600 px-1.5 py-0.5 rounded-full">INVITADO</span>' : ''}
             ${e.clasificatorioId ? `<span class="ml-1 text-[9px] font-bold bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full">🏆 ${clasifNombre(e.clasificatorioId)}</span>` : ''}
+            ${e.contacto ? `<div class="text-[11px] text-slate-400 font-normal mt-0.5">👤 ${e.contacto}${e.contactoTelefono ? ' · 📞 '+e.contactoTelefono : ''}</div>` : ''}
           </td>
           <td class="py-2.5 px-4 text-slate-400 text-xs mono">${e.invitado ? '<span class="text-violet-400">—</span>' : (e.arbitraje>0 ? `${fmt(e.arbitraje)}×${e.fechas}` : '—')}</td>
           <td class="py-2.5 px-4 text-right mono font-bold text-sm">${e.invitado ? '<span class="text-violet-500">S/.0.00</span>' : fmt(e.inscripcion)}</td>
@@ -7541,6 +7555,10 @@ async function doConfirmarInscripcion() {
     aCrear.push({torneoId, catId, modalidad:_mod, insc, arb, fechas, monto});
   });
 
+  // Contacto pagador heredado del interesado (mismo delegado/teléfono del prospecto).
+  const contacto    = p.delegado || '';
+  const contactoTel = p.telefono || '';
+
   // Nada que inscribir: NO se borra el prospecto (evita perder al interesado).
   if(!aCrear.length){
     toast(algunoOmitido ? 'No se inscribió: aforo completo.' : 'No hay categorías para inscribir.','error');
@@ -7555,7 +7573,7 @@ async function doConfirmarInscripcion() {
         clubNuevo.id = c.id;
       }
       for(const item of aCrear){
-        const saved = await SB().data.inscribirEquipo({torneo_id:item.torneoId, club_id:club.id, cat_id:item.catId, modalidad:item.modalidad, nombre:'', inscripcion:item.insc, arbitraje:item.arb, fechas:item.fechas, monto:item.monto, invitado:false, estado:'activo', org_id:myOrgId()});
+        const saved = await SB().data.inscribirEquipo({torneo_id:item.torneoId, club_id:club.id, cat_id:item.catId, modalidad:item.modalidad, nombre:'', contacto, contacto_telefono:contactoTel, inscripcion:item.insc, arbitraje:item.arb, fechas:item.fechas, monto:item.monto, invitado:false, estado:'activo', org_id:myOrgId()});
         item.savedId = saved.id;
       }
       await SB().data.eliminarProspecto(prospId);
@@ -7569,7 +7587,7 @@ async function doConfirmarInscripcion() {
   // ---- Éxito (o modo demo): recién ahora se muta el estado local ----
   if(clubNuevo && !S.clubes.some(c=>c.id===clubNuevo.id)) S.clubes.push(clubNuevo);
   const nuevosEq = aCrear.map(item=>{
-    const eq = {id:item.savedId||S.nextId++, torneoId:item.torneoId, clubId:club.id, catId:item.catId, modalidad:item.modalidad, nombre:'', inscripcion:item.insc, arbitraje:item.arb, fechas:item.fechas, monto:item.monto, invitado:false, estado:'activo', createdBy:S.usuarioActual?.id, orgId:myOrgId()};
+    const eq = {id:item.savedId||S.nextId++, torneoId:item.torneoId, clubId:club.id, catId:item.catId, modalidad:item.modalidad, nombre:'', contacto, contactoTelefono:contactoTel, inscripcion:item.insc, arbitraje:item.arb, fechas:item.fechas, monto:item.monto, invitado:false, estado:'activo', createdBy:S.usuarioActual?.id, orgId:myOrgId()};
     S.equipos.push(eq);
     return eq;
   });
@@ -7583,21 +7601,32 @@ async function doConfirmarInscripcion() {
 async function crearClub() {
   const nombre = document.getElementById('ncNombre').value.trim();
   if(!nombre){toast('El nombre del club es obligatorio.','error');return;}
-  const nuevo = {id:S.nextId++,nombre,delegado:document.getElementById('ncDelegado').value.trim(),telefono:document.getElementById('ncTel').value.trim(),provincia:document.getElementById('ncProv').value.trim()||'Lima',orgId:myOrgId()};
-  S.clubes.push(nuevo);
 
-  // Esperar id real de Supabase ANTES de crear el equipo
-  if(sbOn()){
-    try {
-      const c = await SB().data.crearClub({nombre,delegado:nuevo.delegado,telefono:nuevo.telefono,provincia:nuevo.provincia,org_id:myOrgId()});
-      nuevo.id = c.id;
-    } catch(e){ toast('⚠ Error al guardar club: '+e.message,'error'); }
+  // Dedupe: si ya existe un club con el mismo nombre, se REUTILIZA (el contacto es por equipo,
+  // así que no hay razón para duplicar el club). El delegado/teléfono ingresados se usarán como
+  // contacto del equipo/interesado, no crean un club nuevo.
+  const dupN = nombre.toLowerCase();
+  const existente = S.clubes.find(c=>(c.nombre||'').trim().toLowerCase()===dupN);
+  let nuevo;
+  if(existente){
+    nuevo = existente;
+    toast(`Ya existía "${existente.nombre}"; se reutilizó (no se duplicó).`,'success');
+  } else {
+    nuevo = {id:S.nextId++,nombre,delegado:document.getElementById('ncDelegado').value.trim(),telefono:document.getElementById('ncTel').value.trim(),provincia:document.getElementById('ncProv').value.trim()||'Lima',orgId:myOrgId()};
+    S.clubes.push(nuevo);
+    // Esperar id real de Supabase ANTES de crear el equipo
+    if(sbOn()){
+      try {
+        const c = await SB().data.crearClub({nombre,delegado:nuevo.delegado,telefono:nuevo.telefono,provincia:nuevo.provincia,org_id:myOrgId()});
+        nuevo.id = c.id;
+      } catch(e){ toast('⚠ Error al guardar club: '+e.message,'error'); }
+    }
+    toast(`Club "${nombre}" creado ✓`,'success');
   }
 
   closeModal('nuevoClubModal');
   ['ncNombre','ncDelegado','ncTel'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('ncProv').value='Lima';
-  toast(`Club "${nombre}" creado ✓`,'success');
 
   // Vino del botón "+ Nuevo club" dentro del modal de inscripción
   if(_nuevoClubDesdeAddCat) {
@@ -8035,8 +8064,11 @@ function openAddEquipo(preselCatId, preselClubId) {
   clubSel.disabled = !!preselClubId;
   if(!preselClubId) clubACAttach(clubSel, (id,c)=>{ _acClubId=id; if(id) acOnClubChange(); }, false);
 
-  // Limpiar nombre equipo
+  // Limpiar nombre equipo y contacto (se prellenará con el delegado del club)
   document.getElementById('acNombreEquipo').value = '';
+  const _clubPre = preselClubId ? clubById(preselClubId) : null;
+  document.getElementById('acContacto').value    = _clubPre?.delegado || '';
+  document.getElementById('acContactoTel').value = _clubPre?.telefono || '';
 
   // Poblar selector de categorías del torneo (catId|modalidad como value)
   const catSel = document.getElementById('acCat');
@@ -8071,7 +8103,14 @@ function openAddEquipo(preselCatId, preselClubId) {
   openModal('addCatModal');
 }
 
-function acOnClubChange() { /* placeholder para futura lógica */ }
+function acOnClubChange() {
+  // Prellenar contacto/teléfono con el delegado del club (editable — puede variar por categoría).
+  const club = clubById(_acClubId);
+  const cEl = document.getElementById('acContacto');
+  const tEl = document.getElementById('acContactoTel');
+  if(club && cEl && !cEl.value) cEl.value = club.delegado || '';
+  if(club && tEl && !tEl.value) tEl.value = club.telefono || '';
+}
 
 function acOnCatChange() {
   const t = myTorneos().find(x=>x.id===S.torneoSelId) || S.torneos.find(x=>x.id===S.torneoSelId);
@@ -8095,6 +8134,8 @@ function addCategoria() {
   const catId = parseInt(catIdStr);
   const modalidad = catMod || '';
   const nombre = (document.getElementById('acNombreEquipo').value||'').trim();
+  const contacto    = (document.getElementById('acContacto').value||'').trim();
+  const contactoTel = (document.getElementById('acContactoTel').value||'').trim();
   const insc   = parseFloat(document.getElementById('acInsc').value)||0;
   const arb    = parseFloat(document.getElementById('acArb').value)||0;
   const fechas = parseInt(document.getElementById('acFechas').value)||6;
@@ -8107,7 +8148,7 @@ function addCategoria() {
   );
   if(existe){ toast('Ya existe un equipo con ese nombre en esta categoría/modalidad. Asigna un nombre diferente (ej. "Equipo B").'); return; }
   const montoFinal = insc + arb * fechas;
-  const localEq = {id:S.nextId++,torneoId,clubId,catId,modalidad,nombre,inscripcion:insc,arbitraje:arb,fechas,monto:montoFinal,invitado:false,estado:'activo',createdBy:S.usuarioActual?.id,orgId:myOrgId()};
+  const localEq = {id:S.nextId++,torneoId,clubId,catId,modalidad,nombre,contacto,contactoTelefono:contactoTel,inscripcion:insc,arbitraje:arb,fechas,monto:montoFinal,invitado:false,estado:'activo',createdBy:S.usuarioActual?.id,orgId:myOrgId()};
   S.equipos.push(localEq);
   document.getElementById('acClub').disabled = false;
   closeModal('addCatModal');
@@ -8118,7 +8159,7 @@ function addCategoria() {
   const club = clubById(clubId);
   toast(`${nombre||club?.nombre} inscrito en ${catById(catId)?.nombre}${modalidad?' '+modalidad:''} ✓`);
   if(sbOn()){
-    SB().data.inscribirEquipo({torneo_id:torneoId,club_id:clubId,cat_id:catId,modalidad,nombre,inscripcion:insc,arbitraje:arb,fechas,monto:montoFinal,invitado:false,estado:'activo',org_id:myOrgId()})
+    SB().data.inscribirEquipo({torneo_id:torneoId,club_id:clubId,cat_id:catId,modalidad,nombre,contacto,contacto_telefono:contactoTel,inscripcion:insc,arbitraje:arb,fechas,monto:montoFinal,invitado:false,estado:'activo',org_id:myOrgId()})
       .then(eq=>{ localEq.id=eq.id; })
       .catch(e=>{ toast('⚠ Error al guardar equipo: '+e.message,'error'); S.equipos=S.equipos.filter(x=>x!==localEq); renderP1Detalle(); });
   }
@@ -8156,9 +8197,9 @@ async function sbHydrate(){
   const catsByT = {};
   (d.torneo_categorias||[]).forEach(tc=>{ (catsByT[tc.torneo_id] = catsByT[tc.torneo_id]||[]).push({catId:tc.cat_id,nombre:catNombre(tc.cat_id),modalidad:tc.modalidad,aforo:tc.aforo,fechas:tc.fechas,inscripcion:_num(tc.inscripcion),arbitraje:_num(tc.arbitraje),comision:_num(tc.comision)}); });
   S.torneos = (d.torneos||[]).map(t=>({id:t.id,nombre:t.nombre,sede:t.sede,esquema:t.esquema,estado:t.estado,inicio:t.inicio,fin:t.fin,fechaVenc:t.fecha_venc,label:t.label,headerUrl:t.header_url,condiciones:t.condiciones,snap:t.snap,orgId:t.org_id,cats:catsByT[t.id]||[]}));
-  S.equipos = (d.equipos||[]).map(e=>({id:e.id,torneoId:e.torneo_id,clubId:e.club_id,catId:e.cat_id,modalidad:e.modalidad||'',nombre:e.nombre,inscripcion:_num(e.inscripcion),arbitraje:_num(e.arbitraje),fechas:e.fechas,monto:_num(e.monto),invitado:e.invitado||false,estado:e.estado,createdBy:e.created_by,clasificatorioId:e.clasificatorio_id,clasifPrecio:_num(e.clasif_precio),orgId:e.org_id}));
+  S.equipos = (d.equipos||[]).map(e=>({id:e.id,torneoId:e.torneo_id,clubId:e.club_id,catId:e.cat_id,modalidad:e.modalidad||'',nombre:e.nombre,contacto:e.contacto||'',contactoTelefono:e.contacto_telefono||'',inscripcion:_num(e.inscripcion),arbitraje:_num(e.arbitraje),fechas:e.fechas,monto:_num(e.monto),invitado:e.invitado||false,estado:e.estado,createdBy:e.created_by,clasificatorioId:e.clasificatorio_id,clasifPrecio:_num(e.clasif_precio),orgId:e.org_id}));
   S.prospectos = (d.prospectos||[]).map(p=>({id:p.id,torneoId:p.torneo_id,clubId:p.club_id,clubNombre:p.club_nombre,catIds:p.cat_ids||[],delegado:p.delegado,telefono:p.telefono,nota:p.nota,createdBy:p.created_by,orgId:p.org_id}));
-  S.pagos = (d.pagos||[]).map(p=>({id:p.id,torneoId:p.torneo_id,clubId:p.club_id,clasificatorioId:p.clasificatorio_id,monto:_num(p.monto),medio:p.medio,fecha:p.fecha,nroOp:p.nro_op,desc:p.descripcion,voucherUrl:p.voucher_url,estado:p.estado,motivo:p.motivo,op:'',createdBy:p.created_by,regEn:p.created_at,procPor:'',procEn:p.processed_at,orgId:p.org_id}));
+  S.pagos = (d.pagos||[]).map(p=>({id:p.id,torneoId:p.torneo_id,clubId:p.club_id,clasificatorioId:p.clasificatorio_id,contacto:p.contacto||'',monto:_num(p.monto),medio:p.medio,fecha:p.fecha,nroOp:p.nro_op,desc:p.descripcion,voucherUrl:p.voucher_url,estado:p.estado,motivo:p.motivo,op:'',createdBy:p.created_by,regEn:p.created_at,procPor:'',procEn:p.processed_at,orgId:p.org_id}));
   // Ingresos por Fecha (detalle financiero de cada jornada)
   _ifData = {};
   (d.ingresos_fecha||[]).forEach(r=>{
