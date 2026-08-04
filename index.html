@@ -1105,13 +1105,13 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
                 <input type="date" id="pFecha" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-200">
               </div>
               <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">N° de Operación</label>
+                <label id="pNroOpLabel" class="block text-xs font-semibold text-slate-600 mb-1">N° de Operación</label>
                 <input type="text" id="pNroOp" placeholder="Ej. 7700" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs mono outline-none focus:ring-2 focus:ring-blue-200">
               </div>
             </div>
             <label class="block text-xs font-semibold text-slate-600 mb-1">Descripción</label>
             <input type="text" id="pDesc" placeholder="Ej. Adelanto inscripción Cat. 2016" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs mb-4 outline-none focus:ring-2 focus:ring-blue-200">
-            <label class="block text-xs font-semibold text-slate-600 mb-2">Voucher <span class="text-rose-500">— obligatorio</span></label>
+            <label class="block text-xs font-semibold text-slate-600 mb-2">Voucher <span id="vLabelReq" class="text-rose-500">— obligatorio</span></label>
             <label id="vzone" class="border-2 border-dashed border-slate-300 rounded-lg p-5 flex flex-col items-center text-center text-slate-400 hover:border-blue-300 hover:bg-blue-50/30 cursor-pointer transition">
               <span class="text-2xl mb-2">📤</span>
               <p class="text-xs font-medium">Arrastra la imagen aquí</p>
@@ -6255,12 +6255,27 @@ function renderMediosBtns() {
       class="medio-btn border border-slate-300 text-slate-500 text-xs font-semibold py-2 rounded-lg hover:bg-slate-50 transition${i===0?' sel':''}">
       ${m.icon||''} ${m.nombre}
     </button>`).join('');
+  _actualizarReqVoucher();
 }
 
+// ¿El medio seleccionado es efectivo? (voucher y N° operación pasan a ser opcionales)
+function _medioEsEfectivo(nombre){
+  return (myMediosPago().find(m=>m.nombre===(nombre||S.medioSeleccionado))?.tipo) === 'efectivo';
+}
+// Ajusta la UI del voucher/N° op según el medio (obligatorio salvo efectivo).
+function _actualizarReqVoucher(){
+  const ef = _medioEsEfectivo();
+  const lbl = document.getElementById('vLabelReq');
+  if(lbl){ lbl.textContent = ef ? '— opcional (efectivo)' : '— obligatorio'; lbl.className = ef ? 'text-slate-400 font-normal' : 'text-rose-500'; }
+  if(ef){ document.getElementById('verr')?.classList.add('hidden'); }
+  const opLbl = document.getElementById('pNroOpLabel');
+  if(opLbl) opLbl.innerHTML = ef ? 'N° de Operación <span class="text-slate-400 font-normal">(opcional)</span>' : 'N° de Operación';
+}
 function selMedio(medio, btn) {
   S.medioSeleccionado = medio;
   document.querySelectorAll('.medio-btn').forEach(b=>b.classList.remove('sel'));
   btn.classList.add('sel');
+  _actualizarReqVoucher();
 }
 async function registrarPago() {
   const esClasif = _p2Tipo==='clasif';
@@ -6270,7 +6285,8 @@ async function registrarPago() {
   const monto = parseFloat(document.getElementById('pMonto').value)||0;
   if(monto<=0) { toast('El monto debe ser mayor a S/. 0','error'); return; }
   if(!S.medioSeleccionado){ toast('Selecciona un medio de pago.','error'); return; }
-  if(!S.voucherUploaded) { document.getElementById('verr').classList.remove('hidden'); return; }
+  // El voucher es obligatorio salvo cuando el medio es efectivo.
+  if(!_medioEsEfectivo() && !S.voucherUploaded) { document.getElementById('verr').classList.remove('hidden'); return; }
 
   const nuevo = {
     id: S.nextId++, torneoId: _p2TorneoId,
