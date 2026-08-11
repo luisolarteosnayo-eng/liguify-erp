@@ -1658,10 +1658,13 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
 
     <!-- Header -->
     <div class="flex items-start justify-between px-6 py-4 border-b border-slate-100 shrink-0">
-      <div>
+      <div class="flex items-start gap-3">
+        <img id="ec_club_logo" class="hidden w-14 h-14 rounded-xl object-contain bg-slate-50 border border-slate-100 shrink-0 mt-1" alt="" crossorigin="anonymous">
+        <div>
         <p class="inline-block text-sm font-extrabold text-[#18324F] bg-blue-50 border border-blue-100 px-3 py-1 rounded-lg uppercase tracking-wide mb-1.5" id="ec_torneo_label">Torneo</p>
         <h2 class="text-lg font-bold text-slate-800" id="ec_club_nombre">Club</h2>
         <p class="text-xs text-slate-400 mt-0.5" id="ec_club_detalle"></p>
+        </div>
       </div>
       <button onclick="closeModal('estadoCuentaModal')" class="ec-noexport text-slate-300 hover:text-slate-500 text-xl leading-none mt-1">✕</button>
     </div>
@@ -4032,10 +4035,15 @@ function renderP1Detalle() {
         const club = clubById(e.clubId);
         return `<tr class="hover:bg-blue-50 cursor-pointer ${e.estado==='inactivo'?'opacity-40':''}" onclick="openEstadoCuenta(${e.clubId},${t.id})">
           <td class="py-2.5 px-4 font-medium text-sm">
-            ${e.nombre ? `${club?.nombre||''} <span class="text-slate-400 font-normal">· ${e.nombre}</span>` : club?.nombre||'—'}
-            ${e.invitado ? '<span class="ml-1 text-[9px] font-bold bg-violet-100 text-violet-600 px-1.5 py-0.5 rounded-full">INVITADO</span>' : ''}
-            ${e.clasificatorioId ? `<span class="ml-1 text-[9px] font-bold bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full">🏆 ${clasifNombre(e.clasificatorioId)}</span>` : ''}
-            ${e.contacto ? `<div class="text-[11px] text-slate-400 font-normal mt-0.5">👤 ${e.contacto}${e.contactoTelefono ? ' · 📞 '+e.contactoTelefono : ''}</div>` : ''}
+            <div class="flex items-center gap-2.5">
+              ${logoClubHTML(club)}
+              <div>
+                ${e.nombre ? `${club?.nombre||''} <span class="text-slate-400 font-normal">· ${e.nombre}</span>` : club?.nombre||'—'}
+                ${e.invitado ? '<span class="ml-1 text-[9px] font-bold bg-violet-100 text-violet-600 px-1.5 py-0.5 rounded-full">INVITADO</span>' : ''}
+                ${e.clasificatorioId ? `<span class="ml-1 text-[9px] font-bold bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full">🏆 ${clasifNombre(e.clasificatorioId)}</span>` : ''}
+                ${e.contacto ? `<div class="text-[11px] text-slate-400 font-normal mt-0.5">👤 ${e.contacto}${e.contactoTelefono ? ' · 📞 '+e.contactoTelefono : ''}</div>` : ''}
+              </div>
+            </div>
           </td>
           <td class="py-2.5 px-4 text-slate-400 text-xs mono">${e.invitado ? '<span class="text-violet-400">—</span>' : (e.arbitraje>0 ? `${fmt(e.arbitraje)}×${e.fechas}` : '—')}</td>
           <td class="py-2.5 px-4 text-right mono font-bold text-sm">${e.invitado ? '<span class="text-violet-500">S/.0.00</span>' : fmt(e.inscripcion)}</td>
@@ -6783,6 +6791,14 @@ function setCxcTorneoFilter(torneoId) {
 // ============================================================================
 let _clubEditId = null;
 
+// Logo del club en listas: imagen si existe, círculo con la inicial si no.
+function logoClubHTML(club, cls){
+  const c = cls || 'w-7 h-7';
+  if(club?.logoUrl) return `<img src="${club.logoUrl}" class="${c} rounded-full object-contain bg-slate-50 border border-slate-100 shrink-0" alt="">`;
+  const ini = (club?.nombre||'?').trim().charAt(0).toUpperCase();
+  return `<span class="${c} rounded-full bg-slate-100 text-slate-400 text-[11px] font-bold inline-flex items-center justify-center shrink-0">${ini}</span>`;
+}
+
 // Logo del club: máx 512px por lado, conserva transparencia (PNG). Si el
 // redimensionado no reduce el peso se sube el original.
 function redimensionarLogo(file){
@@ -7888,6 +7904,11 @@ function renderEstadoCuenta() {
 
   // Header
   document.getElementById('ec_torneo_label').textContent = torneo.nombre;
+  const ecLogo = document.getElementById('ec_club_logo');
+  if(ecLogo){
+    if(club.logoUrl){ ecLogo.src = club.logoUrl; ecLogo.classList.remove('hidden'); }
+    else { ecLogo.src = ''; ecLogo.classList.add('hidden'); }
+  }
   document.getElementById('ec_club_nombre').textContent  = club.nombre;
   document.getElementById('ec_club_detalle').textContent =
     `Contacto: ${club.delegado||'—'}  ·  Tel: ${club.telefono||'—'}  ·  ${equipos.length} equipo(s) activo(s)`;
