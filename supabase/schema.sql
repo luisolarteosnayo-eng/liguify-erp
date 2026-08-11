@@ -80,6 +80,8 @@ create table if not exists public.clubes (
   delegado  text,
   telefono  text,
   provincia text default 'Lima',
+  email     text,
+  logo_url  text,   -- bucket 'torneos' {org_id}/clubes/ — lo migra Competencias al importar
   org_id    bigint not null references public.organizaciones(id) on delete cascade
 );
 

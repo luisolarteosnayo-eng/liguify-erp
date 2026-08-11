@@ -278,6 +278,14 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
       const { data } = sb.storage.from('torneos').getPublicUrl(path);
       return data?.publicUrl || path;
     },
+    async subirLogoClub(file, orgId) {
+      const ext  = (file.name.split('.').pop() || 'png').toLowerCase();
+      const path = `${orgId}/clubes/${Date.now()}.${ext}`;
+      const { error } = await sb.storage.from('torneos').upload(path, file, { upsert: true });
+      if (error) throw error;
+      const { data } = sb.storage.from('torneos').getPublicUrl(path);
+      return data?.publicUrl || path;
+    },
   };
 
   window.LiguifyDB = { configurado, client: sb, auth, getProfile, completeOnboarding, data };
@@ -1368,6 +1376,7 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
               <th class="py-3 px-4 font-semibold">Provincia</th>
               <th class="py-3 px-4 font-semibold">Contacto</th>
               <th class="py-3 px-4 font-semibold">Teléfono</th>
+              <th class="py-3 px-4 font-semibold">Email</th>
               <th class="py-3 px-4 font-semibold text-center">Equipos</th>
               <th class="py-3 px-4 font-semibold text-center">Acción</th>
             </tr></thead>
@@ -1567,7 +1576,7 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
     <input type="text" id="ceNombre" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 outline-none focus:ring-2 focus:ring-blue-200">
     <label class="block text-xs font-semibold text-slate-600 mb-1">Contacto / Delegado</label>
     <input type="text" id="ceDelegado" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 outline-none focus:ring-2 focus:ring-blue-200">
-    <div class="grid grid-cols-2 gap-3 mb-4">
+    <div class="grid grid-cols-2 gap-3 mb-3">
       <div>
         <label class="block text-xs font-semibold text-slate-600 mb-1">Teléfono</label>
         <input type="text" id="ceTel" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200">
@@ -1576,6 +1585,16 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
         <label class="block text-xs font-semibold text-slate-600 mb-1">Provincia</label>
         <input type="text" id="ceProv" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-200">
       </div>
+    </div>
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Email del club</label>
+    <input type="email" id="ceEmail" placeholder="club@correo.com" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 outline-none focus:ring-2 focus:ring-blue-200">
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Logo del club</label>
+    <div class="flex items-center gap-3 mb-4">
+      <img id="ceLogoPrev" class="hidden w-12 h-12 rounded-lg object-contain border border-slate-200 bg-slate-50" alt="">
+      <label class="cursor-pointer text-xs font-semibold text-[#18324F] border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-50 transition">📷 Cambiar logo
+        <input type="file" id="ceLogo" accept="image/*" class="hidden" onchange="previewLogo(this,'ceLogoPrev')">
+      </label>
+      <span class="text-[11px] text-slate-400">PNG cuadrado, se ajusta a 512px</span>
     </div>
     <div class="flex justify-end gap-2">
       <button onclick="closeModal('clubEditModal')" class="text-sm font-medium text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">Cancelar</button>
@@ -1600,8 +1619,24 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
         <input type="text" id="ncTel" placeholder="999 999 999" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
       </div>
     </div>
-    <label class="block text-xs font-semibold text-slate-600 mb-1">Provincia</label>
-    <input type="text" id="ncProv" value="Lima" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mb-4 outline-none focus:ring-2 focus:ring-blue-200">
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Provincia</label>
+        <input type="text" id="ncProv" value="Lima" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Email del club</label>
+        <input type="email" id="ncEmail" placeholder="club@correo.com" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+    </div>
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Logo del club</label>
+    <div class="flex items-center gap-3 mb-4">
+      <img id="ncLogoPrev" class="hidden w-12 h-12 rounded-lg object-contain border border-slate-200 bg-slate-50" alt="">
+      <label class="cursor-pointer text-xs font-semibold text-[#18324F] border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-50 transition">📷 Subir logo
+        <input type="file" id="ncLogo" accept="image/*" class="hidden" onchange="previewLogo(this,'ncLogoPrev')">
+      </label>
+      <span class="text-[11px] text-slate-400">PNG cuadrado, se ajusta a 512px</span>
+    </div>
     <div class="flex justify-end gap-2">
       <button onclick="closeModal('nuevoClubModal')" class="text-sm font-medium text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">Cancelar</button>
       <button onclick="crearClub()" class="text-sm font-semibold text-white bg-[#18324F] px-4 py-2 rounded-lg hover:bg-[#0f253d]">Crear Club</button>
@@ -6747,6 +6782,42 @@ function setCxcTorneoFilter(torneoId) {
 //  CLUBES (gestión + exportación)
 // ============================================================================
 let _clubEditId = null;
+
+// Logo del club: máx 512px por lado, conserva transparencia (PNG). Si el
+// redimensionado no reduce el peso se sube el original.
+function redimensionarLogo(file){
+  return new Promise(res=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const esc = Math.min(1, 512/Math.max(img.width||1, img.height||1));
+      const w = Math.max(1, Math.round(img.width*esc)), h = Math.max(1, Math.round(img.height*esc));
+      const cv = document.createElement('canvas'); cv.width=w; cv.height=h;
+      cv.getContext('2d').drawImage(img,0,0,w,h);
+      const png = /png|webp|svg/i.test(file.type||'');
+      cv.toBlob(b=>{
+        URL.revokeObjectURL(img.src);
+        if(!b || b.size >= file.size){ res(file); return; }
+        res(new File([b], file.name.replace(/\.[^.]+$/,'') + (png?'.png':'.jpg'), {type:b.type}));
+      }, png?'image/png':'image/jpeg', 0.85);
+    };
+    img.onerror = ()=>{ URL.revokeObjectURL(img.src); res(file); };
+    img.src = URL.createObjectURL(file);
+  });
+}
+function previewLogo(input, imgId){
+  const f = input.files && input.files[0];
+  const img = document.getElementById(imgId);
+  if(!f || !img) return;
+  img.src = URL.createObjectURL(f);
+  img.classList.remove('hidden');
+}
+async function _subirLogoSiHay(inputId){
+  const f = document.getElementById(inputId)?.files?.[0];
+  if(!f) return null;
+  if(!sbOn()) return null;
+  const chico = await redimensionarLogo(f);
+  return await SB().data.subirLogoClub(chico, myOrgId());
+}
 function _clubesFiltrados(){
   const q = (document.getElementById('clubesBuscar')?.value||'').trim().toLowerCase();
   const tId = document.getElementById('clubesTorneo')?.value || '';
@@ -6764,13 +6835,14 @@ function renderClubes(initSelect){
   const nEquipos = id => myEquipos().filter(e=>+e.clubId===+id && e.estado==='activo' && (!tId||+e.torneoId===+tId)).length;
   document.getElementById('clubesT').innerHTML = clubes.length ? clubes.map(c=>`
     <tr class="hover:bg-slate-50">
-      <td class="py-3 px-4 font-semibold">${c.nombre}</td>
+      <td class="py-3 px-4 font-semibold"><span class="inline-flex items-center gap-2">${c.logoUrl?`<img src="${c.logoUrl}" class="w-7 h-7 rounded object-contain bg-slate-50 border border-slate-100" alt="">`:''}${c.nombre}</span></td>
       <td class="py-3 px-4 text-slate-500 text-xs">${c.provincia||'—'}</td>
       <td class="py-3 px-4 text-slate-600 text-sm">${c.delegado||'—'}</td>
       <td class="py-3 px-4 text-slate-600 text-sm mono">${c.telefono||'—'}</td>
+      <td class="py-3 px-4 text-slate-600 text-xs">${c.email||'—'}</td>
       <td class="py-3 px-4 text-center">${nEquipos(c.id)}</td>
       <td class="py-3 px-4 text-center"><button onclick="editarClub(${c.id})" class="text-xs font-semibold text-[#4F86C6] hover:underline">✏️ Editar</button></td>
-    </tr>`).join('') : `<tr><td colspan="6" class="py-10 text-center text-slate-400 text-sm">No hay clubes que coincidan.</td></tr>`;
+    </tr>`).join('') : `<tr><td colspan="7" class="py-10 text-center text-slate-400 text-sm">No hay clubes que coincidan.</td></tr>`;
 }
 function editarClub(id){
   const c = clubById(id); if(!c) return;
@@ -6779,30 +6851,40 @@ function editarClub(id){
   document.getElementById('ceDelegado').value = c.delegado||'';
   document.getElementById('ceTel').value = c.telefono||'';
   document.getElementById('ceProv').value = c.provincia||'';
+  document.getElementById('ceEmail').value = c.email||'';
+  document.getElementById('ceLogo').value = '';
+  const prev = document.getElementById('ceLogoPrev');
+  if(c.logoUrl){ prev.src = c.logoUrl; prev.classList.remove('hidden'); }
+  else prev.classList.add('hidden');
   openModal('clubEditModal');
 }
-function guardarClubEdit(){
+async function guardarClubEdit(){
   const c = clubById(_clubEditId); if(!c) return;
   const nombre = document.getElementById('ceNombre').value.trim();
   if(!nombre){ toast('El nombre del club es obligatorio.','error'); return; }
+  let logoUrl = null;
+  try { logoUrl = await _subirLogoSiHay('ceLogo'); }
+  catch(e){ toast('⚠ No se pudo subir el logo: '+e.message,'error'); }
   c.nombre = nombre;
   c.delegado = document.getElementById('ceDelegado').value.trim();
   c.telefono = document.getElementById('ceTel').value.trim();
   c.provincia = document.getElementById('ceProv').value.trim()||'Lima';
+  c.email = document.getElementById('ceEmail').value.trim();
+  if(logoUrl) c.logoUrl = logoUrl;   // editar sí permite reemplazar el logo
   closeModal('clubEditModal');
   toast('Club actualizado ✓','success');
   renderClubes();
-  if(sbOn()) SB().data.actualizarClub(_clubEditId, {nombre:c.nombre, delegado:c.delegado, telefono:c.telefono, provincia:c.provincia}).catch(e=>toast('⚠ '+e.message,'error'));
+  if(sbOn()) SB().data.actualizarClub(_clubEditId, {nombre:c.nombre, delegado:c.delegado, telefono:c.telefono, provincia:c.provincia, email:c.email||null, logo_url:c.logoUrl||null}).catch(e=>toast('⚠ '+e.message,'error'));
 }
 function exportarClubesExcel(){
   const {clubes, tId} = _clubesFiltrados();
   const torneoNom = tId ? (myTorneos().find(t=>+t.id===+tId)?.nombre||'') : '';
   const nombre = `Clubes_Liguify${torneoNom?'_'+torneoNom.replace(/[^\w]+/g,'_'):''}.xlsx`;
-  const data = [['Club','Contacto','Telefono','Provincia'],
-    ...clubes.map(c=>[c.nombre||'', c.delegado||'', c.telefono||'', c.provincia||''])];
+  const data = [['Club','Contacto','Telefono','Email','Provincia'],
+    ...clubes.map(c=>[c.nombre||'', c.delegado||'', c.telefono||'', c.email||'', c.provincia||''])];
   if(typeof XLSX!=='undefined'){
     const ws = XLSX.utils.aoa_to_sheet(data);
-    ws['!cols'] = [{wch:34},{wch:22},{wch:16},{wch:14}];
+    ws['!cols'] = [{wch:34},{wch:22},{wch:16},{wch:28},{wch:14}];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Clubes');
     XLSX.writeFile(wb, nombre);
@@ -7656,6 +7738,10 @@ async function doConfirmarInscripcion() {
 async function crearClub() {
   const nombre = document.getElementById('ncNombre').value.trim();
   if(!nombre){toast('El nombre del club es obligatorio.','error');return;}
+  const email = document.getElementById('ncEmail').value.trim();
+  let logoUrl = null;
+  try { logoUrl = await _subirLogoSiHay('ncLogo'); }
+  catch(e){ toast('⚠ No se pudo subir el logo: '+e.message,'error'); }
 
   // Dedupe: si ya existe un club con el mismo nombre, se REUTILIZA (el contacto es por equipo,
   // así que no hay razón para duplicar el club). El delegado/teléfono ingresados se usarán como
@@ -7665,14 +7751,19 @@ async function crearClub() {
   let nuevo;
   if(existente){
     nuevo = existente;
+    // Completar SOLO los datos que le faltan al club existente (no sobrescribir)
+    const faltan = {};
+    if(email && !existente.email){ existente.email = email; faltan.email = email; }
+    if(logoUrl && !existente.logoUrl){ existente.logoUrl = logoUrl; faltan.logo_url = logoUrl; }
+    if(sbOn() && Object.keys(faltan).length) SB().data.actualizarClub(existente.id, faltan).catch(e=>toast('⚠ '+e.message,'error'));
     toast(`Ya existía "${existente.nombre}"; se reutilizó (no se duplicó).`,'success');
   } else {
-    nuevo = {id:S.nextId++,nombre,delegado:document.getElementById('ncDelegado').value.trim(),telefono:document.getElementById('ncTel').value.trim(),provincia:document.getElementById('ncProv').value.trim()||'Lima',orgId:myOrgId()};
+    nuevo = {id:S.nextId++,nombre,delegado:document.getElementById('ncDelegado').value.trim(),telefono:document.getElementById('ncTel').value.trim(),provincia:document.getElementById('ncProv').value.trim()||'Lima',email,logoUrl,orgId:myOrgId()};
     S.clubes.push(nuevo);
     // Esperar id real de Supabase ANTES de crear el equipo
     if(sbOn()){
       try {
-        const c = await SB().data.crearClub({nombre,delegado:nuevo.delegado,telefono:nuevo.telefono,provincia:nuevo.provincia,org_id:myOrgId()});
+        const c = await SB().data.crearClub({nombre,delegado:nuevo.delegado,telefono:nuevo.telefono,provincia:nuevo.provincia,email:email||null,logo_url:logoUrl,org_id:myOrgId()});
         nuevo.id = c.id;
       } catch(e){ toast('⚠ Error al guardar club: '+e.message,'error'); }
     }
@@ -7680,8 +7771,10 @@ async function crearClub() {
   }
 
   closeModal('nuevoClubModal');
-  ['ncNombre','ncDelegado','ncTel'].forEach(id=>document.getElementById(id).value='');
+  ['ncNombre','ncDelegado','ncTel','ncEmail'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('ncProv').value='Lima';
+  document.getElementById('ncLogo').value='';
+  document.getElementById('ncLogoPrev').classList.add('hidden');
 
   // Vino del botón "+ Nuevo club" dentro del modal de inscripción
   if(_nuevoClubDesdeAddCat) {
@@ -8248,7 +8341,7 @@ async function sbHydrate(){
   S.proveedores    = (d.proveedores||[]).map(p=>({id:p.id,nombre:p.nombre,rucDni:p.ruc_dni,telefono:p.telefono,conceptoIds:(p.concepto_ids||[]).map(Number),banco1Nombre:p.banco1_nombre,banco1Cuenta:p.banco1_cuenta,banco2Nombre:p.banco2_nombre,banco2Cuenta:p.banco2_cuenta,orgId:p.org_id}));
   S.costos         = (d.costos||[]).map(c=>({id:c.id,torneoId:c.torneo_id,conceptoId:c.concepto_id,proveedorId:c.proveedor_id,descripcion:c.descripcion,monto:_num(c.monto),adelantos:(c.adelantos||[]).map(a=>({fecha:a.fecha,monto:_num(a.monto)})),orgId:c.org_id}));
   S.clasificatorios= (d.clasificatorios||[]).map(c=>({id:c.id,nombre:c.nombre,contacto:c.contacto,telefono:c.telefono,orgId:c.org_id}));
-  S.clubes         = (d.clubes||[]).map(c=>({id:c.id,nombre:c.nombre,delegado:c.delegado,telefono:c.telefono,provincia:c.provincia,orgId:c.org_id}));
+  S.clubes         = (d.clubes||[]).map(c=>({id:c.id,nombre:c.nombre,delegado:c.delegado,telefono:c.telefono,provincia:c.provincia,email:c.email,logoUrl:c.logo_url,orgId:c.org_id}));
   const catsByT = {};
   (d.torneo_categorias||[]).forEach(tc=>{ (catsByT[tc.torneo_id] = catsByT[tc.torneo_id]||[]).push({catId:tc.cat_id,nombre:catNombre(tc.cat_id),modalidad:tc.modalidad,aforo:tc.aforo,fechas:tc.fechas,inscripcion:_num(tc.inscripcion),arbitraje:_num(tc.arbitraje),comision:_num(tc.comision)}); });
   S.torneos = (d.torneos||[]).map(t=>({id:t.id,nombre:t.nombre,sede:t.sede,esquema:t.esquema,estado:t.estado,inicio:t.inicio,fin:t.fin,fechaVenc:t.fecha_venc,label:t.label,headerUrl:t.header_url,condiciones:t.condiciones,snap:t.snap,orgId:t.org_id,cats:catsByT[t.id]||[]}));
