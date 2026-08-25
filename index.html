@@ -7052,14 +7052,24 @@ let _bwTorneoId = null, _bwTpl = null;   // _bwTpl = {url, w, h}
 const _BW_DEFAULT = { logoY:53, logoSize:40, logoCard:true, nomY:78, nomSize:7.5, nomColor:'#ffffff', catY:87, catSize:3.6, catColor:'#ff2d2d' };
 let _bwCfg = {..._BW_DEFAULT};
 
-// Clubes con equipos activos en el torneo (para el selector)
+const _bwNorm = s => (s||'').trim().toLowerCase();
+// Clubes con equipos activos en el torneo (para el selector), DEDUPLICADOS por nombre.
+// Con clubes duplicados, se muestra uno por nombre (se prefiere el registro que tenga logo).
 function _bwClubesDeTorneo(tid){
   const ids = [...new Set(myEquipos().filter(e=>+e.torneoId===+tid && e.estado==='activo').map(e=>e.clubId))];
-  return ids.map(id=>clubById(id)).filter(Boolean).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{numeric:true}));
+  const porNombre = {};
+  ids.map(id=>clubById(id)).filter(Boolean).forEach(c=>{
+    const k = _bwNorm(c.nombre);
+    if(!porNombre[k] || (!porNombre[k].logoUrl && c.logoUrl)) porNombre[k] = c;
+  });
+  return Object.values(porNombre).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{numeric:true}));
 }
-// Texto de categorías de un club en el torneo: "CAT 2017, 2015, 2014"
+// Categorías inscritas del club en el torneo: unión de TODOS los registros con el mismo nombre
+// (para que un club duplicado muestre todas sus categorías reales). "CAT 2017, 2015, 2014".
 function _bwCatsTexto(tid, clubId){
-  const cats = [...new Set(myEquipos().filter(e=>+e.torneoId===+tid && +e.clubId===+clubId && e.estado==='activo')
+  const nombre = _bwNorm(clubById(clubId)?.nombre);
+  const clubIds = new Set(myClubs().filter(c=>_bwNorm(c.nombre)===nombre).map(c=>+c.id));
+  const cats = [...new Set(myEquipos().filter(e=>+e.torneoId===+tid && clubIds.has(+e.clubId) && e.estado==='activo')
     .map(e=>catById(e.catId)?.nombre).filter(Boolean))]
     .sort((a,b)=>String(b).localeCompare(String(a),'es',{numeric:true}));
   return cats.length ? 'CAT '+cats.join(', ') : '';
