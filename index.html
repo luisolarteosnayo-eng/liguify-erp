@@ -278,6 +278,14 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
       const { data } = sb.storage.from('torneos').getPublicUrl(path);
       return data?.publicUrl || path;
     },
+    async subirBienvenidaTorneo(file, orgId) {
+      const ext  = (file.name.split('.').pop() || 'png').toLowerCase();
+      const path = `${orgId}/bienvenida/${Date.now()}.${ext}`;
+      const { error } = await sb.storage.from('torneos').upload(path, file, { upsert: true });
+      if (error) throw error;
+      const { data } = sb.storage.from('torneos').getPublicUrl(path);
+      return data?.publicUrl || path;
+    },
     async subirLogoClub(file, orgId) {
       const ext  = (file.name.split('.').pop() || 'png').toLowerCase();
       const path = `${orgId}/clubes/${Date.now()}.${ext}`;
@@ -1835,6 +1843,91 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
     <div class="flex justify-end gap-2">
       <button onclick="closeModal('addCatModal')" class="text-sm font-medium text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">Cancelar</button>
       <button onclick="addCategoria()" class="text-sm font-semibold text-white bg-[#18324F] px-4 py-2 rounded-lg hover:bg-[#0f253d]">Inscribir Equipo</button>
+    </div>
+  </div>
+</div>
+
+<!-- bienvenidaModal -->
+<div id="bienvenidaModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col fade-in">
+    <div class="flex items-center justify-between px-5 py-3 border-b border-slate-200 shrink-0">
+      <div>
+        <h3 class="font-bold text-base">🎉 Imágenes de Bienvenida</h3>
+        <p id="bwTorneoNombre" class="text-[11px] text-slate-400"></p>
+      </div>
+      <button onclick="closeModal('bienvenidaModal')" class="text-slate-400 hover:text-slate-600 text-xl leading-none">✕</button>
+    </div>
+
+    <!-- Sin plantilla: subir -->
+    <div id="bwNoTpl" class="hidden p-8 text-center">
+      <p class="text-4xl mb-3">🖼️</p>
+      <p class="text-sm text-slate-600 font-semibold mb-1">Sube la plantilla de bienvenida de este torneo</p>
+      <p class="text-xs text-slate-400 mb-5">Imagen base (fondo) donde se colocará el logo, nombre y categorías de cada equipo. Recomendado: vertical, alta resolución (JPG/PNG).</p>
+      <label class="cursor-pointer inline-flex items-center gap-2 text-sm font-semibold text-white bg-[#18324F] px-4 py-2.5 rounded-lg hover:bg-[#0f253d] transition">
+        📤 Subir plantilla
+        <input type="file" id="bwTplInput" accept="image/*" class="hidden" onchange="bwSubirPlantilla(this)">
+      </label>
+    </div>
+
+    <!-- Con plantilla: generador -->
+    <div id="bwGen" class="hidden overflow-y-auto p-5 grid md:grid-cols-2 gap-6">
+      <!-- Vista previa -->
+      <div>
+        <div id="bwPreviewWrap" class="mx-auto border border-slate-200 rounded-lg overflow-hidden bg-slate-100 shadow-inner" style="max-width:340px"></div>
+        <p class="text-[11px] text-slate-400 text-center mt-2">Vista previa — la descarga sale en alta resolución.</p>
+      </div>
+      <!-- Controles -->
+      <div class="space-y-4 text-sm">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Equipo</label>
+          <select id="bwTeam" onchange="bwRenderPreview()" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-200"></select>
+        </div>
+
+        <div class="border-t border-slate-100 pt-3 space-y-3">
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Ajustes (se guardan por torneo)</p>
+          <div>
+            <label class="flex justify-between text-xs text-slate-500 mb-1"><span>Posición vertical del logo</span><span id="bwLogoYv" class="mono"></span></label>
+            <input type="range" id="bwLogoY" min="10" max="90" step="0.5" oninput="bwOnCfgChange()" class="w-full accent-[#18324F]">
+          </div>
+          <div>
+            <label class="flex justify-between text-xs text-slate-500 mb-1"><span>Tamaño del logo</span><span id="bwLogoSizev" class="mono"></span></label>
+            <input type="range" id="bwLogoSize" min="15" max="70" step="0.5" oninput="bwOnCfgChange()" class="w-full accent-[#18324F]">
+          </div>
+          <label class="flex items-center gap-2 text-xs text-slate-600 cursor-pointer select-none">
+            <input type="checkbox" id="bwLogoCard" onchange="bwOnCfgChange()" class="accent-[#18324F]"> Fondo blanco redondeado detrás del logo
+          </label>
+          <div>
+            <label class="flex justify-between text-xs text-slate-500 mb-1"><span>Posición del nombre</span><span id="bwNomYv" class="mono"></span></label>
+            <input type="range" id="bwNomY" min="10" max="98" step="0.5" oninput="bwOnCfgChange()" class="w-full accent-[#18324F]">
+          </div>
+          <div>
+            <label class="flex justify-between text-xs text-slate-500 mb-1"><span>Tamaño del nombre</span><span id="bwNomSizev" class="mono"></span></label>
+            <input type="range" id="bwNomSize" min="3" max="12" step="0.1" oninput="bwOnCfgChange()" class="w-full accent-[#18324F]">
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-slate-500">Color nombre</label>
+            <input type="color" id="bwNomColor" value="#ffffff" oninput="bwOnCfgChange()" class="h-7 w-10 rounded border border-slate-200">
+            <label class="text-xs text-slate-500 ml-2">Color categorías</label>
+            <input type="color" id="bwCatColor" value="#ff2d2d" oninput="bwOnCfgChange()" class="h-7 w-10 rounded border border-slate-200">
+          </div>
+          <div>
+            <label class="flex justify-between text-xs text-slate-500 mb-1"><span>Posición de categorías</span><span id="bwCatYv" class="mono"></span></label>
+            <input type="range" id="bwCatY" min="10" max="99" step="0.5" oninput="bwOnCfgChange()" class="w-full accent-[#18324F]">
+          </div>
+          <div>
+            <label class="flex justify-between text-xs text-slate-500 mb-1"><span>Tamaño de categorías</span><span id="bwCatSizev" class="mono"></span></label>
+            <input type="range" id="bwCatSize" min="2" max="8" step="0.1" oninput="bwOnCfgChange()" class="w-full accent-[#18324F]">
+          </div>
+        </div>
+
+        <div class="border-t border-slate-100 pt-3 flex flex-wrap gap-2">
+          <button onclick="bwDescargar()" class="flex-1 text-sm font-semibold text-white bg-emerald-600 px-4 py-2.5 rounded-lg hover:bg-emerald-700 transition">⬇ Descargar este</button>
+          <button onclick="bwDescargarTodas()" class="flex-1 text-sm font-semibold text-[#18324F] border border-slate-300 px-4 py-2.5 rounded-lg hover:bg-slate-50 transition">⬇ Descargar todas</button>
+          <label class="cursor-pointer text-xs font-semibold text-slate-500 border border-slate-200 px-3 py-2.5 rounded-lg hover:bg-slate-50 transition">📤 Cambiar plantilla
+            <input type="file" id="bwTplInput2" accept="image/*" class="hidden" onchange="bwSubirPlantilla(this)">
+          </label>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -4183,6 +4276,7 @@ function renderP1Detalle() {
         <button onclick="abrirCostos(${t.id})" class="text-xs font-semibold text-rose-700 border border-rose-200 bg-rose-50 px-3 py-2 rounded-lg hover:bg-rose-100 transition">🧾 Costos</button>
         <button onclick="abrirClasifTorneo(${t.id})" class="text-xs font-semibold text-sky-700 border border-sky-200 bg-sky-50 px-3 py-2 rounded-lg hover:bg-sky-100 transition">🏆 Torneos Clasificatorios</button>
         <button onclick="exportarEquiposTorneoExcel(${t.id})" class="text-xs font-semibold text-emerald-700 border border-emerald-200 bg-emerald-50 px-3 py-2 rounded-lg hover:bg-emerald-100 transition">📊 Excel Equipos</button>
+        <button onclick="abrirBienvenida(${t.id})" class="text-xs font-semibold text-red-700 border border-red-200 bg-red-50 px-3 py-2 rounded-lg hover:bg-red-100 transition">🎉 Bienvenidas</button>
         ${canEdit ? `<button onclick="openEditTorneo()" class="text-xs font-semibold text-white bg-[#18324F] px-3 py-2 rounded-lg hover:bg-[#0f253d] transition">✏️ Editar torneo</button>` : ''}
       </div>
     </div>
@@ -6951,6 +7045,192 @@ function exportarEquiposTorneoExcel(torneoId){
   toast(`${rows.length} equipos exportados ✓`,'success');
 }
 
+// ============================================================================
+//  IMÁGENES DE BIENVENIDA — plantilla por torneo + generación por equipo
+// ============================================================================
+let _bwTorneoId = null, _bwTpl = null;   // _bwTpl = {url, w, h}
+const _BW_DEFAULT = { logoY:53, logoSize:40, logoCard:true, nomY:78, nomSize:7.5, nomColor:'#ffffff', catY:87, catSize:3.6, catColor:'#ff2d2d' };
+let _bwCfg = {..._BW_DEFAULT};
+
+// Clubes con equipos activos en el torneo (para el selector)
+function _bwClubesDeTorneo(tid){
+  const ids = [...new Set(myEquipos().filter(e=>+e.torneoId===+tid && e.estado==='activo').map(e=>e.clubId))];
+  return ids.map(id=>clubById(id)).filter(Boolean).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es',{numeric:true}));
+}
+// Texto de categorías de un club en el torneo: "CAT 2017, 2015, 2014"
+function _bwCatsTexto(tid, clubId){
+  const cats = [...new Set(myEquipos().filter(e=>+e.torneoId===+tid && +e.clubId===+clubId && e.estado==='activo')
+    .map(e=>catById(e.catId)?.nombre).filter(Boolean))]
+    .sort((a,b)=>String(b).localeCompare(String(a),'es',{numeric:true}));
+  return cats.length ? 'CAT '+cats.join(', ') : '';
+}
+
+function abrirBienvenida(torneoId){
+  _bwTorneoId = torneoId;
+  const t = myTorneos().find(x=>+x.id===+torneoId) || S.torneos.find(x=>+x.id===+torneoId);
+  if(!t){ toast('Torneo no encontrado.','error'); return; }
+  document.getElementById('bwTorneoNombre').textContent = t.nombre||'';
+  _bwCfg = {..._BW_DEFAULT, ...(t.bienvenidaCfg||{})};
+  openModal('bienvenidaModal');
+  _bwCargarPlantilla(t);
+}
+
+function _bwCargarPlantilla(t){
+  const tieneTpl = !!t.bienvenidaUrl;
+  document.getElementById('bwNoTpl').classList.toggle('hidden', tieneTpl);
+  document.getElementById('bwGen').classList.toggle('hidden', !tieneTpl);
+  if(!tieneTpl){ _bwTpl=null; return; }
+  // Poblar selector de equipos
+  const sel = document.getElementById('bwTeam');
+  const clubes = _bwClubesDeTorneo(t.id);
+  sel.innerHTML = clubes.length ? clubes.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('')
+    : '<option value="">Sin equipos inscritos</option>';
+  // Sincronizar controles con cfg
+  const set=(id,v)=>{const el=document.getElementById(id); if(el) el.value=v;};
+  set('bwLogoY',_bwCfg.logoY); set('bwLogoSize',_bwCfg.logoSize); set('bwNomY',_bwCfg.nomY);
+  set('bwNomSize',_bwCfg.nomSize); set('bwNomColor',_bwCfg.nomColor); set('bwCatY',_bwCfg.catY);
+  set('bwCatSize',_bwCfg.catSize); set('bwCatColor',_bwCfg.catColor);
+  document.getElementById('bwLogoCard').checked = _bwCfg.logoCard!==false;
+  // Cargar imagen de plantilla (para conocer sus dimensiones)
+  const img = new Image(); img.crossOrigin='anonymous';
+  img.onload = ()=>{ _bwTpl={url:t.bienvenidaUrl, w:img.naturalWidth||1080, h:img.naturalHeight||1527}; bwRenderPreview(); };
+  img.onerror = ()=>{ _bwTpl={url:t.bienvenidaUrl, w:1080, h:1527}; bwRenderPreview(); };
+  img.src = t.bienvenidaUrl;
+}
+
+async function bwSubirPlantilla(input){
+  const file = input.files?.[0]; if(!file) return;
+  const t = myTorneos().find(x=>+x.id===+_bwTorneoId) || S.torneos.find(x=>+x.id===+_bwTorneoId);
+  if(!t) return;
+  let url;
+  if(sbOn()){
+    try { url = await SB().data.subirBienvenidaTorneo(file, myOrgId()); }
+    catch(e){ toast('⚠ No se pudo subir la plantilla: '+e.message,'error'); return; }
+    try { await SB().data.actualizarTorneo(t.id, {bienvenida_url:url}); }
+    catch(e){ toast('⚠ Subida pero no guardada: '+e.message,'error'); }
+  } else {
+    url = URL.createObjectURL(file);
+  }
+  t.bienvenidaUrl = url;
+  input.value='';
+  toast('Plantilla guardada ✓','success');
+  _bwCargarPlantilla(t);
+}
+
+let _bwSaveTimer = null;
+function bwOnCfgChange(){
+  const num=(id,d)=>parseFloat(document.getElementById(id)?.value)||d;
+  _bwCfg = {
+    logoY:num('bwLogoY',53), logoSize:num('bwLogoSize',40),
+    logoCard: document.getElementById('bwLogoCard')?.checked!==false,
+    nomY:num('bwNomY',78), nomSize:num('bwNomSize',7.5), nomColor:document.getElementById('bwNomColor')?.value||'#ffffff',
+    catY:num('bwCatY',87), catSize:num('bwCatSize',3.6), catColor:document.getElementById('bwCatColor')?.value||'#ff2d2d',
+  };
+  bwRenderPreview();
+  // Persistir cfg por torneo (debounced)
+  const t = myTorneos().find(x=>+x.id===+_bwTorneoId) || S.torneos.find(x=>+x.id===+_bwTorneoId);
+  if(t){ t.bienvenidaCfg = {..._bwCfg}; }
+  if(sbOn() && t){
+    clearTimeout(_bwSaveTimer);
+    _bwSaveTimer = setTimeout(()=>{ SB().data.actualizarTorneo(t.id, {bienvenida_cfg:t.bienvenidaCfg}).catch(()=>{}); }, 600);
+  }
+}
+
+// Construye el nodo DOM de la bienvenida a un ancho W px (todo escala con W).
+function _bwBuildNode(clubId, W){
+  const c = _bwCfg;
+  const H = _bwTpl ? Math.round(W * _bwTpl.h / _bwTpl.w) : Math.round(W*1.414);
+  const club = clubById(clubId);
+  const cats = _bwCatsTexto(_bwTorneoId, clubId);
+  const node = document.createElement('div');
+  node.style.cssText = `position:relative;width:${W}px;height:${H}px;overflow:hidden;background:#111;font-family:'Poppins','Segoe UI',Arial,sans-serif;`;
+  // Fondo
+  const bg = document.createElement('img');
+  bg.crossOrigin='anonymous'; bg.src=_bwTpl?.url||'';
+  bg.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;';
+  node.appendChild(bg);
+  // Logo
+  if(club?.logoUrl){
+    const box = document.createElement('div');
+    const sz = c.logoSize/100*W;
+    box.style.cssText = `position:absolute;left:50%;top:${c.logoY}%;transform:translate(-50%,-50%);width:${sz}px;height:${sz}px;display:flex;align-items:center;justify-content:center;`;
+    if(c.logoCard){ box.style.background='#fff'; box.style.borderRadius=(sz*0.06)+'px'; box.style.padding=(sz*0.06)+'px'; box.style.boxShadow='0 6px 24px rgba(0,0,0,.35)'; }
+    const lg = document.createElement('img');
+    lg.crossOrigin='anonymous'; lg.src=club.logoUrl;
+    lg.style.cssText='max-width:100%;max-height:100%;object-fit:contain;display:block;';
+    box.appendChild(lg); node.appendChild(box);
+  }
+  // Nombre
+  const nom = document.createElement('div');
+  nom.textContent = (club?.nombre||'').toUpperCase();
+  nom.style.cssText = `position:absolute;left:4%;right:4%;top:${c.nomY}%;transform:translateY(-50%);text-align:center;color:${c.nomColor};font-weight:800;font-size:${c.nomSize/100*W}px;line-height:1;letter-spacing:.5px;text-shadow:0 3px 12px rgba(0,0,0,.5);`;
+  node.appendChild(nom);
+  // Categorías
+  if(cats){
+    const ct = document.createElement('div');
+    ct.textContent = cats;
+    ct.style.cssText = `position:absolute;left:4%;right:4%;top:${c.catY}%;transform:translateY(-50%);text-align:center;color:${c.catColor};font-weight:800;font-size:${c.catSize/100*W}px;line-height:1;letter-spacing:.5px;text-shadow:0 2px 8px rgba(0,0,0,.5);`;
+    node.appendChild(ct);
+  }
+  return node;
+}
+
+function bwRenderPreview(){
+  const wrap = document.getElementById('bwPreviewWrap');
+  if(!wrap || !_bwTpl) return;
+  const clubId = parseInt(document.getElementById('bwTeam')?.value)|| (_bwClubesDeTorneo(_bwTorneoId)[0]?.id);
+  // Actualizar etiquetas de sliders
+  const lbl=(id,txt)=>{const e=document.getElementById(id); if(e) e.textContent=txt;};
+  lbl('bwLogoYv',_bwCfg.logoY+'%'); lbl('bwLogoSizev',_bwCfg.logoSize+'%');
+  lbl('bwNomYv',_bwCfg.nomY+'%'); lbl('bwNomSizev',_bwCfg.nomSize+'%');
+  lbl('bwCatYv',_bwCfg.catY+'%'); lbl('bwCatSizev',_bwCfg.catSize+'%');
+  wrap.innerHTML='';
+  if(!clubId){ wrap.innerHTML='<p class="text-xs text-slate-400 p-6 text-center">Sin equipos inscritos en este torneo.</p>'; return; }
+  const W = wrap.clientWidth || 340;
+  wrap.appendChild(_bwBuildNode(clubId, W));
+}
+
+async function _bwGenerarPNG(clubId){
+  if(typeof html2canvas==='undefined'){ toast('⚠ Librería de imagen no cargada.','error'); return null; }
+  const W = Math.min(_bwTpl?.w||1080, 1600); // alta resolución, tope 1600px de ancho
+  const node = _bwBuildNode(clubId, W);
+  node.style.position='fixed'; node.style.left='-99999px'; node.style.top='0';
+  document.body.appendChild(node);
+  // Esperar carga de imágenes internas
+  await Promise.all([...node.querySelectorAll('img')].map(im=> im.complete ? Promise.resolve()
+    : new Promise(r=>{ im.onload=r; im.onerror=r; })));
+  let canvas;
+  try { canvas = await html2canvas(node, {useCORS:true, backgroundColor:null, scale:1, width:W, height:node.offsetHeight}); }
+  catch(e){ document.body.removeChild(node); toast('⚠ No se pudo generar la imagen: '+e.message,'error'); return null; }
+  document.body.removeChild(node);
+  return canvas;
+}
+
+async function bwDescargar(){
+  const clubId = parseInt(document.getElementById('bwTeam')?.value);
+  if(!clubId){ toast('Selecciona un equipo.','error'); return; }
+  const canvas = await _bwGenerarPNG(clubId); if(!canvas) return;
+  const a = document.createElement('a');
+  a.download = `Bienvenida_${(clubById(clubId)?.nombre||'equipo').replace(/[^\w]+/g,'_')}.png`;
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+  toast('Imagen descargada ✓','success');
+}
+
+async function bwDescargarTodas(){
+  const clubes = _bwClubesDeTorneo(_bwTorneoId);
+  if(!clubes.length){ toast('Sin equipos inscritos.','error'); return; }
+  toast(`Generando ${clubes.length} imágenes…`,'success');
+  for(const c of clubes){
+    const canvas = await _bwGenerarPNG(c.id); if(!canvas) continue;
+    const a = document.createElement('a');
+    a.download = `Bienvenida_${(c.nombre||'equipo').replace(/[^\w]+/g,'_')}.png`;
+    a.href = canvas.toDataURL('image/png'); a.click();
+    await new Promise(r=>setTimeout(r,400)); // separar descargas
+  }
+  toast('Descargas completadas ✓','success');
+}
+
 function cxcRows() {
   const hoy = new Date().toISOString().slice(0,10);
   return myClubs().flatMap(c => {
@@ -8365,7 +8645,7 @@ async function sbHydrate(){
   S.clubes         = (d.clubes||[]).map(c=>({id:c.id,nombre:c.nombre,delegado:c.delegado,telefono:c.telefono,provincia:c.provincia,email:c.email,logoUrl:c.logo_url,orgId:c.org_id}));
   const catsByT = {};
   (d.torneo_categorias||[]).forEach(tc=>{ (catsByT[tc.torneo_id] = catsByT[tc.torneo_id]||[]).push({catId:tc.cat_id,nombre:catNombre(tc.cat_id),modalidad:tc.modalidad,aforo:tc.aforo,fechas:tc.fechas,inscripcion:_num(tc.inscripcion),arbitraje:_num(tc.arbitraje),comision:_num(tc.comision)}); });
-  S.torneos = (d.torneos||[]).map(t=>({id:t.id,nombre:t.nombre,sede:t.sede,esquema:t.esquema,estado:t.estado,inicio:t.inicio,fin:t.fin,fechaVenc:t.fecha_venc,label:t.label,headerUrl:t.header_url,condiciones:t.condiciones,snap:t.snap,orgId:t.org_id,cats:catsByT[t.id]||[]}));
+  S.torneos = (d.torneos||[]).map(t=>({id:t.id,nombre:t.nombre,sede:t.sede,esquema:t.esquema,estado:t.estado,inicio:t.inicio,fin:t.fin,fechaVenc:t.fecha_venc,label:t.label,headerUrl:t.header_url,bienvenidaUrl:t.bienvenida_url,bienvenidaCfg:t.bienvenida_cfg||null,condiciones:t.condiciones,snap:t.snap,orgId:t.org_id,cats:catsByT[t.id]||[]}));
   S.equipos = (d.equipos||[]).map(e=>({id:e.id,torneoId:e.torneo_id,clubId:e.club_id,catId:e.cat_id,modalidad:e.modalidad||'',nombre:e.nombre,contacto:e.contacto||'',contactoTelefono:e.contacto_telefono||'',inscripcion:_num(e.inscripcion),arbitraje:_num(e.arbitraje),fechas:e.fechas,monto:_num(e.monto),invitado:e.invitado||false,estado:e.estado,createdBy:e.created_by,clasificatorioId:e.clasificatorio_id,clasifPrecio:_num(e.clasif_precio),orgId:e.org_id}));
   S.prospectos = (d.prospectos||[]).map(p=>({id:p.id,torneoId:p.torneo_id,clubId:p.club_id,clubNombre:p.club_nombre,catIds:p.cat_ids||[],delegado:p.delegado,telefono:p.telefono,nota:p.nota,createdBy:p.created_by,orgId:p.org_id}));
   S.pagos = (d.pagos||[]).map(p=>({id:p.id,torneoId:p.torneo_id,clubId:p.club_id,clasificatorioId:p.clasificatorio_id,contacto:p.contacto||'',monto:_num(p.monto),medio:p.medio,fecha:p.fecha,nroOp:p.nro_op,desc:p.descripcion,voucherUrl:p.voucher_url,estado:p.estado,motivo:p.motivo,op:'',createdBy:p.created_by,regEn:p.created_at,procPor:'',procEn:p.processed_at,orgId:p.org_id}));
