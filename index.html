@@ -3397,12 +3397,12 @@ function renderRepFechas() {
         medioVals[m.nombre] = s;
       });
 
-      rows.push({ fx, nFecha, torneo: torneo.nombre, ing: tot.ing, eg: tot.eg, util: tot.util, efDisp: tot.efDisp, medioVals });
+      rows.push({ fx, nFecha: +nFecha, torneoId: +torneoId, torneo: torneo.nombre, ing: tot.ing, eg: tot.eg, util: tot.util, efDisp: tot.efDisp, medioVals });
     });
   });
 
-  // Ordenar por fecha
-  rows.sort((a,b) => (a.fx||'').localeCompare(b.fx||''));
+  // Ordenar por fecha DESCENDENTE (la más reciente primero); sin fecha exacta van al final.
+  rows.sort((a,b) => (b.fx||'').localeCompare(a.fx||''));
 
   const fmt0 = v => 'S/ '+Math.abs(v).toFixed(0);
   const vc   = v => v>=0?'text-emerald-700':'text-rose-600';
@@ -3426,8 +3426,8 @@ function renderRepFechas() {
     const pct = r.ing>0 ? (r.util/r.ing*100).toFixed(0)+'%' : '—';
     const fechaFmt = r.fx ? new Date(r.fx+'T00:00:00').toLocaleDateString('es-PE',{day:'numeric',month:'short',year:'numeric'}) : `Fecha ${r.nFecha}`;
     const medioCells = medios.map(m=>`<td class="py-2 px-3 text-right text-slate-600">${r.medioVals[m.nombre]>0?fmt0(r.medioVals[m.nombre]):'—'}</td>`).join('');
-    return `<tr class="border-t border-slate-100 hover:bg-slate-50">
-      <td class="py-2 px-3 font-medium text-slate-700 whitespace-nowrap">${fechaFmt}</td>
+    return `<tr class="border-t border-slate-100 hover:bg-blue-50 cursor-pointer" onclick="abrirIngresosFecha(${r.torneoId}, ${r.nFecha})" title="Abrir el detalle de esta fecha para ver o modificar">
+      <td class="py-2 px-3 font-medium text-slate-700 whitespace-nowrap">${fechaFmt} <span class="text-slate-300">✎</span></td>
       <td class="py-2 px-3 text-slate-600 whitespace-nowrap">${r.torneo}</td>
       <td class="py-2 px-3 text-right text-emerald-700 font-semibold">${fmt0(r.ing)}</td>
       <td class="py-2 px-3 text-right text-rose-600">${fmt0(r.eg)}</td>
@@ -4394,7 +4394,8 @@ function renderIfResumen() {
   </tr>`;
 }
 
-function abrirIngresosFecha(torneoId) {
+// nFecha (opcional): abre directamente esa fecha (p. ej. desde el Resumen por Fecha); si no, la última.
+function abrirIngresosFecha(torneoId, nFecha) {
   _ifTorneoId = torneoId;
   if(!_ifData[torneoId]) _ifData[torneoId] = {};
   const t = myTorneos().find(x=>+x.id===+torneoId);
@@ -4403,7 +4404,7 @@ function abrirIngresosFecha(torneoId) {
   if(!fechas.length) { _ifData[torneoId][1] = _ifBlankFecha(); fechas.push(1); }
   const sel = document.getElementById('ifNumFecha');
   sel.innerHTML = fechas.map(n=>`<option value="${n}">Fecha ${n}</option>`).join('');
-  sel.value = fechas[fechas.length-1];
+  sel.value = (nFecha!=null && fechas.includes(+nFecha)) ? +nFecha : fechas[fechas.length-1];
   cargarIngresosFecha();
   renderIfResumen();
   openModal('ingresosFechaModal');
@@ -4855,6 +4856,8 @@ function guardarIngresosFecha() {
   _ifData[_ifTorneoId][n] = d;
   renderIfResumen();
   renderP1Detalle();
+  // Si el usuario llegó desde el Resumen por Fecha, refrescar esa tabla con los cambios
+  if(_currentScreenId==='p_rep_fechas') renderRepFechas();
   if(sbOn()) {
     SB().data.guardarIngresoFecha({
       torneo_id: _ifTorneoId, n_fecha: n, fecha_exacta: d.fechaExacta || null,
