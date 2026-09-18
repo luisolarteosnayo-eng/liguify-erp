@@ -5910,7 +5910,7 @@ function estadoMensualBlock(){
   const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   const ym  = d => (d||'').slice(0,7);
   const meses = {};
-  const get = k => (meses[k] = meses[k] || {insc:0, fechas:0, costos:0});
+  const get = k => (meses[k] = meses[k] || {insc:0, cobrado:0, fechas:0, costos:0});
   myTorneos().forEach(t=>{
     const kT = ym(t.inicio); if(!kT) return;
     const f = torneoFinancials(t);
@@ -5919,44 +5919,60 @@ function estadoMensualBlock(){
     get(kT).costos += myCostos().filter(c=>+c.torneoId===+t.id).reduce((s,c)=>s+(c.monto||0),0);
     Object.values(_ifData[t.id]||{}).forEach(fd=>{ get(ym(fd.fechaExacta)||kT).fechas += _calcTotalesFecha(fd).util; });
   });
+  // Pagos de inscripciones COBRADOS (aprobados) al mes de la fecha del pago — incluye clubes y clasificatorios.
+  myPagos().filter(p=>p.estado==='aprobado' && p.fecha).forEach(p=>{ get(ym(p.fecha)).cobrado += (p.monto||0); });
   const keys = Object.keys(meses).sort().reverse();   // más reciente primero
   if(!keys.length) return '';
-  const tot = {insc:0, fechas:0, costos:0};
+  const tot = {insc:0, cobrado:0, fechas:0, costos:0};
+  const cell = (v, cls) => `<td class="py-2.5 px-4 text-right mono ${cls}">${v}</td>`;
   const rows = keys.map(k=>{
-    const m = meses[k], res = m.insc + m.fechas - m.costos;
-    tot.insc+=m.insc; tot.fechas+=m.fechas; tot.costos+=m.costos;
+    const m = meses[k];
+    const res  = m.insc    + m.fechas - m.costos;   // sobre lo vendido (devengado)
+    const caja = m.cobrado + m.fechas - m.costos;   // sobre lo cobrado (caja real)
+    tot.insc+=m.insc; tot.cobrado+=m.cobrado; tot.fechas+=m.fechas; tot.costos+=m.costos;
     const [y,mo] = k.split('-');
     return `<tr class="border-t border-slate-100 hover:bg-slate-50">
       <td class="py-2.5 px-4 font-semibold text-slate-700 whitespace-nowrap">${MESES[+mo-1]} ${y}</td>
-      <td class="py-2.5 px-4 text-right mono text-blue-700">${fmt(m.insc)}</td>
-      <td class="py-2.5 px-4 text-right mono ${m.fechas>=0?'text-emerald-700':'text-rose-600'}">${fmt(m.fechas)}</td>
-      <td class="py-2.5 px-4 text-right mono text-amber-700">${m.costos>0?'− '+fmt(m.costos):'—'}</td>
-      <td class="py-2.5 px-4 text-right mono font-extrabold ${res>=0?'text-emerald-700':'text-rose-700'}">${fmt(res)}</td>
+      ${cell(fmt(m.insc),'text-blue-700')}
+      ${cell(fmt(m.cobrado),'text-sky-700 bg-sky-50/60')}
+      ${cell(fmt(m.fechas), m.fechas>=0?'text-emerald-700':'text-rose-600')}
+      ${cell(m.costos>0?'− '+fmt(m.costos):'—','text-amber-700')}
+      ${cell(fmt(res),'font-extrabold '+(res>=0?'text-emerald-700':'text-rose-700'))}
+      ${cell(fmt(caja),'font-extrabold bg-sky-50/60 '+(caja>=0?'text-emerald-700':'text-rose-700'))}
     </tr>`;
   }).join('');
-  const totRes = tot.insc + tot.fechas - tot.costos;
+  const totRes  = tot.insc    + tot.fechas - tot.costos;
+  const totCaja = tot.cobrado + tot.fechas - tot.costos;
   return `
   <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-6">
     <div class="px-5 py-3 border-b border-slate-200">
       <h3 class="text-sm font-bold text-slate-700">📅 Estado Mensual de la Empresa</h3>
-      <p class="text-[11px] text-slate-400">Resultado = Total Inscripciones (+ clasif.) + Ingresos por Fecha (utilidad) − Costos. Inscripciones y costos al mes de inicio del torneo; ingresos por fecha al mes de cada jornada.</p>
+      <p class="text-[11px] text-slate-400">
+        <b>Vendidas</b> = inscripciones cargadas (+ clasif.) al mes de inicio del torneo · <b>Cobradas</b> = pagos aprobados al mes en que se pagaron ·
+        Ingresos por fecha al mes de cada jornada · Costos al mes del torneo.
+        <b>Resultado</b> usa lo vendido; <b>Caja</b> usa lo cobrado.
+      </p>
     </div>
     <div class="overflow-x-auto">
-    <table class="w-full text-sm min-w-[640px]">
+    <table class="w-full text-sm min-w-[860px]">
       <thead><tr class="text-[10px] text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
         <th class="py-2.5 px-4 text-left font-semibold">Mes</th>
-        <th class="py-2.5 px-4 text-right font-semibold">Total Inscripciones</th>
+        <th class="py-2.5 px-4 text-right font-semibold">Insc. Vendidas</th>
+        <th class="py-2.5 px-4 text-right font-semibold bg-sky-50">Insc. Cobradas</th>
         <th class="py-2.5 px-4 text-right font-semibold">Ingresos por Fecha</th>
         <th class="py-2.5 px-4 text-right font-semibold">Costos</th>
-        <th class="py-2.5 px-4 text-right font-semibold">Resultado del mes</th>
+        <th class="py-2.5 px-4 text-right font-semibold">Resultado (vendido)</th>
+        <th class="py-2.5 px-4 text-right font-semibold bg-sky-50">Caja (cobrado)</th>
       </tr></thead>
       <tbody>${rows}</tbody>
       <tfoot><tr class="border-t-2 border-slate-300 bg-slate-50 font-bold">
         <td class="py-2.5 px-4 text-slate-700">TOTAL</td>
-        <td class="py-2.5 px-4 text-right mono text-blue-700">${fmt(tot.insc)}</td>
-        <td class="py-2.5 px-4 text-right mono ${tot.fechas>=0?'text-emerald-700':'text-rose-600'}">${fmt(tot.fechas)}</td>
-        <td class="py-2.5 px-4 text-right mono text-amber-700">${tot.costos>0?'− '+fmt(tot.costos):'—'}</td>
-        <td class="py-2.5 px-4 text-right mono font-extrabold ${totRes>=0?'text-emerald-700':'text-rose-700'}">${fmt(totRes)}</td>
+        ${cell(fmt(tot.insc),'text-blue-700')}
+        ${cell(fmt(tot.cobrado),'text-sky-700')}
+        ${cell(fmt(tot.fechas), tot.fechas>=0?'text-emerald-700':'text-rose-600')}
+        ${cell(tot.costos>0?'− '+fmt(tot.costos):'—','text-amber-700')}
+        ${cell(fmt(totRes),'font-extrabold '+(totRes>=0?'text-emerald-700':'text-rose-700'))}
+        ${cell(fmt(totCaja),'font-extrabold '+(totCaja>=0?'text-emerald-700':'text-rose-700'))}
       </tr></tfoot>
     </table>
     </div>
