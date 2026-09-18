@@ -5901,6 +5901,68 @@ function kpiBlock(label, sublabel, kpi, color, torneoId) {
   </div>`;
 }
 
+// ---- ESTADO MENSUAL DE LA EMPRESA ----
+// Resultado del mes = Total Inscripciones (+ clasif.) + Ingresos por Fecha (utilidad) − Costos.
+// Atribución: inscripciones y costos al mes de INICIO del torneo; ingresos por fecha al mes de
+// la fecha exacta de cada jornada (si no tiene, al mes del torneo). Así la suma de todos los
+// meses coincide con la suma de la "Utilidad Total" de cada torneo.
+function estadoMensualBlock(){
+  const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const ym  = d => (d||'').slice(0,7);
+  const meses = {};
+  const get = k => (meses[k] = meses[k] || {insc:0, fechas:0, costos:0});
+  myTorneos().forEach(t=>{
+    const kT = ym(t.inicio); if(!kT) return;
+    const f = torneoFinancials(t);
+    const clasif = myEquipos().filter(e=>+e.torneoId===+t.id&&e.estado==='activo'&&e.clasificatorioId).reduce((s,e)=>s+(e.clasifPrecio||0),0);
+    get(kT).insc   += (f.totalInsc||0) + clasif;
+    get(kT).costos += myCostos().filter(c=>+c.torneoId===+t.id).reduce((s,c)=>s+(c.monto||0),0);
+    Object.values(_ifData[t.id]||{}).forEach(fd=>{ get(ym(fd.fechaExacta)||kT).fechas += _calcTotalesFecha(fd).util; });
+  });
+  const keys = Object.keys(meses).sort().reverse();   // más reciente primero
+  if(!keys.length) return '';
+  const tot = {insc:0, fechas:0, costos:0};
+  const rows = keys.map(k=>{
+    const m = meses[k], res = m.insc + m.fechas - m.costos;
+    tot.insc+=m.insc; tot.fechas+=m.fechas; tot.costos+=m.costos;
+    const [y,mo] = k.split('-');
+    return `<tr class="border-t border-slate-100 hover:bg-slate-50">
+      <td class="py-2.5 px-4 font-semibold text-slate-700 whitespace-nowrap">${MESES[+mo-1]} ${y}</td>
+      <td class="py-2.5 px-4 text-right mono text-blue-700">${fmt(m.insc)}</td>
+      <td class="py-2.5 px-4 text-right mono ${m.fechas>=0?'text-emerald-700':'text-rose-600'}">${fmt(m.fechas)}</td>
+      <td class="py-2.5 px-4 text-right mono text-amber-700">${m.costos>0?'− '+fmt(m.costos):'—'}</td>
+      <td class="py-2.5 px-4 text-right mono font-extrabold ${res>=0?'text-emerald-700':'text-rose-700'}">${fmt(res)}</td>
+    </tr>`;
+  }).join('');
+  const totRes = tot.insc + tot.fechas - tot.costos;
+  return `
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-6">
+    <div class="px-5 py-3 border-b border-slate-200">
+      <h3 class="text-sm font-bold text-slate-700">📅 Estado Mensual de la Empresa</h3>
+      <p class="text-[11px] text-slate-400">Resultado = Total Inscripciones (+ clasif.) + Ingresos por Fecha (utilidad) − Costos. Inscripciones y costos al mes de inicio del torneo; ingresos por fecha al mes de cada jornada.</p>
+    </div>
+    <div class="overflow-x-auto">
+    <table class="w-full text-sm min-w-[640px]">
+      <thead><tr class="text-[10px] text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+        <th class="py-2.5 px-4 text-left font-semibold">Mes</th>
+        <th class="py-2.5 px-4 text-right font-semibold">Total Inscripciones</th>
+        <th class="py-2.5 px-4 text-right font-semibold">Ingresos por Fecha</th>
+        <th class="py-2.5 px-4 text-right font-semibold">Costos</th>
+        <th class="py-2.5 px-4 text-right font-semibold">Resultado del mes</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr class="border-t-2 border-slate-300 bg-slate-50 font-bold">
+        <td class="py-2.5 px-4 text-slate-700">TOTAL</td>
+        <td class="py-2.5 px-4 text-right mono text-blue-700">${fmt(tot.insc)}</td>
+        <td class="py-2.5 px-4 text-right mono ${tot.fechas>=0?'text-emerald-700':'text-rose-600'}">${fmt(tot.fechas)}</td>
+        <td class="py-2.5 px-4 text-right mono text-amber-700">${tot.costos>0?'− '+fmt(tot.costos):'—'}</td>
+        <td class="py-2.5 px-4 text-right mono font-extrabold ${totRes>=0?'text-emerald-700':'text-rose-700'}">${fmt(totRes)}</td>
+      </tr></tfoot>
+    </table>
+    </div>
+  </div>`;
+}
+
 function renderTorneosList() {
   // ---- Bloques de KPI comparativos ----
   // Año calendario 2026: torneos con inicio en 2026
@@ -5977,6 +6039,7 @@ function renderTorneosList() {
 
   document.getElementById('torneosList').innerHTML = `
     ${comparativo}
+    ${estadoMensualBlock()}
     <div class="flex items-center justify-between mb-3">
       <h4 class="text-sm font-bold text-slate-600">Torneos — haz clic para ver el detalle</h4>
     </div>
