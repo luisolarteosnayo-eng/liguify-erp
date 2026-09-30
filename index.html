@@ -1429,9 +1429,17 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
           <span class="text-[11px] font-bold text-rose-600 uppercase tracking-wide">Mostrando solo equipos con fecha de pago vencida</span>
           <button onclick="setCxcVencFilter(false)" class="ml-auto text-xs text-rose-500 hover:text-rose-700 font-semibold underline">Ver todos ✕</button>
         </div>
+        <!-- 📧 barra de cobro por email: aparece al seleccionar cobros -->
+        <div id="cxcCobroBar" class="hidden mb-3 flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-2.5">
+          <span class="text-xs font-bold text-emerald-900">📧 <span id="cxcCobroN">0</span> cobro(s) seleccionado(s)</span>
+          <span class="text-[11px] text-emerald-700">Se envía un correo por club con el estado de cuenta de los torneos marcados</span>
+          <button onclick="enviarCobros()" class="ml-auto bg-emerald-600 text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-emerald-700 whitespace-nowrap">ENVIAR COBRO POR EMAIL</button>
+          <button onclick="limpiarCobroSel()" class="text-xs text-slate-400 hover:text-slate-600 underline">Limpiar</button>
+        </div>
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
           <table class="w-full text-sm">
             <thead><tr class="text-left text-[11px] text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+              <th class="py-3 px-2 w-8 text-center"><input id="cxcSelAll" type="checkbox" onchange="toggleCobroSelAll(this.checked)" title="Seleccionar todos los cobros visibles" class="w-4 h-4 accent-rose-600"/></th>
               <th class="py-3 px-4 font-semibold">Club</th>
               <th class="py-3 px-4 font-semibold">Provincia</th>
               <th class="py-3 px-4 font-semibold">Torneo / Vence</th>
@@ -7613,6 +7621,7 @@ function renderCxcTabla() {
   const filaHtml = (f) => {
     if(f.tipo==='clasif'){
       return `<tr class="hover:bg-sky-50 cursor-pointer" onclick="abrirCxcClasif(${f.clasifId})">
+        <td class="py-3 px-2"></td>
         <td class="py-3 px-4 font-semibold">${f.clasif?.nombre||'—'} <span class="ml-1 text-[9px] font-bold bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full whitespace-nowrap">🏆 Clasificatorio</span></td>
         <td class="py-3 px-4 text-slate-500 text-xs">${f.clasif?.telefono?('📞 '+f.clasif.telefono):'—'}</td>
         <td class="py-3 px-4">
@@ -7623,7 +7632,9 @@ function renderCxcTabla() {
         <td class="py-3 px-4 text-center"><button onclick="event.stopPropagation();abrirCxcClasif(${f.clasifId})" class="text-xs font-semibold text-[#4F86C6] hover:underline">Ver detalle →</button></td>
       </tr>`;
     }
+    const selKey=f.c.id+'|'+f.tid;
     return `<tr class="hover:bg-rose-50 cursor-pointer" onclick="abrirCxcClub(${f.c.id})">
+      <td class="py-3 px-2 text-center"><input type="checkbox" data-cobro="${selKey}" onclick="event.stopPropagation()" onchange="toggleCobroSel('${selKey}',this.checked)" ${_cobroSel.has(selKey)?'checked':''} title="Seleccionar para enviar el cobro por email" class="w-4 h-4 accent-rose-600"/></td>
       <td class="py-3 px-4 font-semibold">${f.c.nombre}</td>
       <td class="py-3 px-4 text-slate-500 text-xs">${f.c.provincia||'—'}</td>
       <td class="py-3 px-4">
@@ -7640,11 +7651,57 @@ function renderCxcTabla() {
 
   document.getElementById('cxcT').innerHTML = filasFiltradas.length
     ? filasFiltradas.map(filaHtml).join('')
-    : `<tr><td colspan="5" class="py-10 text-center text-slate-400 text-sm">${
+    : `<tr><td colspan="6" class="py-10 text-center text-slate-400 text-sm">${
         _cxcVencFilter==='vencidos' ? 'No hay deudas vencidas ✓'
         : _cxcVencFilter==='semana' ? 'No hay deudas que venzan esta semana ✓'
         : 'No hay deudas pendientes ✓'
       }</td></tr>`;
+}
+
+// ---- 📧 COBRO POR EMAIL (selección manual en Cuentas por Cobrar) ----
+// Marca cobros (club+torneo), y ENVIAR COBRO manda un correo por club con el
+// estado de cuenta de los torneos seleccionados (Edge Function enviar-cobranza).
+let _cobroSel = new Set();
+function toggleCobroSel(k,on){ on?_cobroSel.add(k):_cobroSel.delete(k); renderCobroBar(); }
+function toggleCobroSelAll(on){
+  document.querySelectorAll('#cxcT input[data-cobro]').forEach(ch=>{
+    ch.checked=on; on?_cobroSel.add(ch.dataset.cobro):_cobroSel.delete(ch.dataset.cobro);});
+  renderCobroBar();
+}
+function limpiarCobroSel(){
+  _cobroSel.clear();
+  document.querySelectorAll('#cxcT input[data-cobro]').forEach(ch=>ch.checked=false);
+  const a=document.getElementById('cxcSelAll'); if(a) a.checked=false;
+  renderCobroBar();
+}
+function renderCobroBar(){
+  const bar=document.getElementById('cxcCobroBar'); if(!bar) return;
+  document.getElementById('cxcCobroN').textContent=_cobroSel.size;
+  bar.classList.toggle('hidden',!_cobroSel.size);
+}
+async function enviarCobros(){
+  if(!_cobroSel.size) return;
+  if(!sbOn()){ toast('⚠ Necesitas estar conectado a Supabase para enviar correos','error'); return; }
+  const items=[..._cobroSel].map(k=>{const [c,t]=k.split('|');return {club_id:+c,torneo_id:+t};});
+  const clubs=new Set(items.map(i=>i.club_id));
+  if(!confirm(`Se enviará el estado de cuenta por email a ${clubs.size} club(es) (${items.length} cobro(s) seleccionados).\n\n¿Continuar?`)) return;
+  try{
+    const ses=await SB().auth.getSession();
+    if(!ses){ toast('⚠ Sesión expirada — vuelve a entrar','error'); return; }
+    const r=await fetch(window.SUPABASE_URL+'/functions/v1/enviar-cobranza',{
+      method:'POST',
+      headers:{'Content-Type':'application/json', apikey:window.SUPABASE_ANON_KEY,
+               Authorization:'Bearer '+ses.access_token},
+      body:JSON.stringify({org_id:myOrgId(), items})
+    });
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||d.error){ toast('⚠ '+(d.error||('Error '+r.status)),'error'); return; }
+    let msg=`📧 ${d.enviados||0} correo(s) de cobro enviados`;
+    if(d.sin_email&&d.sin_email.length) msg+=` · SIN EMAIL: ${d.sin_email.join(', ')}`;
+    if(d.errores&&d.errores.length) msg+=` · ${d.errores.length} error(es)`;
+    toast(msg, (d.enviados||0)>0?'success':'error');
+    limpiarCobroSel();
+  }catch(e){ toast('⚠ '+(e.message||e),'error'); }
 }
 
 let _faTorneoId = null;
