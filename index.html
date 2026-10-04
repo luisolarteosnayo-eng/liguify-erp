@@ -4118,7 +4118,7 @@ function renderP1Detalle() {
 
   // Categorías + equipos agrupados
   let catsSections = '';
-  if(isActivo) {
+  if(isActivo || !t.snap) {   // cerrado sin snapshot: se listan sus equipos reales (solo lectura)
     // Categorías configuradas para este torneo específico
     const tornCats = (t.cats||[]).map(tc => {
       const cat = S.categorias.find(c=>c.id===tc.catId);
@@ -4131,7 +4131,7 @@ function renderP1Detalle() {
       const inscritos = equipos.filter(e=>e.estado==='activo').length;
       const pctCat = tc.aforo>0 ? Math.min(100, Math.round(inscritos/tc.aforo*100)) : 0;
       const barCol = pctCat>=100?'bg-emerald-500':pctCat>=60?'bg-blue-500':'bg-amber-500';
-      const canAdd = ['organizador','operador'].includes(S.role);
+      const canAdd = isActivo && ['organizador','operador'].includes(S.role);   // cerrado: sin altas
       const rows = equipos.length>0 ? equipos.map(e=>{
         const club = clubById(e.clubId);
         return `<tr class="hover:bg-blue-50 cursor-pointer ${e.estado==='inactivo'?'opacity-40':''}" onclick="openEstadoCuenta(${e.clubId},${t.id})">
@@ -5832,7 +5832,9 @@ async function crearTorneo() {
 function equiposByTorneo(torneoId) { return myEquipos().filter(e=>+e.torneoId===+torneoId); }
 
 function torneoFinancials(t) {
-  if(t.estado !== 'cerrado') {   // activo y en_ejecucion usan datos en vivo
+  // Datos reales siempre; solo un torneo cerrado CON snapshot guardado (demo/legado) usa el snapshot.
+  // Cerrar un torneo no debe alterar sus valores: ya se jugó y sus equipos/pagos siguen en la BD.
+  if(t.estado !== 'cerrado' || !t.snap) {
     const equipos   = equiposByTorneo(t.id).filter(e=>e.estado==='activo');
     const totalInsc = equipos.reduce((s,e)=>s+(e.inscripcion||0), 0);
     const totalArb  = equipos.reduce((s,e)=>s+(e.arbitraje||0)*(e.fechas||0), 0);
