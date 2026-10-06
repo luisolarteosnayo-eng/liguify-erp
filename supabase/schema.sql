@@ -82,6 +82,9 @@ create table if not exists public.clubes (
   provincia text default 'Lima',
   email     text,
   logo_url  text,   -- bucket 'torneos' {org_id}/clubes/ — lo migra Competencias al importar
+  dni       text,   -- DNI del contacto (para boleta)
+  ruc       text,   -- RUC del club (para factura)
+  razon_social text, -- razón social del club (para factura)
   org_id    bigint not null references public.organizaciones(id) on delete cascade
 );
 

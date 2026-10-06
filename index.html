@@ -1604,6 +1604,19 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
     </div>
     <label class="block text-xs font-semibold text-slate-600 mb-1">Email del club</label>
     <input type="email" id="ceEmail" placeholder="club@correo.com" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 outline-none focus:ring-2 focus:ring-blue-200">
+    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Datos fiscales <span class="font-normal normal-case">(para boleta o factura)</span></p>
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">DNI del contacto <span class="text-slate-400 font-normal">(boleta)</span></label>
+        <input type="text" id="ceDni" inputmode="numeric" maxlength="8" placeholder="8 dígitos" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mono outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">RUC del club <span class="text-slate-400 font-normal">(factura)</span></label>
+        <input type="text" id="ceRuc" inputmode="numeric" maxlength="11" placeholder="11 dígitos" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mono outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+    </div>
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Razón social <span class="text-slate-400 font-normal">(factura)</span></label>
+    <input type="text" id="ceRazon" placeholder="Tal como figura en SUNAT" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 outline-none focus:ring-2 focus:ring-blue-200">
     <label class="block text-xs font-semibold text-slate-600 mb-1">Logo del club</label>
     <div class="flex items-center gap-3 mb-4">
       <img id="ceLogoPrev" class="hidden w-12 h-12 rounded-lg object-contain border border-slate-200 bg-slate-50" alt="">
@@ -1645,6 +1658,19 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
         <input type="email" id="ncEmail" placeholder="club@correo.com" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
       </div>
     </div>
+    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Datos fiscales <span class="font-normal normal-case">(opcional — para boleta o factura)</span></p>
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">DNI del contacto <span class="text-slate-400 font-normal">(boleta)</span></label>
+        <input type="text" id="ncDni" inputmode="numeric" maxlength="8" placeholder="8 dígitos" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mono outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">RUC del club <span class="text-slate-400 font-normal">(factura)</span></label>
+        <input type="text" id="ncRuc" inputmode="numeric" maxlength="11" placeholder="11 dígitos" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mono outline-none focus:ring-2 focus:ring-blue-200">
+      </div>
+    </div>
+    <label class="block text-xs font-semibold text-slate-600 mb-1">Razón social <span class="text-slate-400 font-normal">(factura)</span></label>
+    <input type="text" id="ncRazon" placeholder="Tal como figura en SUNAT" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mb-3 outline-none focus:ring-2 focus:ring-blue-200">
     <label class="block text-xs font-semibold text-slate-600 mb-1">Logo del club</label>
     <div class="flex items-center gap-3 mb-4">
       <img id="ncLogoPrev" class="hidden w-12 h-12 rounded-lg object-contain border border-slate-200 bg-slate-50" alt="">
@@ -7046,6 +7072,16 @@ function renderClubes(initSelect){
       <td class="py-3 px-4 text-center"><button onclick="editarClub(${c.id})" class="text-xs font-semibold text-[#4F86C6] hover:underline">✏️ Editar</button></td>
     </tr>`).join('') : `<tr><td colspan="7" class="py-10 text-center text-slate-400 text-sm">No hay clubes que coincidan.</td></tr>`;
 }
+// Lee y valida los datos fiscales del formulario de club ('nc' nuevo / 'ce' editar).
+// Devuelve {dni, ruc, razonSocial} o null si hay un error (ya mostrado con toast).
+function _leerFiscal(pref){
+  const v = id => (document.getElementById(pref+id)?.value||'').trim();
+  const dni = v('Dni').replace(/\D/g,''), ruc = v('Ruc').replace(/\D/g,''), razonSocial = v('Razon');
+  if(dni && dni.length!==8){ toast('El DNI debe tener 8 dígitos.','error'); return null; }
+  if(ruc && (ruc.length!==11 || !/^(10|15|17|20)/.test(ruc))){ toast('El RUC debe tener 11 dígitos y empezar en 10, 15, 17 o 20.','error'); return null; }
+  if(ruc && !razonSocial){ toast('Indica la razón social para emitir factura.','error'); return null; }
+  return {dni, ruc, razonSocial};
+}
 function editarClub(id){
   const c = clubById(id); if(!c) return;
   _clubEditId = id;
@@ -7054,6 +7090,9 @@ function editarClub(id){
   document.getElementById('ceTel').value = c.telefono||'';
   document.getElementById('ceProv').value = c.provincia||'';
   document.getElementById('ceEmail').value = c.email||'';
+  document.getElementById('ceDni').value   = c.dni||'';
+  document.getElementById('ceRuc').value   = c.ruc||'';
+  document.getElementById('ceRazon').value = c.razonSocial||'';
   document.getElementById('ceLogo').value = '';
   const prev = document.getElementById('ceLogoPrev');
   if(c.logoUrl){ prev.src = c.logoUrl; prev.classList.remove('hidden'); }
@@ -7072,11 +7111,13 @@ async function guardarClubEdit(){
   c.telefono = document.getElementById('ceTel').value.trim();
   c.provincia = document.getElementById('ceProv').value.trim()||'Lima';
   c.email = document.getElementById('ceEmail').value.trim();
+  const fis = _leerFiscal('ce'); if(fis===null) return;
+  Object.assign(c, fis);
   if(logoUrl) c.logoUrl = logoUrl;   // editar sí permite reemplazar el logo
   closeModal('clubEditModal');
   toast('Club actualizado ✓','success');
   renderClubes();
-  if(sbOn()) SB().data.actualizarClub(_clubEditId, {nombre:c.nombre, delegado:c.delegado, telefono:c.telefono, provincia:c.provincia, email:c.email||null, logo_url:c.logoUrl||null}).catch(e=>toast('⚠ '+e.message,'error'));
+  if(sbOn()) SB().data.actualizarClub(_clubEditId, {nombre:c.nombre, delegado:c.delegado, telefono:c.telefono, provincia:c.provincia, email:c.email||null, logo_url:c.logoUrl||null, dni:c.dni||null, ruc:c.ruc||null, razon_social:c.razonSocial||null}).catch(e=>toast('⚠ '+e.message,'error'));
 }
 function exportarClubesExcel(){
   const {clubes, tId} = _clubesFiltrados();
@@ -8186,6 +8227,7 @@ async function crearClub() {
   const nombre = document.getElementById('ncNombre').value.trim();
   if(!nombre){toast('El nombre del club es obligatorio.','error');return;}
   const email = document.getElementById('ncEmail').value.trim();
+  const fis = _leerFiscal('nc'); if(fis===null) return;
   let logoUrl = null;
   try { logoUrl = await _subirLogoSiHay('ncLogo'); }
   catch(e){ toast('⚠ No se pudo subir el logo: '+e.message,'error'); }
@@ -8202,15 +8244,18 @@ async function crearClub() {
     const faltan = {};
     if(email && !existente.email){ existente.email = email; faltan.email = email; }
     if(logoUrl && !existente.logoUrl){ existente.logoUrl = logoUrl; faltan.logo_url = logoUrl; }
+    if(fis.dni && !existente.dni){ existente.dni = fis.dni; faltan.dni = fis.dni; }
+    if(fis.ruc && !existente.ruc){ existente.ruc = fis.ruc; faltan.ruc = fis.ruc; }
+    if(fis.razonSocial && !existente.razonSocial){ existente.razonSocial = fis.razonSocial; faltan.razon_social = fis.razonSocial; }
     if(sbOn() && Object.keys(faltan).length) SB().data.actualizarClub(existente.id, faltan).catch(e=>toast('⚠ '+e.message,'error'));
     toast(`Ya existía "${existente.nombre}"; se reutilizó (no se duplicó).`,'success');
   } else {
-    nuevo = {id:S.nextId++,nombre,delegado:document.getElementById('ncDelegado').value.trim(),telefono:document.getElementById('ncTel').value.trim(),provincia:document.getElementById('ncProv').value.trim()||'Lima',email,logoUrl,orgId:myOrgId()};
+    nuevo = {id:S.nextId++,nombre,delegado:document.getElementById('ncDelegado').value.trim(),telefono:document.getElementById('ncTel').value.trim(),provincia:document.getElementById('ncProv').value.trim()||'Lima',email,logoUrl,...fis,orgId:myOrgId()};
     S.clubes.push(nuevo);
     // Esperar id real de Supabase ANTES de crear el equipo
     if(sbOn()){
       try {
-        const c = await SB().data.crearClub({nombre,delegado:nuevo.delegado,telefono:nuevo.telefono,provincia:nuevo.provincia,email:email||null,logo_url:logoUrl,org_id:myOrgId()});
+        const c = await SB().data.crearClub({nombre,delegado:nuevo.delegado,telefono:nuevo.telefono,provincia:nuevo.provincia,email:email||null,logo_url:logoUrl,dni:fis.dni||null,ruc:fis.ruc||null,razon_social:fis.razonSocial||null,org_id:myOrgId()});
         nuevo.id = c.id;
       } catch(e){ toast('⚠ Error al guardar club: '+e.message,'error'); }
     }
@@ -8218,7 +8263,7 @@ async function crearClub() {
   }
 
   closeModal('nuevoClubModal');
-  ['ncNombre','ncDelegado','ncTel','ncEmail'].forEach(id=>document.getElementById(id).value='');
+  ['ncNombre','ncDelegado','ncTel','ncEmail','ncDni','ncRuc','ncRazon'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('ncProv').value='Lima';
   document.getElementById('ncLogo').value='';
   document.getElementById('ncLogoPrev').classList.add('hidden');
@@ -8793,7 +8838,7 @@ async function sbHydrate(){
   S.proveedores    = (d.proveedores||[]).map(p=>({id:p.id,nombre:p.nombre,rucDni:p.ruc_dni,telefono:p.telefono,conceptoIds:(p.concepto_ids||[]).map(Number),banco1Nombre:p.banco1_nombre,banco1Cuenta:p.banco1_cuenta,banco2Nombre:p.banco2_nombre,banco2Cuenta:p.banco2_cuenta,orgId:p.org_id}));
   S.costos         = (d.costos||[]).map(c=>({id:c.id,torneoId:c.torneo_id,conceptoId:c.concepto_id,proveedorId:c.proveedor_id,descripcion:c.descripcion,monto:_num(c.monto),adelantos:(c.adelantos||[]).map(a=>({fecha:a.fecha,monto:_num(a.monto)})),orgId:c.org_id}));
   S.clasificatorios= (d.clasificatorios||[]).map(c=>({id:c.id,nombre:c.nombre,contacto:c.contacto,telefono:c.telefono,orgId:c.org_id}));
-  S.clubes         = (d.clubes||[]).map(c=>({id:c.id,nombre:c.nombre,delegado:c.delegado,telefono:c.telefono,provincia:c.provincia,email:c.email,logoUrl:c.logo_url,orgId:c.org_id}));
+  S.clubes         = (d.clubes||[]).map(c=>({id:c.id,nombre:c.nombre,delegado:c.delegado,telefono:c.telefono,provincia:c.provincia,email:c.email,logoUrl:c.logo_url,dni:c.dni||'',ruc:c.ruc||'',razonSocial:c.razon_social||'',orgId:c.org_id}));
   const catsByT = {};
   (d.torneo_categorias||[]).forEach(tc=>{ (catsByT[tc.torneo_id] = catsByT[tc.torneo_id]||[]).push({catId:tc.cat_id,nombre:catNombre(tc.cat_id),modalidad:tc.modalidad,aforo:tc.aforo,fechas:tc.fechas,inscripcion:_num(tc.inscripcion),arbitraje:_num(tc.arbitraje),comision:_num(tc.comision)}); });
   S.torneos = (d.torneos||[]).map(t=>({id:t.id,nombre:t.nombre,sede:t.sede,esquema:t.esquema,estado:t.estado,inicio:t.inicio,fin:t.fin,fechaVenc:t.fecha_venc,label:t.label,headerUrl:t.header_url,bienvenidaUrl:t.bienvenida_url,bienvenidaCfg:t.bienvenida_cfg||null,condiciones:t.condiciones,snap:t.snap,orgId:t.org_id,cats:catsByT[t.id]||[]}));
