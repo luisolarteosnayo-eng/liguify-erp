@@ -1,12 +1,13 @@
 // ============================================================================
-// 🧾 emitir-comprobante · Supabase Edge Function (Deno) — Liguify Torneos
+// 🧾 emitir-comprobante-torneos · Supabase Edge Function (Deno) — Liguify Torneos
+// (Nombre distinto al de Academias: ambas apps comparten el mismo proyecto Supabase.)
 // Emite una BOLETA o FACTURA electrónica vía Nubefact (PSE) para un pago
 // aprobado y devuelve los enlaces al PDF/XML que entrega SUNAT.
 // Misma lógica que en Liguify Academias, adaptada al esquema de Torneos
 // (schema public: pagos, clubes, torneos, organizaciones).
 //
 // DESPLIEGUE: Supabase → Edge Functions → Deploy new function → nombre:
-// emitir-comprobante (pegar este archivo).
+// emitir-comprobante-torneos (pegar este archivo). NO sobrescribir la de Academias.
 //
 // SECRETOS (por RUC emisor — Nubefact entrega una RUTA y un TOKEN por RUC):
 //   NUBEFACT_RUTA_<RUC>   p.ej. NUBEFACT_RUTA_20123456789 = https://api.nubefact.com/api/v1/xxxx

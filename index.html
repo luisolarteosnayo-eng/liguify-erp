@@ -221,7 +221,7 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
     },
     // Boleta/Factura electrónica vía Edge Function (Nubefact). Devuelve {ok, serie, numero, pdf, xml, cdr}.
     async emitirComprobante(body) {
-      const { data, error } = await sb.functions.invoke('emitir-comprobante', { body });
+      const { data, error } = await sb.functions.invoke('emitir-comprobante-torneos', { body });
       if (error) {
         let msg = error.message || 'Error al emitir';
         try { const j = await error.context.json(); if (j && j.error) msg = typeof j.error === 'string' ? j.error : JSON.stringify(j.error); } catch (_) {}
