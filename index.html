@@ -1261,6 +1261,11 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
 
       <!-- P_rep_pagos: Reporte de Pagos -->
       <!-- REPORTE: RESUMEN POR FECHA -->
+      <!-- P: Emitir documentos (pantalla completa, como en Academias) -->
+      <div id="p_emision" class="screen">
+        <div id="emBody"></div>
+      </div>
+
       <div id="p_rep_fechas" class="screen">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
           <div>
@@ -1320,7 +1325,7 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
       <div id="p_rep_pagos" class="screen">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <h1 class="text-xl font-bold">Reporte de Pagos</h1>
-          <button onclick="colaEmision('')" class="flex items-center gap-2 bg-[#18324F] hover:bg-[#0f253d] text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition shadow-sm mr-2">🧾 Emitir documentos</button>
+          <button onclick="showScreen('p_emision')" class="flex items-center gap-2 bg-[#18324F] hover:bg-[#0f253d] text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition shadow-sm mr-2">🧾 Emitir documentos</button>
           <button onclick="exportarPagosExcel()" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition shadow-sm">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
             Descargar Excel
@@ -1934,23 +1939,6 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
   </div>
 </div>
 
-<!-- emisionModal: cola de emisión de documentos -->
-<div id="emisionModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60">
-  <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col fade-in">
-    <div class="flex items-center justify-between px-5 py-3 border-b border-slate-200 shrink-0">
-      <div><h3 class="font-bold text-base">🧾 Emitir documentos</h3><p class="text-[11px] text-slate-400">Pagos aprobados sin documento. ⚪ recibo interno · 🟢 listo para SUNAT · 🟡 sin DNI (saldrá a CLIENTE VARIOS)</p></div>
-      <button onclick="closeModal('emisionModal')" class="text-slate-400 hover:text-slate-600 text-xl leading-none">✕</button>
-    </div>
-    <div id="emBody" class="p-5 overflow-y-auto"></div>
-    <div class="px-5 py-3 border-t border-slate-200 flex items-center justify-between gap-3 shrink-0">
-      <span id="emProg" class="text-xs text-slate-500"></span>
-      <div class="flex gap-2">
-        <button onclick="closeModal('emisionModal')" class="text-sm font-medium text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">Cancelar</button>
-        <button id="emBtnEmitir" onclick="emitirSeleccionados()" class="text-sm font-semibold text-white bg-[#18324F] px-5 py-2 rounded-lg hover:bg-[#0f253d] disabled:opacity-40">Emitir seleccionados</button>
-      </div>
-    </div>
-  </div>
-</div>
 <!-- reciboModal: recibo interno (sin valor fiscal) -->
 <div id="reciboModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60">
   <div class="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[92vh] overflow-y-auto fade-in">
@@ -3764,50 +3752,94 @@ function _docCfgOk(tipo){
 }
 
 let EM_TIPO = '', EM_PENDIENTE = [];
+// Filtros de la pantalla de emisión (persisten mientras dura la sesión)
+let EM_F = { q:'', desde:'', hasta:'', medio:'' };
+function emSetFiltro(k, v){ EM_F[k] = v; colaEmision(); }
+function emLimpiar(){ EM_F = {q:'',desde:'',hasta:'',medio:''}; EM_TIPO=''; colaEmision(); }
 function colaEmision(tipoSel){
-  EM_TIPO = tipoSel||'';
-  const pend = myPagos().filter(p=>p.estado==='aprobado' && !p.docTipo).sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''));
+  if(tipoSel!==undefined) EM_TIPO = tipoSel||'';
   const o=_docOrg();
-  const aviso = (!o.rucEmisor || !o.serieBoleta) ? `<div class="mb-3 text-xs bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-3 py-2">⚠ Falta configurar el RUC emisor y/o las series en <b>Configuración → Medios de Pago → Facturación</b>. Solo podrás emitir recibos.</div>` : '';
-  const filas = pend.map(p=>{
-    const tipo = clasificaDoc(p);
-    if(EM_TIPO && tipo!==EM_TIPO) return '';
-    const c = clubById(p.clubId);
-    const luz = tipo==='recibo' ? '⚪' : (tipo==='boleta' && !(c && /^\d{8}$/.test(c.dni||''))) ? '🟡' : '🟢';
-    const nombre = c ? c.nombre : (p.clasificatorioId ? '🏆 '+(clasifNombre(p.clasificatorioId)||'') : '—');
+  const pagadorDe = p => { const c=clubById(p.clubId); return c ? c.nombre : (p.clasificatorioId ? (clasifNombre(p.clasificatorioId)||'') : ''); };
+  // SOLO pagos aprobados y sin documento, más antiguos primero (se emiten en orden)
+  const todos = myPagos().filter(p=>p.estado==='aprobado' && !p.docTipo).sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''));
+  const q = EM_F.q.trim().toLowerCase();
+  const filtrados = todos.filter(p =>
+    (!q || pagadorDe(p).toLowerCase().includes(q) || String(p.nroOp||'').toLowerCase().includes(q) || (p.contacto||'').toLowerCase().includes(q)) &&
+    (!EM_F.desde || (p.fecha||'') >= EM_F.desde) && (!EM_F.hasta || (p.fecha||'') <= EM_F.hasta) &&
+    (!EM_F.medio || p.medio===EM_F.medio));
+  const nDe = t => filtrados.filter(p=>clasificaDoc(p)===t).length;
+  const cola = EM_TIPO ? filtrados.filter(p=>clasificaDoc(p)===EM_TIPO) : filtrados;
+  const chip = (v,l)=>`<button onclick="colaEmision('${v}')" class="rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ${EM_TIPO===v?'bg-[#18324F] text-white ring-[#18324F]':'bg-white text-slate-600 ring-slate-300 hover:bg-slate-50'}">${l}</button>`;
+  const medios = [...new Set(todos.map(p=>p.medio).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+  const filas = cola.map(p=>{
+    const c = clubById(p.clubId), cls = clasificaDoc(p);
+    const dniOk = !!(c && /^\d{8}$/.test(c.dni||''));
     const puedeFactura = !!(c && /^\d{11}$/.test(c.ruc||'') && c.razonSocial);
-    return `<tr class="border-t border-slate-100">
-      <td class="py-2 px-3 text-center"><input type="checkbox" class="emChk accent-[#18324F]" data-id="${p.id}" checked onchange="emCount()"></td>
-      <td class="py-2 px-3 text-xs text-slate-500 whitespace-nowrap">${p.fecha||'—'}</td>
-      <td class="py-2 px-3 text-sm font-medium">${nombre}<div class="text-[10px] text-slate-400">${myTorneos().find(t=>+t.id===+p.torneoId)?.nombre||''} · ${p.medio||''}</div></td>
-      <td class="py-2 px-3 text-right mono font-bold text-sm">${fmt(p.monto)}</td>
-      <td class="py-2 px-3 text-center" title="${luz==='🟡'?'Sin DNI: saldrá a CLIENTE VARIOS':luz==='⚪'?'Recibo interno':'Listo'}">${luz}</td>
-      <td class="py-2 px-3">
-        <select id="emTipo_${p.id}" class="text-xs border border-slate-200 rounded px-2 py-1 bg-white">
-          <option value="recibo" ${tipo==='recibo'?'selected':''}>Recibo</option>
-          <option value="boleta" ${tipo==='boleta'?'selected':''}>Boleta</option>
-          <option value="factura" ${tipo==='factura'?'selected':''} ${puedeFactura?'':'disabled'}>Factura${puedeFactura?'':' (sin RUC)'}</option>
+    const cliente = cls==='factura' ? `${c.razonSocial}<div class="text-[11px] text-slate-400">RUC ${c.ruc}</div>`
+      : cls==='recibo' ? '<span class="text-slate-400 text-xs">—</span>'
+      : dniOk ? `${p.contacto||c.delegado||c.nombre}<div class="text-[11px] text-slate-400">DNI ${c.dni}</div>`
+      : '<span class="text-amber-600 text-xs">Cliente varios (sin DNI)</span>';
+    const luz = cls==='recibo' ? '⚪' : (cls==='factura' || dniOk) ? '🟢' : '🟡';
+    const nombre = c ? c.nombre : (p.clasificatorioId ? '🏆 '+(clasifNombre(p.clasificatorioId)||'') : '—');
+    return `<tr class="border-t border-slate-100 hover:bg-slate-50">
+      <td class="py-2.5 px-3 text-center"><input type="checkbox" class="emChk h-4 w-4 accent-[#18324F]" data-id="${p.id}" checked onchange="emCount()"></td>
+      <td class="py-2.5 px-3 text-sm">${luz} <b>${nombre}</b><div class="text-[11px] text-slate-400">${myTorneos().find(t=>+t.id===+p.torneoId)?.nombre||''}</div></td>
+      <td class="py-2.5 px-3 text-right mono font-bold text-sm whitespace-nowrap">${fmt(p.monto)}</td>
+      <td class="py-2.5 px-3 text-sm text-slate-600">${p.medio||'—'}</td>
+      <td class="py-2.5 px-3 text-xs text-slate-500 whitespace-nowrap">${p.fecha||'—'}</td>
+      <td class="py-2.5 px-3 text-xs mono text-slate-500">${p.nroOp&&p.nroOp!=='—'?p.nroOp:'—'}</td>
+      <td class="py-2.5 px-3">
+        <select id="emTipo_${p.id}" class="text-xs border border-slate-300 rounded px-2 py-1 bg-white">
+          <option value="recibo" ${cls==='recibo'?'selected':''}>Recibo simple</option>
+          <option value="boleta" ${cls==='boleta'?'selected':''}>Boleta</option>
+          <option value="factura" ${cls==='factura'?'selected':''} ${puedeFactura?'':'disabled'}>Factura${puedeFactura?'':' (sin RUC)'}</option>
         </select>
       </td>
+      <td class="py-2.5 px-3 text-sm">${cliente}</td>
     </tr>`;
   }).join('');
-  const chip = (v,l)=>`<button onclick="colaEmision('${v}')" class="text-xs font-semibold px-3 py-1 rounded-full border ${EM_TIPO===v?'bg-[#18324F] text-white border-[#18324F]':'border-slate-200 text-slate-600 hover:bg-slate-50'}">${l}</button>`;
+  const cfgOk = o.rucEmisor && o.serieBoleta;
+  const inp = 'border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200 bg-white';
   document.getElementById('emBody').innerHTML = `
-    ${aviso}
-    <div class="flex items-center gap-2 mb-3 flex-wrap">${chip('','Todos')}${chip('recibo','Recibos')}${chip('boleta','Boletas')}${chip('factura','Facturas')}
-      <span id="emCountTxt" class="ml-auto text-xs text-slate-500"></span></div>
-    <div class="overflow-auto max-h-[52vh] border border-slate-200 rounded-lg">
-      <table class="w-full text-sm">
-        <thead><tr class="text-[10px] text-slate-500 uppercase bg-slate-50"><th class="py-2 px-3"><input type="checkbox" checked onchange="document.querySelectorAll('.emChk').forEach(c=>c.checked=this.checked);emCount()" class="accent-[#18324F]"></th><th class="py-2 px-3 text-left">Fecha</th><th class="py-2 px-3 text-left">Pagador</th><th class="py-2 px-3 text-right">Monto</th><th class="py-2 px-3"></th><th class="py-2 px-3 text-left">Documento</th></tr></thead>
-        <tbody>${filas||'<tr><td colspan="6" class="py-8 text-center text-slate-400 text-sm">No hay pagos aprobados pendientes de emisión.</td></tr>'}</tbody>
-      </table>
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-1">
+      <div class="flex items-center gap-3 flex-wrap">
+        <h1 class="text-xl font-bold">🧾 Emitir documentos</h1>
+        <span id="emCountTxt" class="text-xs font-semibold text-[#4F86C6]"></span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span id="emProg" class="text-xs text-slate-500"></span>
+        <button id="emBtnEmitir" onclick="emitirSeleccionados()" class="text-sm font-semibold text-white bg-[#18324F] px-5 py-2.5 rounded-lg hover:bg-[#0f253d] disabled:opacity-40 transition shadow-sm">Procesar seleccionados</button>
+      </div>
+    </div>
+    <p class="text-xs text-slate-400 mb-2">Pagos aprobados sin documento · 🟢 listo · 🟡 boleta a "cliente varios" (sin DNI) · ⚪ recibo simple (no viaja a SUNAT)</p>
+    ${cfgOk
+      ? `<p class="text-xs text-slate-500 mb-3">Emisor: <b>${o.razonSocialEmisor||''}</b> · RUC <b>${o.rucEmisor}</b> · Boleta <b>${o.serieBoleta}-${o.correlativoBoleta||1}</b>${o.serieFactura?` · Factura <b>${o.serieFactura}-${o.correlativoFactura||1}</b>`:''} · Recibo <b>R-${o.correlativoRecibo||1}</b> · precios con IGV incluido</p>`
+      : '<p class="text-xs text-rose-600 mb-3">⚠ La empresa no tiene RUC emisor o serie de boleta: configúralos en Configuración → Medios de Pago → Facturación. Mientras tanto solo se pueden generar recibos simples.</p>'}
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 mb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+      <div class="lg:col-span-2"><label class="block text-xs font-semibold text-slate-500 mb-1">Buscar</label><input type="search" value="${EM_F.q.replace(/"/g,'&quot;')}" placeholder="Club, contacto o N° operación…" oninput="EM_F.q=this.value;clearTimeout(window._emT);window._emT=setTimeout(()=>colaEmision(),250)" class="w-full ${inp}"></div>
+      <div><label class="block text-xs font-semibold text-slate-500 mb-1">Pago desde</label><input type="date" value="${EM_F.desde}" onchange="emSetFiltro('desde',this.value)" class="w-full ${inp}"></div>
+      <div><label class="block text-xs font-semibold text-slate-500 mb-1">Pago hasta</label><input type="date" value="${EM_F.hasta}" onchange="emSetFiltro('hasta',this.value)" class="w-full ${inp}"></div>
+      <div><label class="block text-xs font-semibold text-slate-500 mb-1">Medio de pago</label><select onchange="emSetFiltro('medio',this.value)" class="w-full ${inp}"><option value="">Todos</option>${medios.map(m=>`<option value="${m.replace(/"/g,'&quot;')}" ${EM_F.medio===m?'selected':''}>${m}</option>`).join('')}</select></div>
+      <div class="lg:col-span-5 flex flex-wrap items-center gap-1.5">
+        ${chip('',`Todos (${filtrados.length})`)}${chip('recibo',`⚪ Recibos (${nDe('recibo')})`)}${chip('boleta',`🧾 Boletas (${nDe('boleta')})`)}${chip('factura',`📄 Facturas (${nDe('factura')})`)}
+        <button onclick="emLimpiar()" class="ml-auto text-xs text-slate-400 hover:text-slate-600 underline">Limpiar filtros</button>
+      </div>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+      ${cola.length ? `<table class="w-full text-sm min-w-[900px]">
+        <thead><tr class="text-left text-[11px] text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+          <th class="py-3 px-3 text-center"><input type="checkbox" checked onchange="document.querySelectorAll('.emChk').forEach(c=>c.checked=this.checked);emCount()" class="h-4 w-4 accent-[#18324F]"></th>
+          <th class="py-3 px-3 font-semibold">Club</th><th class="py-3 px-3 font-semibold text-right">Total</th><th class="py-3 px-3 font-semibold">Medio de pago</th>
+          <th class="py-3 px-3 font-semibold">Fecha de pago</th><th class="py-3 px-3 font-semibold">N° Op.</th><th class="py-3 px-3 font-semibold">Documento</th><th class="py-3 px-3 font-semibold">Cliente</th>
+        </tr></thead>
+        <tbody>${filas}</tbody></table>`
+      : `<p class="text-sm text-slate-400 text-center py-12">${(q||EM_F.desde||EM_F.hasta||EM_F.medio||EM_TIPO) ? 'No hay pagos que coincidan con los filtros.' : '🎉 No hay pagos aprobados pendientes de documento.'}</p>`}
     </div>`;
   emCount();
-  openModal('emisionModal');
 }
 function emCount(){
   const n = document.querySelectorAll('.emChk:checked').length;
-  const t = document.getElementById('emCountTxt'); if(t) t.textContent = `${n} seleccionado(s)`;
+  const t = document.getElementById('emCountTxt'); if(t) t.textContent = n ? `${n} seleccionado(s)` : '';
   const b = document.getElementById('emBtnEmitir'); if(b) b.disabled = n===0;
 }
 function emitirSeleccionados(){
@@ -3852,8 +3884,8 @@ async function ejecutarEmision(){
     await new Promise(r=>setTimeout(r,250));
   }
   if(prog) prog.textContent='';
-  closeModal('emisionModal');
-  renderRepPagos();
+  colaEmision();   // refresca la pantalla: los emitidos salen de la cola
+  if(document.getElementById('repPagosTbody')) renderRepPagos();
   toast(`Emisión terminada: ${recibos} recibo(s), ${sunat} enviado(s) a SUNAT, ${errores} error(es).${errores?' Primer error: '+primerError:''}`, errores?'error':'success');
 }
 
@@ -4222,6 +4254,7 @@ function renderScreen(id) {
   else if(id==='p_cxc') renderCxc();
   else if(id==='p_clubes') renderClubes(true);
   else if(id==='p_rep_pagos') initRepPagos();
+  else if(id==='p_emision') colaEmision();
   else if(id==='p_rep_fechas') initRepFechas();
   else if(id==='p_rep_comisiones') initRepComisiones();
   else if(id==='p_seguridad') renderSeguridad();
