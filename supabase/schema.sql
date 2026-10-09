@@ -383,3 +383,14 @@ create trigger on_auth_user_created
 --  FIN. Siguiente paso: marcar tu usuario como Admin de Plataforma
 --  (ver SETUP.md, paso 6) y configurar Storage para vouchers.
 -- ============================================================================
+
+-- ---- v20: emisión de documentos (recibos / boletas / facturas vía Nubefact) ----
+alter table public.medios_pago add column if not exists genera_sunat boolean not null default false;
+alter table public.organizaciones
+  add column if not exists ruc_emisor text, add column if not exists razon_social_emisor text, add column if not exists direccion_fiscal text,
+  add column if not exists serie_boleta text, add column if not exists serie_factura text,
+  add column if not exists correlativo_boleta int, add column if not exists correlativo_factura int, add column if not exists correlativo_recibo int;
+alter table public.pagos
+  add column if not exists doc_solicitado text default 'boleta', add column if not exists doc_tipo text, add column if not exists doc_serie text,
+  add column if not exists doc_numero int, add column if not exists doc_pdf_url text, add column if not exists doc_xml_url text,
+  add column if not exists sunat_estado text, add column if not exists sunat_error text, add column if not exists emitido_at timestamptz;

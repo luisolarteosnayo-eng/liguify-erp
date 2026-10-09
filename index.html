@@ -211,6 +211,25 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
       const { data, error } = await sb.from('clubes').update(campos).eq('id', id).select().single();
       if (error) throw error; return data;
     },
+    async actualizarPago(id, campos) {
+      const { data, error } = await sb.from('pagos').update(campos).eq('id', id).select().single();
+      if (error) throw error; return data;
+    },
+    async actualizarOrganizacion(id, campos) {
+      const { data, error } = await sb.from('organizaciones').update(campos).eq('id', id).select().single();
+      if (error) throw error; return data;
+    },
+    // Boleta/Factura electrónica vía Edge Function (Nubefact). Devuelve {ok, serie, numero, pdf, xml, cdr}.
+    async emitirComprobante(body) {
+      const { data, error } = await sb.functions.invoke('emitir-comprobante', { body });
+      if (error) {
+        let msg = error.message || 'Error al emitir';
+        try { const j = await error.context.json(); if (j && j.error) msg = typeof j.error === 'string' ? j.error : JSON.stringify(j.error); } catch (_) {}
+        throw new Error(msg);
+      }
+      if (data && data.error) throw new Error(typeof data.error === 'string' ? data.error : JSON.stringify(data.error));
+      return data;
+    },
     async guardarMedio(medio, editId) {
       if (editId) {
         const { data, error } = await sb.from('medios_pago').update(medio).eq('id', editId).select().single();
@@ -927,6 +946,28 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
           </div>
         </div>
         <div id="cfgMediosList" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"></div>
+
+        <!-- Facturación electrónica (por empresa) -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm mt-6 overflow-hidden">
+          <div class="px-5 py-3 border-b border-slate-200 flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <h2 class="text-sm font-bold text-slate-700">🧾 Facturación electrónica (SUNAT · Nubefact)</h2>
+              <p class="text-[11px] text-slate-400">Datos del emisor, series y correlativos de la empresa. Los medios con "Genera comprobante SUNAT" emiten boleta/factura; el resto, recibo.</p>
+            </div>
+            <button onclick="guardarFacturacionCfg()" class="text-sm font-semibold text-white bg-[#18324F] px-4 py-2 rounded-lg hover:bg-[#0f253d] transition shrink-0">💾 Guardar facturación</button>
+          </div>
+          <div class="p-5 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+            <div><label class="block text-xs font-semibold text-slate-600 mb-1">RUC emisor *</label><input id="fc_ruc" maxlength="11" inputmode="numeric" placeholder="20xxxxxxxxx" class="w-full border border-slate-300 rounded-lg px-3 py-2 mono outline-none focus:ring-2 focus:ring-blue-200"></div>
+            <div class="md:col-span-2"><label class="block text-xs font-semibold text-slate-600 mb-1">Razón social emisor *</label><input id="fc_rz" placeholder="VOM SPORT S.A.C." class="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200"></div>
+            <div class="md:col-span-3"><label class="block text-xs font-semibold text-slate-600 mb-1">Dirección fiscal</label><input id="fc_dir" class="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200"></div>
+            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Serie boleta</label><input id="fc_sb" placeholder="B001" maxlength="4" class="w-full border border-slate-300 rounded-lg px-3 py-2 mono uppercase outline-none focus:ring-2 focus:ring-blue-200"></div>
+            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Próximo N° boleta</label><input id="fc_cb" type="number" min="1" class="w-full border border-slate-300 rounded-lg px-3 py-2 mono outline-none focus:ring-2 focus:ring-blue-200"></div>
+            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Próximo N° recibo <span class="text-slate-400 font-normal">(serie R)</span></label><input id="fc_cr" type="number" min="1" class="w-full border border-slate-300 rounded-lg px-3 py-2 mono outline-none focus:ring-2 focus:ring-blue-200"></div>
+            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Serie factura</label><input id="fc_sf" placeholder="F001" maxlength="4" class="w-full border border-slate-300 rounded-lg px-3 py-2 mono uppercase outline-none focus:ring-2 focus:ring-blue-200"></div>
+            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Próximo N° factura</label><input id="fc_cf" type="number" min="1" class="w-full border border-slate-300 rounded-lg px-3 py-2 mono outline-none focus:ring-2 focus:ring-blue-200"></div>
+            <div class="text-[11px] text-slate-400 self-end pb-2">Las credenciales de Nubefact van como secretos en Supabase: <span class="mono">NUBEFACT_RUTA_&lt;RUC&gt;</span> y <span class="mono">NUBEFACT_TOKEN_&lt;RUC&gt;</span>.</div>
+          </div>
+        </div>
       </div>
 
       <!-- P: Nuevo Torneo -->
@@ -1127,6 +1168,16 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
             </div>
             <label class="block text-xs font-semibold text-slate-600 mb-1">Descripción</label>
             <input type="text" id="pDesc" placeholder="Ej. Adelanto inscripción Cat. 2016" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs mb-4 outline-none focus:ring-2 focus:ring-blue-200">
+            <div id="pDocWrap" class="mb-4">
+              <label class="block text-xs font-semibold text-slate-600 mb-1.5">Comprobante que pide el cliente</label>
+              <div class="flex gap-2">
+                <label class="flex-1"><input type="radio" name="pDocSol" value="boleta" checked class="sr-only peer" onchange="pDocHint()">
+                  <div class="border-2 border-slate-200 rounded-lg px-3 py-2 text-center cursor-pointer peer-checked:border-[#4F86C6] peer-checked:bg-blue-50 hover:border-slate-300 transition text-xs font-semibold text-slate-700">🧾 Boleta</div></label>
+                <label class="flex-1"><input type="radio" name="pDocSol" value="factura" class="sr-only peer" onchange="pDocHint()">
+                  <div class="border-2 border-slate-200 rounded-lg px-3 py-2 text-center cursor-pointer peer-checked:border-[#4F86C6] peer-checked:bg-blue-50 hover:border-slate-300 transition text-xs font-semibold text-slate-700">📄 Factura</div></label>
+              </div>
+              <p id="pDocHintTxt" class="text-[11px] text-slate-400 mt-1.5">Boleta por defecto. Si el medio de pago no genera comprobante SUNAT, se emitirá un recibo interno.</p>
+            </div>
             <label class="block text-xs font-semibold text-slate-600 mb-2">Voucher <span id="vLabelReq" class="text-rose-500">— obligatorio</span></label>
             <label id="vzone" class="border-2 border-dashed border-slate-300 rounded-lg p-5 flex flex-col items-center text-center text-slate-400 hover:border-blue-300 hover:bg-blue-50/30 cursor-pointer transition">
               <span class="text-2xl mb-2">📤</span>
@@ -1269,6 +1320,7 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
       <div id="p_rep_pagos" class="screen">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <h1 class="text-xl font-bold">Reporte de Pagos</h1>
+          <button onclick="colaEmision('')" class="flex items-center gap-2 bg-[#18324F] hover:bg-[#0f253d] text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition shadow-sm mr-2">🧾 Emitir documentos</button>
           <button onclick="exportarPagosExcel()" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition shadow-sm">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
             Descargar Excel
@@ -1342,6 +1394,7 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
               <th class="py-3 px-4 font-semibold">N° Op.</th>
               <th class="py-3 px-4 font-semibold text-right">Monto</th>
               <th class="py-3 px-4 font-semibold text-center">Estado</th>
+              <th class="py-3 px-4 font-semibold text-center">Doc. SUNAT</th>
               <th class="py-3 px-4 font-semibold text-center">Detalle</th>
             </tr></thead>
             <tbody id="repPagosTbody" class="divide-y divide-slate-100"></tbody>
@@ -1881,6 +1934,31 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
   </div>
 </div>
 
+<!-- emisionModal: cola de emisión de documentos -->
+<div id="emisionModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col fade-in">
+    <div class="flex items-center justify-between px-5 py-3 border-b border-slate-200 shrink-0">
+      <div><h3 class="font-bold text-base">🧾 Emitir documentos</h3><p class="text-[11px] text-slate-400">Pagos aprobados sin documento. ⚪ recibo interno · 🟢 listo para SUNAT · 🟡 sin DNI (saldrá a CLIENTE VARIOS)</p></div>
+      <button onclick="closeModal('emisionModal')" class="text-slate-400 hover:text-slate-600 text-xl leading-none">✕</button>
+    </div>
+    <div id="emBody" class="p-5 overflow-y-auto"></div>
+    <div class="px-5 py-3 border-t border-slate-200 flex items-center justify-between gap-3 shrink-0">
+      <span id="emProg" class="text-xs text-slate-500"></span>
+      <div class="flex gap-2">
+        <button onclick="closeModal('emisionModal')" class="text-sm font-medium text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">Cancelar</button>
+        <button id="emBtnEmitir" onclick="emitirSeleccionados()" class="text-sm font-semibold text-white bg-[#18324F] px-5 py-2 rounded-lg hover:bg-[#0f253d] disabled:opacity-40">Emitir seleccionados</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- reciboModal: recibo interno (sin valor fiscal) -->
+<div id="reciboModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[92vh] overflow-y-auto fade-in">
+    <div class="flex items-center justify-between px-5 py-3 border-b border-slate-200"><h3 class="font-bold text-sm">Recibo</h3><button onclick="closeModal('reciboModal')" class="text-slate-400 hover:text-slate-600 text-xl leading-none">✕</button></div>
+    <div id="reciboBody" class="p-4"></div>
+  </div>
+</div>
+
 <!-- bienvenidaModal -->
 <div id="bienvenidaModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60">
   <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col fade-in">
@@ -2025,7 +2103,11 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
       <option value="otro">Otro</option>
     </select>
     <label class="block text-xs font-semibold text-slate-600 mb-1">Ícono / Emoji <span class="font-normal text-slate-400">(opcional)</span></label>
-    <input type="text" id="cfgMedioIcon" placeholder="🏦" maxlength="4" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-5 outline-none focus:ring-2 focus:ring-blue-200">
+    <input type="text" id="cfgMedioIcon" placeholder="🏦" maxlength="4" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm mb-3 outline-none focus:ring-2 focus:ring-blue-200">
+    <label class="flex items-start gap-2 text-sm text-slate-700 cursor-pointer select-none mb-5 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5">
+      <input type="checkbox" id="cfgMedioSunat" class="accent-[#18324F] mt-0.5">
+      <span><b>Genera comprobante SUNAT</b> (boleta o factura vía Nubefact)<br><span class="text-xs text-slate-400">Si está desmarcado, los pagos por este medio reciben un <b>Recibo</b> interno sin valor fiscal.</span></span>
+    </label>
     <div class="flex justify-end gap-2">
       <button onclick="closeModal('cfgMedioModal')" class="text-sm font-medium text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">Cancelar</button>
       <button onclick="guardarMedio()" class="text-sm font-semibold text-white bg-[#18324F] px-4 py-2 rounded-lg hover:bg-[#0f253d]">Guardar</button>
@@ -3645,10 +3727,194 @@ function renderRepPagos() {
       <td class="py-3 px-4 text-slate-400 text-xs font-mono">${p.nroOp||'—'}</td>
       <td class="py-3 px-4 text-right font-bold text-slate-800">S/.${(p.monto||0).toFixed(2)}</td>
       <td class="py-3 px-4 text-center">${estadoBadge(p.estado)}</td>
+      <td class="py-3 px-4 text-center">${docCelda(p)}</td>
       <td class="py-3 px-4 text-center"><button onclick="abrirVoucher(${p.id})" class="text-xs font-semibold text-[#4F86C6] hover:underline whitespace-nowrap">Ver detalle →</button></td>
     </tr>`).join('');
 
   renderRepChart();
+}
+
+// ============================================================================
+//  DOCUMENTOS: Recibos (sin valor fiscal) · Boletas/Facturas (Nubefact → SUNAT)
+//  Mismo flujo que Liguify Academias. Config fiscal por empresa (organización).
+// ============================================================================
+const _docEtq = {recibo:'Recibo', boleta:'Boleta', factura:'Factura'};
+const docNro = p => p.docTipo==='recibo' ? `R-${String(p.docNumero||0).padStart(6,'0')}` : `${p.docSerie||''}-${String(p.docNumero||0).padStart(8,'0')}`;
+function docCelda(p){
+  if(p.docTipo) return `<button onclick="verComprobantePago(${p.id})" class="text-xs font-semibold ${p.docTipo==='recibo'?'text-slate-600':'text-sky-700'} hover:underline whitespace-nowrap" title="${_docEtq[p.docTipo]}">${p.docTipo==='recibo'?'📄':'🧾'} ${docNro(p)}</button>`;
+  if(p.sunatEstado==='error') return `<span class="text-[10px] font-bold bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full cursor-help" title="${(p.sunatError||'').replace(/"/g,'&quot;')}">⚠ Error</span>`;
+  if(p.estado==='aprobado') return `<span class="text-[10px] text-slate-400">Sin emitir</span>`;
+  return '<span class="text-slate-300">—</span>';
+}
+// Tipo de documento que corresponde a un pago: por medio (genera_sunat) y por lo que pidió el cliente.
+function clasificaDoc(p){
+  const m = myMediosPago().find(x=>x.nombre===p.medio);
+  if(!m || !m.generaSunat) return 'recibo';
+  if(p.docSolicitado==='factura'){
+    const c = clubById(p.clubId);
+    if(c && /^\d{11}$/.test(c.ruc||'') && c.razonSocial) return 'factura';
+  }
+  return 'boleta';
+}
+const _docOrg = () => S.organizacionActual || {};
+function _docCfgOk(tipo){
+  const o=_docOrg();
+  if(tipo==='recibo') return true;
+  return !!(o.rucEmisor && (tipo==='boleta' ? o.serieBoleta : o.serieFactura));
+}
+
+let EM_TIPO = '', EM_PENDIENTE = [];
+function colaEmision(tipoSel){
+  EM_TIPO = tipoSel||'';
+  const pend = myPagos().filter(p=>p.estado==='aprobado' && !p.docTipo).sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''));
+  const o=_docOrg();
+  const aviso = (!o.rucEmisor || !o.serieBoleta) ? `<div class="mb-3 text-xs bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-3 py-2">⚠ Falta configurar el RUC emisor y/o las series en <b>Configuración → Medios de Pago → Facturación</b>. Solo podrás emitir recibos.</div>` : '';
+  const filas = pend.map(p=>{
+    const tipo = clasificaDoc(p);
+    if(EM_TIPO && tipo!==EM_TIPO) return '';
+    const c = clubById(p.clubId);
+    const luz = tipo==='recibo' ? '⚪' : (tipo==='boleta' && !(c && /^\d{8}$/.test(c.dni||''))) ? '🟡' : '🟢';
+    const nombre = c ? c.nombre : (p.clasificatorioId ? '🏆 '+(clasifNombre(p.clasificatorioId)||'') : '—');
+    const puedeFactura = !!(c && /^\d{11}$/.test(c.ruc||'') && c.razonSocial);
+    return `<tr class="border-t border-slate-100">
+      <td class="py-2 px-3 text-center"><input type="checkbox" class="emChk accent-[#18324F]" data-id="${p.id}" checked onchange="emCount()"></td>
+      <td class="py-2 px-3 text-xs text-slate-500 whitespace-nowrap">${p.fecha||'—'}</td>
+      <td class="py-2 px-3 text-sm font-medium">${nombre}<div class="text-[10px] text-slate-400">${myTorneos().find(t=>+t.id===+p.torneoId)?.nombre||''} · ${p.medio||''}</div></td>
+      <td class="py-2 px-3 text-right mono font-bold text-sm">${fmt(p.monto)}</td>
+      <td class="py-2 px-3 text-center" title="${luz==='🟡'?'Sin DNI: saldrá a CLIENTE VARIOS':luz==='⚪'?'Recibo interno':'Listo'}">${luz}</td>
+      <td class="py-2 px-3">
+        <select id="emTipo_${p.id}" class="text-xs border border-slate-200 rounded px-2 py-1 bg-white">
+          <option value="recibo" ${tipo==='recibo'?'selected':''}>Recibo</option>
+          <option value="boleta" ${tipo==='boleta'?'selected':''}>Boleta</option>
+          <option value="factura" ${tipo==='factura'?'selected':''} ${puedeFactura?'':'disabled'}>Factura${puedeFactura?'':' (sin RUC)'}</option>
+        </select>
+      </td>
+    </tr>`;
+  }).join('');
+  const chip = (v,l)=>`<button onclick="colaEmision('${v}')" class="text-xs font-semibold px-3 py-1 rounded-full border ${EM_TIPO===v?'bg-[#18324F] text-white border-[#18324F]':'border-slate-200 text-slate-600 hover:bg-slate-50'}">${l}</button>`;
+  document.getElementById('emBody').innerHTML = `
+    ${aviso}
+    <div class="flex items-center gap-2 mb-3 flex-wrap">${chip('','Todos')}${chip('recibo','Recibos')}${chip('boleta','Boletas')}${chip('factura','Facturas')}
+      <span id="emCountTxt" class="ml-auto text-xs text-slate-500"></span></div>
+    <div class="overflow-auto max-h-[52vh] border border-slate-200 rounded-lg">
+      <table class="w-full text-sm">
+        <thead><tr class="text-[10px] text-slate-500 uppercase bg-slate-50"><th class="py-2 px-3"><input type="checkbox" checked onchange="document.querySelectorAll('.emChk').forEach(c=>c.checked=this.checked);emCount()" class="accent-[#18324F]"></th><th class="py-2 px-3 text-left">Fecha</th><th class="py-2 px-3 text-left">Pagador</th><th class="py-2 px-3 text-right">Monto</th><th class="py-2 px-3"></th><th class="py-2 px-3 text-left">Documento</th></tr></thead>
+        <tbody>${filas||'<tr><td colspan="6" class="py-8 text-center text-slate-400 text-sm">No hay pagos aprobados pendientes de emisión.</td></tr>'}</tbody>
+      </table>
+    </div>`;
+  emCount();
+  openModal('emisionModal');
+}
+function emCount(){
+  const n = document.querySelectorAll('.emChk:checked').length;
+  const t = document.getElementById('emCountTxt'); if(t) t.textContent = `${n} seleccionado(s)`;
+  const b = document.getElementById('emBtnEmitir'); if(b) b.disabled = n===0;
+}
+function emitirSeleccionados(){
+  EM_PENDIENTE = [...document.querySelectorAll('.emChk:checked')].map(c=>{ const id=+c.dataset.id; return {pid:id, tipo:document.getElementById('emTipo_'+id)?.value||'recibo'}; });
+  if(!EM_PENDIENTE.length){ toast('Selecciona al menos un pago.','error'); return; }
+  const n = t => EM_PENDIENTE.filter(x=>x.tipo===t).length;
+  const faltaCfg = EM_PENDIENTE.some(x=>!_docCfgOk(x.tipo));
+  if(faltaCfg){ toast('Falta RUC emisor o series para boleta/factura. Configúralos en Medios de Pago → Facturación.','error'); return; }
+  if(!confirm(`Se emitirán ${n('recibo')} recibo(s), ${n('boleta')} boleta(s) y ${n('factura')} factura(s). Las boletas/facturas se envían a SUNAT y no se pueden deshacer. ¿Continuar?`)) return;
+  ejecutarEmision();
+}
+async function ejecutarEmision(){
+  const o=_docOrg(); const total=EM_PENDIENTE.length;
+  let recibos=0, sunat=0, errores=0, primerError='';
+  const prog = document.getElementById('emProg'); const btn=document.getElementById('emBtnEmitir'); if(btn) btn.disabled=true;
+  for(let i=0;i<total;i++){
+    const {pid,tipo} = EM_PENDIENTE[i];
+    if(prog) prog.textContent = `Procesando ${i+1} de ${total}…`;
+    const p = S.pagos.find(x=>x.id===pid); if(!p || p.docTipo) continue;
+    if(tipo==='recibo'){
+      const num = o.correlativoRecibo||1;
+      Object.assign(p,{docTipo:'recibo',docSerie:'R',docNumero:num,sunatEstado:null,sunatError:null,emitidoAt:new Date().toISOString()});
+      o.correlativoRecibo = num+1; recibos++;
+      if(sbOn()){ try{ await SB().data.actualizarPago(pid,{doc_tipo:'recibo',doc_serie:'R',doc_numero:num,emitido_at:p.emitidoAt}); await SB().data.actualizarOrganizacion(o.id,{correlativo_recibo:o.correlativoRecibo}); }catch(e){ toast('⚠ '+e.message,'error'); } }
+      continue;
+    }
+    const serie = tipo==='boleta' ? o.serieBoleta : o.serieFactura;
+    const num   = tipo==='boleta' ? (o.correlativoBoleta||1) : (o.correlativoFactura||1);
+    if(!sbOn()){ errores++; primerError = primerError||'La emisión a SUNAT requiere conexión a la base de datos.'; continue; }
+    try{
+      const r = await SB().data.emitirComprobante({pago_id:pid, tipo, serie, numero:num});
+      Object.assign(p,{docTipo:tipo,docSerie:serie,docNumero:num,docPdfUrl:r.pdf||null,docXmlUrl:r.xml||null,sunatEstado:'emitido',sunatError:null,emitidoAt:new Date().toISOString()});
+      if(tipo==='boleta') o.correlativoBoleta=num+1; else o.correlativoFactura=num+1;
+      sunat++;
+      await SB().data.actualizarPago(pid,{doc_tipo:tipo,doc_serie:serie,doc_numero:num,doc_pdf_url:p.docPdfUrl,doc_xml_url:p.docXmlUrl,sunat_estado:'emitido',sunat_error:null,emitido_at:p.emitidoAt});
+      await SB().data.actualizarOrganizacion(o.id, tipo==='boleta'?{correlativo_boleta:o.correlativoBoleta}:{correlativo_factura:o.correlativoFactura});
+    }catch(e){
+      errores++; primerError = primerError||e.message;
+      p.sunatEstado='error'; p.sunatError=e.message;   // el número NO se consume: se puede reintentar
+      try{ await SB().data.actualizarPago(pid,{sunat_estado:'error',sunat_error:e.message}); }catch(_){}
+    }
+    await new Promise(r=>setTimeout(r,250));
+  }
+  if(prog) prog.textContent='';
+  closeModal('emisionModal');
+  renderRepPagos();
+  toast(`Emisión terminada: ${recibos} recibo(s), ${sunat} enviado(s) a SUNAT, ${errores} error(es).${errores?' Primer error: '+primerError:''}`, errores?'error':'success');
+}
+
+function verComprobantePago(pid){
+  const p = S.pagos.find(x=>x.id===pid);
+  if(!p || !p.docTipo){ toast('Este pago aún no tiene documento emitido.','error'); return; }
+  if(p.docTipo!=='recibo'){
+    if(p.docPdfUrl){ window.open(p.docPdfUrl,'_blank','noopener'); return; }
+    toast(p.sunatError ? '⚠ '+p.sunatError : 'El comprobante no tiene PDF disponible.','error'); return;
+  }
+  const c = clubById(p.clubId), t = myTorneos().find(x=>+x.id===+p.torneoId), o=_docOrg();
+  const nro = docNro(p), arch = `recibo_${nro}`;
+  const pagador = c ? c.nombre : (p.clasificatorioId ? (clasifNombre(p.clasificatorioId)||'') : '—');
+  document.getElementById('reciboBody').innerHTML = `
+    <div id="docCuenta" class="bg-white">
+      ${t?.headerUrl ? `<img src="${t.headerUrl}" crossorigin="anonymous" class="w-full block object-cover">`
+        : `<div class="bg-[#18324F] text-white px-4 py-5 text-center"><div class="text-lg font-bold">${o.razonSocialEmisor||o.nombre||'Liguify'}</div><div class="text-sm opacity-80">${t?.nombre||''}</div></div>`}
+      <div class="px-5 py-4">
+        <div class="flex items-start justify-between mb-3">
+          <div><div class="text-[11px] uppercase tracking-wide text-slate-400">Recibo</div><div class="text-lg font-bold text-slate-800">${nro}</div><div class="text-xs text-slate-400">${t?.nombre||''}</div></div>
+          <div class="text-right"><div class="text-[11px] uppercase tracking-wide text-slate-400">Fecha de pago</div><div class="text-sm text-slate-700">${p.fecha||'—'}</div>${p.emitidoAt?`<div class="text-[11px] text-slate-400">Emitido: ${String(p.emitidoAt).slice(0,10)}</div>`:''}</div>
+        </div>
+        <div class="mb-3 text-sm">
+          <div><span class="text-slate-400">Club:</span> <b>${pagador}</b></div>
+          ${p.contacto||c?.delegado ? `<div><span class="text-slate-400">Recibido de:</span> ${p.contacto||c.delegado}</div>`:''}
+          <div><span class="text-slate-400">Medio:</span> ${p.medio||'—'}${p.nroOp&&p.nroOp!=='—'?` · Op. ${p.nroOp}`:''}</div>
+        </div>
+        <table class="w-full text-sm border-t border-slate-200">
+          <thead><tr class="text-left text-slate-500"><th class="py-1.5 font-medium">Concepto</th><th class="py-1.5 font-medium text-right">Monto</th></tr></thead>
+          <tbody><tr class="border-t border-slate-100"><td class="py-1.5 pr-2">Inscripción ${t?.nombre||''}${p.desc?' · '+p.desc:''}</td><td class="py-1.5 text-right">${fmt(p.monto)}</td></tr></tbody>
+          <tfoot><tr class="border-t-2 border-slate-300 font-bold"><td class="py-2">Total</td><td class="py-2 text-right text-emerald-600">${fmt(p.monto)}</td></tr></tfoot>
+        </table>
+        <div class="mt-3 text-[11px] text-slate-400">Documento interno de control · no es comprobante de pago válido para SUNAT.</div>
+      </div>
+    </div>
+    <div class="flex flex-wrap justify-end gap-2 mt-3">
+      <button onclick="descargarComprobante('${arch}')" class="rounded-lg bg-white ring-1 ring-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">📥 Descargar</button>
+      <button onclick="compartirComprobante('${arch}')" class="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700">📲 Compartir</button>
+    </div>`;
+  openModal('reciboModal');
+}
+async function docCanvas(){ return html2canvas(document.getElementById('docCuenta'), {scale:2, backgroundColor:'#ffffff', useCORS:true}); }
+async function descargarComprobante(nombre){
+  if(typeof html2canvas==='undefined'){ toast('No se pudo cargar el generador de imagen','error'); return; }
+  const canvas = await docCanvas(); const a=document.createElement('a'); a.download=`${nombre}.png`; a.href=canvas.toDataURL('image/png'); a.click();
+}
+async function compartirComprobante(nombre){
+  if(typeof html2canvas==='undefined'){ toast('No se pudo cargar el generador de imagen','error'); return; }
+  const canvas = await docCanvas();
+  canvas.toBlob(async blob=>{
+    const file = new File([blob], `${nombre}.png`, {type:'image/png'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){ try{ await navigator.share({files:[file], title:'Recibo'}); }catch(_){} }
+    else { const a=document.createElement('a'); a.download=file.name; a.href=canvas.toDataURL('image/png'); a.click(); toast('Imagen descargada · adjúntala en WhatsApp','success'); }
+  },'image/png');
+}
+function pDocHint(){
+  const v = document.querySelector('input[name="pDocSol"]:checked')?.value;
+  const h = document.getElementById('pDocHintTxt'); if(!h) return;
+  if(v==='factura'){ const c=clubById(S.selectedClubId); const ok=!!(c&&/^\d{11}$/.test(c.ruc||'')&&c.razonSocial);
+    h.innerHTML = ok ? `Factura a <b>${c.razonSocial}</b> · RUC ${c.ruc}` : `<span class="text-rose-600">El club no tiene RUC/razón social. Regístralos en Clubes → Editar.</span>`; }
+  else h.textContent = 'Boleta por defecto. Si el medio de pago no genera comprobante SUNAT, se emitirá un recibo interno.';
 }
 
 function exportarPagosExcel() {
@@ -6313,6 +6579,7 @@ function p2SetTipo(tipo){
   if(bK) bK.className=`flex-1 border-2 rounded-lg py-2 text-xs font-bold hover:bg-slate-50 transition ${tipo==='clasif'?on:off}`;
   document.getElementById('p2_club_block').classList.toggle('hidden', tipo!=='club');
   document.getElementById('p2_clasif_block').classList.toggle('hidden', tipo!=='clasif');
+  document.getElementById('pDocWrap')?.classList.toggle('hidden', tipo!=='club');   // clasificatorio: siempre boleta/recibo
   document.getElementById('p2_torneo_row').classList.add('hidden');
   document.getElementById('p2_detalle').classList.add('hidden');
   _p2TorneoId=null; _p2ClasifId=null;
@@ -6362,6 +6629,7 @@ function renderP2() {
 
 function p2SelectClub(id) {
   S.selectedClubId = id;
+  pDocHint();
   if(!id) {
     document.getElementById('p2_torneo_row').classList.add('hidden');
     document.getElementById('p2_detalle').classList.add('hidden');
@@ -6554,6 +6822,12 @@ async function registrarPago() {
   if(!S.medioSeleccionado){ toast('Selecciona un medio de pago.','error'); return; }
   // El voucher es obligatorio salvo cuando el medio es efectivo.
   if(!_medioEsEfectivo() && !S.voucherUploaded) { document.getElementById('verr').classList.remove('hidden'); return; }
+  // Comprobante solicitado: boleta por defecto; factura exige RUC + razón social del club
+  const docSolicitado = esClasif ? 'boleta' : (document.querySelector('input[name="pDocSol"]:checked')?.value || 'boleta');
+  if(docSolicitado==='factura'){
+    const cl = clubById(S.selectedClubId);
+    if(!(cl && /^\d{11}$/.test(cl.ruc||'') && cl.razonSocial)){ toast('Para factura, el club necesita RUC (11 dígitos) y razón social. Regístralos en Clubes → Editar.','error'); return; }
+  }
 
   const nuevo = {
     id: S.nextId++, torneoId: _p2TorneoId,
@@ -6567,6 +6841,7 @@ async function registrarPago() {
     estado: 'pendiente', regEn: now(), procPor:null, procEn:null, motivo:null,
     orgId: S.organizacionActual?.id||1,
     voucherUrl: null,
+    docSolicitado, docTipo:null, docSerie:null, docNumero:null, docPdfUrl:null, docXmlUrl:null, sunatEstado:null, sunatError:null, emitidoAt:null,
   };
   const pagadorNombre = esClasif ? (clasifNombre(_p2ClasifId)||'clasificatorio') : (clubById(S.selectedClubId)?.nombre||'club');
   const fileToUpload = _voucherFile; // guardar antes de removeVoucher()
@@ -6589,7 +6864,7 @@ async function registrarPago() {
       const p = await SB().data.registrarPago({
         torneo_id: nuevo.torneoId, club_id: nuevo.clubId, clasificatorio_id: nuevo.clasificatorioId, monto: nuevo.monto,
         medio: nuevo.medio, fecha: nuevo.fecha, nro_op: nuevo.nroOp,
-        descripcion: nuevo.desc, voucher_url: voucherUrl, org_id: myOrgId()
+        descripcion: nuevo.desc, voucher_url: voucherUrl, doc_solicitado: docSolicitado, org_id: myOrgId()
       });
       nuevo.id = p.id;
     } catch(e){
@@ -6898,6 +7173,7 @@ function renderCfgMedios() {
       </td>
       <td class="py-3 px-4 text-center">${_chk(m.paraInscripciones, `toggleMedioFlag(${m.id},'paraInscripciones')`)}</td>
       <td class="py-3 px-4 text-center">${_chk(m.paraFechas, `toggleMedioFlag(${m.id},'paraFechas')`)}</td>
+      <td class="py-3 px-4 text-center"><span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${m.generaSunat?'bg-sky-100 text-sky-700':'bg-slate-100 text-slate-500'}">${m.generaSunat?'Boleta/Factura':'Recibo'}</span></td>
       <td class="py-3 px-4 text-center">
         <div class="flex items-center justify-center gap-3">
           <button onclick="editarMedio(${m.id})" class="text-xs font-semibold text-[#4F86C6] hover:underline">Editar</button>
@@ -6917,10 +7193,12 @@ function renderCfgMedios() {
         <th class="py-3 px-4 font-semibold text-center">Estado</th>
         <th class="py-3 px-4 font-semibold text-center">Inscripciones</th>
         <th class="py-3 px-4 font-semibold text-center">Ing. por Fecha</th>
+        <th class="py-3 px-4 font-semibold text-center">Documento</th>
         <th class="py-3 px-4 font-semibold text-center">Acciones</th>
       </tr></thead>
-      <tbody class="divide-y divide-slate-100">${filas||'<tr><td colspan="7" class="py-8 text-center text-slate-400 text-sm">Sin medios de pago configurados.</td></tr>'}</tbody>
+      <tbody class="divide-y divide-slate-100">${filas||'<tr><td colspan="8" class="py-8 text-center text-slate-400 text-sm">Sin medios de pago configurados.</td></tr>'}</tbody>
     </table>`;
+  cargarFacturacionCfg();
 }
 
 function toggleMedioFlag(id, flag) {
@@ -6950,6 +7228,7 @@ function editarMedio(id) {
   document.getElementById('cfgMedioNombre').value = m.nombre;
   document.getElementById('cfgMedioTipo').value = m.tipo;
   document.getElementById('cfgMedioIcon').value = m.icon||'';
+  document.getElementById('cfgMedioSunat').checked = !!m.generaSunat;
   openModal('cfgMedioModal');
 }
 
@@ -6957,29 +7236,58 @@ function guardarMedio() {
   const nombre = document.getElementById('cfgMedioNombre').value.trim();
   const tipo   = document.getElementById('cfgMedioTipo').value;
   const icon   = document.getElementById('cfgMedioIcon').value.trim()||'💳';
+  const generaSunat = !!document.getElementById('cfgMedioSunat').checked;
   const editId = parseInt(document.getElementById('cfgMedioId').value)||0;
   if(!nombre){ toast('El nombre es obligatorio.','error'); return; }
   if(editId) {
     const m = S.mediosPago.find(x=>x.id===editId); if(!m) return;
-    m.nombre=nombre; m.tipo=tipo; m.icon=icon;
+    m.nombre=nombre; m.tipo=tipo; m.icon=icon; m.generaSunat=generaSunat;
     toast(`"${nombre}" actualizado ✓`,'success');
-    if(sbOn()) SB().data.guardarMedio({nombre,tipo,icon},editId).catch(e=>toast('⚠ '+e.message,'error'));
+    if(sbOn()) SB().data.guardarMedio({nombre,tipo,icon,genera_sunat:generaSunat},editId).catch(e=>toast('⚠ '+e.message,'error'));
   } else {
     if(myMediosPago().find(m=>m.nombre.toLowerCase()===nombre.toLowerCase())){
       toast('Ya existe un medio con ese nombre.','error'); return;
     }
-    const localM = {id:S.nextId++, nombre, tipo, icon, activo:true, orgId: myOrgId(), paraInscripciones:true, paraFechas:true};
+    const localM = {id:S.nextId++, nombre, tipo, icon, activo:true, orgId: myOrgId(), paraInscripciones:true, paraFechas:true, generaSunat};
     S.mediosPago.push(localM);
     toast(`"${nombre}" agregado ✓`,'success');
-    if(sbOn()) SB().data.guardarMedio({nombre,tipo,icon,activo:true,org_id:myOrgId(),para_inscripciones:true,para_fechas:true},null)
+    if(sbOn()) SB().data.guardarMedio({nombre,tipo,icon,activo:true,org_id:myOrgId(),para_inscripciones:true,para_fechas:true,genera_sunat:generaSunat},null)
       .then(m=>{ localM.id=m.id; }).catch(e=>toast('⚠ '+e.message,'error'));
   }
   closeModal('cfgMedioModal');
   document.getElementById('cfgMedioId').value='';
   document.getElementById('cfgMedioNombre').value='';
   document.getElementById('cfgMedioIcon').value='';
+  document.getElementById('cfgMedioSunat').checked=false;
   renderCfgMedios();
 }
+
+// ---- Facturación electrónica: configuración por empresa ----
+function cargarFacturacionCfg(){
+  const o = S.organizacionActual; if(!o || !document.getElementById('fc_ruc')) return;
+  const set=(id,v)=>{ const e=document.getElementById(id); if(e) e.value = v ?? ''; };
+  set('fc_ruc',o.rucEmisor); set('fc_rz',o.razonSocialEmisor); set('fc_dir',o.direccionFiscal);
+  set('fc_sb',o.serieBoleta); set('fc_sf',o.serieFactura);
+  set('fc_cb',o.correlativoBoleta||1); set('fc_cf',o.correlativoFactura||1); set('fc_cr',o.correlativoRecibo||1);
+}
+async function guardarFacturacionCfg(){
+  const o = S.organizacionActual; if(!o) return;
+  const v = id => (document.getElementById(id)?.value||'').trim();
+  const ruc = v('fc_ruc').replace(/\D/g,'');
+  if(ruc && ruc.length!==11){ toast('El RUC emisor debe tener 11 dígitos.','error'); return; }
+  const sb_ = v('fc_sb').toUpperCase(), sf_ = v('fc_sf').toUpperCase();
+  if(sb_ && !/^B[A-Z0-9]{3}$/.test(sb_)){ toast('La serie de boleta debe ser como B001.','error'); return; }
+  if(sf_ && !/^F[A-Z0-9]{3}$/.test(sf_)){ toast('La serie de factura debe ser como F001.','error'); return; }
+  Object.assign(o, { rucEmisor:ruc, razonSocialEmisor:v('fc_rz'), direccionFiscal:v('fc_dir'), serieBoleta:sb_, serieFactura:sf_,
+    correlativoBoleta:Math.max(1,parseInt(v('fc_cb'))||1), correlativoFactura:Math.max(1,parseInt(v('fc_cf'))||1), correlativoRecibo:Math.max(1,parseInt(v('fc_cr'))||1) });
+  if(sbOn()){
+    try { await SB().data.actualizarOrganizacion(o.id, _orgFiscalRow(o)); }
+    catch(e){ toast('⚠ No se pudo guardar: '+e.message,'error'); return; }
+  }
+  toast('Facturación guardada ✓','success');
+}
+const _orgFiscalRow = o => ({ ruc_emisor:o.rucEmisor||null, razon_social_emisor:o.razonSocialEmisor||null, direccion_fiscal:o.direccionFiscal||null,
+  serie_boleta:o.serieBoleta||null, serie_factura:o.serieFactura||null, correlativo_boleta:o.correlativoBoleta||1, correlativo_factura:o.correlativoFactura||1, correlativo_recibo:o.correlativoRecibo||1 });
 
 function toggleMedio(id) {
   const m = S.mediosPago.find(x=>x.id===id); if(!m) return;
@@ -8851,7 +9159,9 @@ const sbOn = () => !!(SB() && SB().configurado);
 let _obData = null;                 // datos de organización capturados en onboarding
 const _num = v => v==null ? 0 : +v; // numeric(12,2) llega como string desde PostgREST
 
-function _mapOrg(o){ return {id:o.id,nombre:o.nombre,contacto:o.contacto,email:o.email,ruc:o.ruc,telefono:o.telefono,plan:o.plan,planVence:o.plan_vence,activo:o.activo,esPropia:o.es_propia,fechaReg:o.fecha_reg,torneosAnio:o.torneos_anio||'—'}; }
+function _mapOrg(o){ return {id:o.id,nombre:o.nombre,contacto:o.contacto,email:o.email,ruc:o.ruc,telefono:o.telefono,plan:o.plan,planVence:o.plan_vence,activo:o.activo,esPropia:o.es_propia,fechaReg:o.fecha_reg,torneosAnio:o.torneos_anio||'—',
+  rucEmisor:o.ruc_emisor||'',razonSocialEmisor:o.razon_social_emisor||'',direccionFiscal:o.direccion_fiscal||'',serieBoleta:o.serie_boleta||'',serieFactura:o.serie_factura||'',
+  correlativoBoleta:+o.correlativo_boleta||1,correlativoFactura:+o.correlativo_factura||1,correlativoRecibo:+o.correlativo_recibo||1}; }
 function _mapUser(u){ return {id:u.id,nombre:u.nombre,email:u.email,rol:u.rol,orgId:u.org_id,esAdminPlataforma:u.es_admin_plataforma,metodo:u.metodo,activo:u.activo,pendiente:u.pendiente}; }
 
 async function sbHydrate(){
@@ -8861,7 +9171,7 @@ async function sbHydrate(){
   S.usuarios       = (d.profiles||[]).map(_mapUser);
   S.categorias     = (d.categorias||[]).map(c=>({id:c.id,nombre:c.nombre,aforo:c.aforo,fechas:c.fechas,orgId:c.org_id}));
   S.complejos      = (d.complejos||[]).map(c=>({id:c.id,nombre:c.nombre,direccion:c.direccion,distrito:c.distrito,orgId:c.org_id}));
-  S.mediosPago     = (d.medios_pago||[]).map(m=>({id:m.id,nombre:m.nombre,tipo:m.tipo,icon:m.icon,activo:m.activo,orgId:m.org_id,paraInscripciones:m.para_inscripciones!==false,paraFechas:m.para_fechas!==false}));
+  S.mediosPago     = (d.medios_pago||[]).map(m=>({id:m.id,nombre:m.nombre,tipo:m.tipo,icon:m.icon,activo:m.activo,orgId:m.org_id,paraInscripciones:m.para_inscripciones!==false,paraFechas:m.para_fechas!==false,generaSunat:!!m.genera_sunat}));
   S.conceptos      = (d.conceptos||[]).map(c=>({id:c.id,nombre:c.nombre,tipo:c.tipo,fuente:c.fuente||'ambos',porDefecto:c.por_defecto!==false,activo:c.activo!==false,orgId:c.org_id}));
   S.proveedores    = (d.proveedores||[]).map(p=>({id:p.id,nombre:p.nombre,rucDni:p.ruc_dni,telefono:p.telefono,conceptoIds:(p.concepto_ids||[]).map(Number),banco1Nombre:p.banco1_nombre,banco1Cuenta:p.banco1_cuenta,banco2Nombre:p.banco2_nombre,banco2Cuenta:p.banco2_cuenta,orgId:p.org_id}));
   S.costos         = (d.costos||[]).map(c=>({id:c.id,torneoId:c.torneo_id,conceptoId:c.concepto_id,proveedorId:c.proveedor_id,descripcion:c.descripcion,monto:_num(c.monto),adelantos:(c.adelantos||[]).map(a=>({fecha:a.fecha,monto:_num(a.monto)})),orgId:c.org_id}));
@@ -8872,7 +9182,8 @@ async function sbHydrate(){
   S.torneos = (d.torneos||[]).map(t=>({id:t.id,nombre:t.nombre,sede:t.sede,esquema:t.esquema,estado:t.estado,inicio:t.inicio,fin:t.fin,fechaVenc:t.fecha_venc,label:t.label,headerUrl:t.header_url,bienvenidaUrl:t.bienvenida_url,bienvenidaCfg:t.bienvenida_cfg||null,condiciones:t.condiciones,snap:t.snap,orgId:t.org_id,cats:catsByT[t.id]||[]}));
   S.equipos = (d.equipos||[]).map(e=>({id:e.id,torneoId:e.torneo_id,clubId:e.club_id,catId:e.cat_id,modalidad:e.modalidad||'',nombre:e.nombre,contacto:e.contacto||'',contactoTelefono:e.contacto_telefono||'',inscripcion:_num(e.inscripcion),arbitraje:_num(e.arbitraje),fechas:e.fechas,monto:_num(e.monto),invitado:e.invitado||false,estado:e.estado,createdBy:e.created_by,clasificatorioId:e.clasificatorio_id,clasifPrecio:_num(e.clasif_precio),orgId:e.org_id}));
   S.prospectos = (d.prospectos||[]).map(p=>({id:p.id,torneoId:p.torneo_id,clubId:p.club_id,clubNombre:p.club_nombre,catIds:p.cat_ids||[],delegado:p.delegado,telefono:p.telefono,nota:p.nota,createdBy:p.created_by,orgId:p.org_id}));
-  S.pagos = (d.pagos||[]).map(p=>({id:p.id,torneoId:p.torneo_id,clubId:p.club_id,clasificatorioId:p.clasificatorio_id,contacto:p.contacto||'',monto:_num(p.monto),medio:p.medio,fecha:p.fecha,nroOp:p.nro_op,desc:p.descripcion,voucherUrl:p.voucher_url,estado:p.estado,motivo:p.motivo,op:'',createdBy:p.created_by,regEn:p.created_at,procPor:'',procEn:p.processed_at,orgId:p.org_id}));
+  S.pagos = (d.pagos||[]).map(p=>({id:p.id,torneoId:p.torneo_id,clubId:p.club_id,clasificatorioId:p.clasificatorio_id,contacto:p.contacto||'',monto:_num(p.monto),medio:p.medio,fecha:p.fecha,nroOp:p.nro_op,desc:p.descripcion,voucherUrl:p.voucher_url,estado:p.estado,motivo:p.motivo,op:'',createdBy:p.created_by,regEn:p.created_at,procPor:'',procEn:p.processed_at,orgId:p.org_id,
+    docSolicitado:p.doc_solicitado||'boleta',docTipo:p.doc_tipo||null,docSerie:p.doc_serie||null,docNumero:p.doc_numero?+p.doc_numero:null,docPdfUrl:p.doc_pdf_url||null,docXmlUrl:p.doc_xml_url||null,sunatEstado:p.sunat_estado||null,sunatError:p.sunat_error||null,emitidoAt:p.emitido_at||null}));
   // Ingresos por Fecha (detalle financiero de cada jornada)
   _ifData = {};
   (d.ingresos_fecha||[]).forEach(r=>{
