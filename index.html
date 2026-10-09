@@ -305,6 +305,14 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
       const { data } = sb.storage.from('torneos').getPublicUrl(path);
       return data?.publicUrl || path;
     },
+    async subirLogoOrg(file, orgId) {
+      const ext  = (file.name.split('.').pop() || 'png').toLowerCase();
+      const path = `${orgId}/logo-empresa-${Date.now()}.${ext}`;
+      const { error } = await sb.storage.from('torneos').upload(path, file, { upsert: true });
+      if (error) throw error;
+      const { data } = sb.storage.from('torneos').getPublicUrl(path);
+      return data?.publicUrl || path;
+    },
     async subirLogoClub(file, orgId) {
       const ext  = (file.name.split('.').pop() || 'png').toLowerCase();
       const path = `${orgId}/clubes/${Date.now()}.${ext}`;
@@ -965,7 +973,17 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
             <div><label class="block text-xs font-semibold text-slate-600 mb-1">Próximo N° recibo <span class="text-slate-400 font-normal">(serie R)</span></label><input id="fc_cr" type="number" min="1" class="w-full border border-slate-300 rounded-lg px-3 py-2 mono outline-none focus:ring-2 focus:ring-blue-200"></div>
             <div><label class="block text-xs font-semibold text-slate-600 mb-1">Serie factura</label><input id="fc_sf" placeholder="F001" maxlength="4" class="w-full border border-slate-300 rounded-lg px-3 py-2 mono uppercase outline-none focus:ring-2 focus:ring-blue-200"></div>
             <div><label class="block text-xs font-semibold text-slate-600 mb-1">Próximo N° factura</label><input id="fc_cf" type="number" min="1" class="w-full border border-slate-300 rounded-lg px-3 py-2 mono outline-none focus:ring-2 focus:ring-blue-200"></div>
-            <div class="text-[11px] text-slate-400 self-end pb-2">Las credenciales de Nubefact van como secretos en Supabase: <span class="mono">NUBEFACT_RUTA_&lt;RUC&gt;</span> y <span class="mono">NUBEFACT_TOKEN_&lt;RUC&gt;</span>.</div>
+            <div class="md:col-span-3 flex items-center gap-3 pt-1">
+              <img id="fc_logoPrev" class="hidden h-14 w-14 rounded-lg object-contain border border-slate-200 bg-slate-50" alt="">
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Logo de la empresa <span class="text-slate-400 font-normal">(sale en los recibos)</span></label>
+                <label class="cursor-pointer inline-block text-xs font-semibold text-[#18324F] border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-50 transition">📷 Subir logo
+                  <input type="file" id="fc_logo" accept="image/*" class="hidden" onchange="previewLogo(this,'fc_logoPrev')">
+                </label>
+                <span class="text-[11px] text-slate-400 ml-2">PNG cuadrado, se ajusta a 512px</span>
+              </div>
+            </div>
+            <div class="md:col-span-3 text-[11px] text-slate-400">Las credenciales de Nubefact van como secretos en Supabase: <span class="mono">NUBEFACT_RUTA_&lt;RUC&gt;</span> y <span class="mono">NUBEFACT_TOKEN_&lt;RUC&gt;</span>.</div>
           </div>
         </div>
       </div>
@@ -3914,6 +3932,17 @@ async function ejecutarEmision(){
   toast(`Emisión terminada: ${recibos} recibo(s), ${sunat} enviado(s) a SUNAT, ${errores} error(es).${errores?' Primer error: '+primerError:''}`, errores?'error':'success');
 }
 
+function numEnLetras(n){
+  const U=['','UNO','DOS','TRES','CUATRO','CINCO','SEIS','SIETE','OCHO','NUEVE','DIEZ','ONCE','DOCE','TRECE','CATORCE','QUINCE','DIECISEIS','DIECISIETE','DIECIOCHO','DIECINUEVE','VEINTE'];
+  const D=['','','','TREINTA','CUARENTA','CINCUENTA','SESENTA','SETENTA','OCHENTA','NOVENTA'];
+  const C=['','CIENTO','DOSCIENTOS','TRESCIENTOS','CUATROCIENTOS','QUINIENTOS','SEISCIENTOS','SETECIENTOS','OCHOCIENTOS','NOVECIENTOS'];
+  const h=x=>{ if(!x) return ''; if(x===100) return 'CIEN'; let s=C[Math.floor(x/100)]; x%=100; if(!x) return s; if(s) s+=' ';
+    if(x<=20) return s+U[x]; const d=Math.floor(x/10), u=x%10; return s+(d===2?'VEINTI'+U[u]:D[d]+(u?' Y '+U[u]:'')); };
+  const ent=Math.floor(+n||0), cent=Math.round(((+n||0)-ent)*100), miles=Math.floor(ent/1000), resto=ent%1000;
+  const letras = ent===0 ? 'CERO' : `${miles?(miles===1?'MIL':h(miles)+' MIL'):''}${resto?(miles?' ':'')+h(resto):''}`;
+  return `${letras} CON ${String(cent).padStart(2,'0')}/100 SOLES`;
+}
+// Recibo interno (mismo formato que Liguify Academias): logo + empresa, caja del número, cliente/fechas, detalle, total, importe en letras.
 function verComprobantePago(pid){
   const p = S.pagos.find(x=>x.id===pid);
   if(!p || !p.docTipo){ toast('Este pago aún no tiene documento emitido.','error'); return; }
@@ -3924,26 +3953,50 @@ function verComprobantePago(pid){
   const c = clubById(p.clubId), t = myTorneos().find(x=>+x.id===+p.torneoId), o=_docOrg();
   const nro = docNro(p), arch = `recibo_${nro}`;
   const pagador = c ? c.nombre : (p.clasificatorioId ? (clasifNombre(p.clasificatorioId)||'') : '—');
+  const fDMY = f => f ? String(f).slice(0,10).split('-').reverse().join('/') : '—';
+  const logo = o.logoUrl || null;
+  const dato = (lbl,v)=>`<tr><td class="pr-2 py-0.5 align-top text-[11px] font-bold text-slate-500 whitespace-nowrap">${lbl}</td><td class="py-0.5 text-[12px] text-slate-800">: ${v}</td></tr>`;
+  const cats = p.clubId ? [...new Set(myEquipos().filter(e=>+e.torneoId===+p.torneoId && +e.clubId===+p.clubId && e.estado==='activo').map(e=>catById(e.catId)?.nombre).filter(Boolean))].join(', ') : '';
   document.getElementById('reciboBody').innerHTML = `
-    <div id="docCuenta" class="bg-white">
-      ${t?.headerUrl ? `<img src="${t.headerUrl}" crossorigin="anonymous" class="w-full block object-cover">`
-        : `<div class="bg-[#18324F] text-white px-4 py-5 text-center"><div class="text-lg font-bold">${o.razonSocialEmisor||o.nombre||'Liguify'}</div><div class="text-sm opacity-80">${t?.nombre||''}</div></div>`}
-      <div class="px-5 py-4">
-        <div class="flex items-start justify-between mb-3">
-          <div><div class="text-[11px] uppercase tracking-wide text-slate-400">Recibo</div><div class="text-lg font-bold text-slate-800">${nro}</div><div class="text-xs text-slate-400">${t?.nombre||''}</div></div>
-          <div class="text-right"><div class="text-[11px] uppercase tracking-wide text-slate-400">Fecha de pago</div><div class="text-sm text-slate-700">${p.fecha||'—'}</div>${p.emitidoAt?`<div class="text-[11px] text-slate-400">Emitido: ${String(p.emitidoAt).slice(0,10)}</div>`:''}</div>
+    <div id="docCuenta" class="bg-white p-4" style="font-family: Arial, Helvetica, sans-serif">
+      <div class="border border-slate-300 rounded-lg overflow-hidden">
+        <div class="flex items-start justify-between gap-3 p-4 pb-3">
+          <div class="flex items-center gap-3 min-w-0">
+            ${logo ? `<img src="${logo}" crossorigin="anonymous" class="h-16 w-16 shrink-0 rounded-lg object-contain">` : '<div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-2xl">⚽</div>'}
+            <div class="min-w-0">
+              <div class="text-base font-black uppercase tracking-wide text-slate-900">${o.razonSocialEmisor||o.nombre||''}</div>
+              <div class="text-sm font-semibold text-[#c8102e]">${t?.nombre||''}</div>
+              ${o.direccionFiscal ? `<div class="text-[11px] text-slate-400">${o.direccionFiscal}</div>` : ''}
+            </div>
+          </div>
+          <div class="shrink-0 rounded-lg border-2 border-slate-700 px-4 py-2.5 text-center">
+            <div class="text-[11px] font-bold tracking-wide text-slate-500">RECIBO INTERNO</div>
+            <div class="text-xl font-black text-slate-900">${nro}</div>
+          </div>
         </div>
-        <div class="mb-3 text-sm">
-          <div><span class="text-slate-400">Club:</span> <b>${pagador}</b></div>
-          ${p.contacto||c?.delegado ? `<div><span class="text-slate-400">Recibido de:</span> ${p.contacto||c.delegado}</div>`:''}
-          <div><span class="text-slate-400">Medio:</span> ${p.medio||'—'}${p.nroOp&&p.nroOp!=='—'?` · Op. ${p.nroOp}`:''}</div>
+        <div class="mx-4 mb-3 flex flex-wrap gap-3">
+          <div class="flex-1 min-w-[220px] rounded-lg border border-slate-200 px-3 py-2">
+            <table>${dato('CLUB', `<b>${pagador}</b>${cats?` · Cat. ${cats}`:''}`)}
+              ${(p.contacto||c?.delegado) ? dato('RECIBIDO DE', p.contacto||c.delegado) : ''}
+              ${dato('MEDIO', `${p.medio||'—'}${p.nroOp&&p.nroOp!=='—'?' · Op. '+p.nroOp:''}`)}</table>
+          </div>
+          <div class="rounded-lg border border-slate-200 px-3 py-2">
+            <table>${dato('FECHA DE PAGO', fDMY(p.fecha))}
+              ${p.emitidoAt ? dato('EMISIÓN', fDMY(p.emitidoAt)) : ''}
+              ${dato('MONEDA','SOLES')}</table>
+          </div>
         </div>
-        <table class="w-full text-sm border-t border-slate-200">
-          <thead><tr class="text-left text-slate-500"><th class="py-1.5 font-medium">Concepto</th><th class="py-1.5 font-medium text-right">Monto</th></tr></thead>
-          <tbody><tr class="border-t border-slate-100"><td class="py-1.5 pr-2">Inscripción ${t?.nombre||''}${p.desc?' · '+p.desc:''}</td><td class="py-1.5 text-right">${fmt(p.monto)}</td></tr></tbody>
-          <tfoot><tr class="border-t-2 border-slate-300 font-bold"><td class="py-2">Total</td><td class="py-2 text-right text-emerald-600">${fmt(p.monto)}</td></tr></tfoot>
-        </table>
-        <div class="mt-3 text-[11px] text-slate-400">Documento interno de control · no es comprobante de pago válido para SUNAT.</div>
+        <div class="mx-4 mb-3">
+          <table class="w-full text-[12px]">
+            <thead><tr class="bg-slate-700 text-white"><th class="px-2 py-1.5 text-left w-12">CANT.</th><th class="px-2 py-1.5 text-left">DESCRIPCIÓN</th><th class="px-2 py-1.5 text-right w-24">IMPORTE</th></tr></thead>
+            <tbody><tr class="border-b border-slate-100"><td class="px-2 py-1.5 align-top">1</td><td class="px-2 py-1.5">Inscripción · ${t?.nombre||''}${p.desc?' · '+p.desc:''}</td><td class="px-2 py-1.5 text-right whitespace-nowrap">${fmt(p.monto)}</td></tr></tbody>
+          </table>
+          <div class="mt-2 flex justify-end">
+            <div class="flex items-center gap-6 rounded-lg bg-slate-50 ring-1 ring-slate-200 px-4 py-2"><span class="text-sm font-bold text-slate-600">TOTAL</span><span class="text-lg font-black text-slate-900">${fmt(p.monto)}</span></div>
+          </div>
+        </div>
+        <div class="mx-4 mb-3 rounded-lg border border-slate-200 px-3 py-2 text-[11px] text-slate-600"><b>IMPORTE EN LETRAS:</b> ${numEnLetras(p.monto)}</div>
+        <div class="bg-slate-50 border-t border-slate-200 px-4 py-2 text-center text-[10px] text-slate-400">Documento interno de control · no es comprobante de pago válido para SUNAT · emitido desde Liguify Torneos</div>
       </div>
     </div>
     <div class="flex flex-wrap justify-end gap-2 mt-3">
@@ -7327,6 +7380,8 @@ function cargarFacturacionCfg(){
   set('fc_ruc',o.rucEmisor); set('fc_rz',o.razonSocialEmisor); set('fc_dir',o.direccionFiscal);
   set('fc_sb',o.serieBoleta); set('fc_sf',o.serieFactura);
   set('fc_cb',o.correlativoBoleta||1); set('fc_cf',o.correlativoFactura||1); set('fc_cr',o.correlativoRecibo||1);
+  const prev = document.getElementById('fc_logoPrev'); const inp = document.getElementById('fc_logo'); if(inp) inp.value='';
+  if(prev){ if(o.logoUrl){ prev.src=o.logoUrl; prev.classList.remove('hidden'); } else prev.classList.add('hidden'); }
 }
 async function guardarFacturacionCfg(){
   const o = S.organizacionActual; if(!o) return;
@@ -7336,6 +7391,12 @@ async function guardarFacturacionCfg(){
   const sb_ = v('fc_sb').toUpperCase(), sf_ = v('fc_sf').toUpperCase();
   if(sb_ && !/^B[A-Z0-9]{3}$/.test(sb_)){ toast('La serie de boleta debe ser como B001.','error'); return; }
   if(sf_ && !/^F[A-Z0-9]{3}$/.test(sf_)){ toast('La serie de factura debe ser como F001.','error'); return; }
+  // Logo de la empresa (opcional): se sube redimensionado al bucket y se guarda en organizaciones.logo_url
+  const fLogo = document.getElementById('fc_logo')?.files?.[0];
+  if(fLogo){
+    if(sbOn()){ try { const chico = await redimensionarLogo(fLogo); o.logoUrl = await SB().data.subirLogoOrg(chico, o.id); } catch(e){ toast('⚠ No se pudo subir el logo: '+e.message,'error'); return; } }
+    else o.logoUrl = URL.createObjectURL(fLogo);
+  }
   Object.assign(o, { rucEmisor:ruc, razonSocialEmisor:v('fc_rz'), direccionFiscal:v('fc_dir'), serieBoleta:sb_, serieFactura:sf_,
     correlativoBoleta:Math.max(1,parseInt(v('fc_cb'))||1), correlativoFactura:Math.max(1,parseInt(v('fc_cf'))||1), correlativoRecibo:Math.max(1,parseInt(v('fc_cr'))||1) });
   if(sbOn()){
@@ -7344,7 +7405,7 @@ async function guardarFacturacionCfg(){
   }
   toast('Facturación guardada ✓','success');
 }
-const _orgFiscalRow = o => ({ ruc_emisor:o.rucEmisor||null, razon_social_emisor:o.razonSocialEmisor||null, direccion_fiscal:o.direccionFiscal||null,
+const _orgFiscalRow = o => ({ logo_url:o.logoUrl||null, ruc_emisor:o.rucEmisor||null, razon_social_emisor:o.razonSocialEmisor||null, direccion_fiscal:o.direccionFiscal||null,
   serie_boleta:o.serieBoleta||null, serie_factura:o.serieFactura||null, correlativo_boleta:o.correlativoBoleta||1, correlativo_factura:o.correlativoFactura||1, correlativo_recibo:o.correlativoRecibo||1 });
 
 function toggleMedio(id) {
@@ -9218,7 +9279,7 @@ let _obData = null;                 // datos de organización capturados en onbo
 const _num = v => v==null ? 0 : +v; // numeric(12,2) llega como string desde PostgREST
 
 function _mapOrg(o){ return {id:o.id,nombre:o.nombre,contacto:o.contacto,email:o.email,ruc:o.ruc,telefono:o.telefono,plan:o.plan,planVence:o.plan_vence,activo:o.activo,esPropia:o.es_propia,fechaReg:o.fecha_reg,torneosAnio:o.torneos_anio||'—',
-  rucEmisor:o.ruc_emisor||'',razonSocialEmisor:o.razon_social_emisor||'',direccionFiscal:o.direccion_fiscal||'',serieBoleta:o.serie_boleta||'',serieFactura:o.serie_factura||'',
+  logoUrl:o.logo_url||'',rucEmisor:o.ruc_emisor||'',razonSocialEmisor:o.razon_social_emisor||'',direccionFiscal:o.direccion_fiscal||'',serieBoleta:o.serie_boleta||'',serieFactura:o.serie_factura||'',
   correlativoBoleta:+o.correlativo_boleta||1,correlativoFactura:+o.correlativo_factura||1,correlativoRecibo:+o.correlativo_recibo||1}; }
 function _mapUser(u){ return {id:u.id,nombre:u.nombre,email:u.email,rol:u.rol,orgId:u.org_id,esAdminPlataforma:u.es_admin_plataforma,metodo:u.metodo,activo:u.activo,pendiente:u.pendiente}; }
 

@@ -394,3 +394,6 @@ alter table public.pagos
   add column if not exists doc_solicitado text default 'boleta', add column if not exists doc_tipo text, add column if not exists doc_serie text,
   add column if not exists doc_numero int, add column if not exists doc_pdf_url text, add column if not exists doc_xml_url text,
   add column if not exists sunat_estado text, add column if not exists sunat_error text, add column if not exists emitido_at timestamptz;
+
+-- ---- v21: logo de la empresa (recibos) ----
+alter table public.organizaciones add column if not exists logo_url text;
