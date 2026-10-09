@@ -1973,28 +1973,40 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
       <h3 id="vmTitle" class="font-bold text-sm">Validación de Pago</h3>
       <button onclick="closeModal('voucherModal')" class="text-slate-400 hover:text-slate-600 text-xl leading-none">✕</button>
     </div>
-    <div class="grid grid-cols-2">
-      <div class="bg-slate-900 p-6 flex flex-col items-center justify-center relative" style="min-height:380px">
-        <div class="bg-white rounded-lg p-4 w-56 shadow-xl">
-          <div class="text-[10px] text-slate-400 mb-2 text-center" id="vmBanco">BCP — Comprobante</div>
-          <div class="h-28 bg-slate-100 rounded mb-2 flex items-center justify-center text-slate-300 text-xs">vista previa</div>
-          <div class="text-[10px] text-slate-500 space-y-1">
-            <div class="flex justify-between"><span>Monto:</span><span id="vmMonto" class="font-bold mono">—</span></div>
-            <div class="flex justify-between"><span>Fecha:</span><span id="vmFecha" class="mono">—</span></div>
-          </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 max-h-[90vh]">
+      <!-- Voucher grande (clic = zoom) -->
+      <div class="bg-slate-900 p-4 flex flex-col relative" style="min-height:420px">
+        <div class="flex items-center justify-between text-[11px] text-slate-300 mb-2 px-1">
+          <span id="vmBanco" class="truncate">Comprobante</span>
+          <span class="mono shrink-0 ml-2"><span id="vmMonto" class="font-bold text-white">—</span> · <span id="vmFecha">—</span></span>
         </div>
-        <div class="absolute bottom-4 right-4 flex gap-2">
-          <button class="w-9 h-9 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 text-sm">🔍</button>
-          <button class="w-9 h-9 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 text-sm">🔄</button>
+        <div id="vmVoucherWrap" class="flex-1 flex items-center justify-center min-h-0">
+          <img id="vmVoucherImg" src="" alt="Voucher" onclick="abrirZoomVoucher()" title="Clic para ampliar"
+               class="hidden max-w-full max-h-[76vh] object-contain rounded-lg shadow-2xl cursor-zoom-in">
+          <div id="vmSinVoucher" class="hidden text-center text-slate-500 text-sm border border-dashed border-slate-600 rounded-lg px-8 py-12">Sin voucher adjunto</div>
         </div>
+        <button id="vmZoomBtn" onclick="abrirZoomVoucher()" class="hidden absolute bottom-4 right-4 w-10 h-10 rounded-full bg-white/15 text-white flex items-center justify-center hover:bg-white/30 transition text-base" title="Ampliar">🔍</button>
       </div>
-      <div class="p-6 flex flex-col">
+      <div class="p-6 flex flex-col overflow-y-auto">
         <h4 class="text-xs font-bold text-slate-500 uppercase mb-3">Ficha del Depósito</h4>
         <div id="vmFicha" class="space-y-0 flex-1 text-sm"></div>
         <p class="text-[11px] text-slate-400 mt-3 mb-4">Al confirmar, el sistema registra automáticamente tu usuario y hora de validación.</p>
         <div id="vmActions" class="flex gap-2"></div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- Zoom del voucher: capa por encima del modal de validación; al cerrarla, el modal sigue abierto -->
+<div id="voucherZoom" class="hidden fixed inset-0 z-[70] bg-black/90 flex items-center justify-center p-4 cursor-zoom-out" onclick="cerrarZoomVoucher()">
+  <div class="absolute top-3 right-3 flex items-center gap-2" onclick="event.stopPropagation()">
+    <button onclick="zoomVoucherEscala(-0.25)" class="w-9 h-9 rounded-full bg-white/15 text-white hover:bg-white/30 text-lg leading-none" title="Alejar">−</button>
+    <span id="vzPct" class="text-white text-xs mono w-12 text-center">100%</span>
+    <button onclick="zoomVoucherEscala(0.25)" class="w-9 h-9 rounded-full bg-white/15 text-white hover:bg-white/30 text-lg leading-none" title="Acercar">+</button>
+    <button onclick="cerrarZoomVoucher()" class="w-9 h-9 rounded-full bg-white/15 text-white hover:bg-white/30 text-lg leading-none ml-2" title="Cerrar (Esc)">✕</button>
+  </div>
+  <div class="w-full h-full overflow-auto flex items-center justify-center" onclick="event.stopPropagation()">
+    <img id="vzImg" src="" alt="Voucher" class="rounded-lg shadow-2xl select-none" style="max-width:none;transform-origin:center center" draggable="false">
   </div>
 </div>
 
@@ -6682,6 +6694,26 @@ function renderP3() {
   : '<tr><td colspan="8" class="py-10 text-center text-slate-400 text-sm">Sin pagos pendientes de aprobación ✓</td></tr>';
 }
 
+// ---- Zoom del voucher (capa sobre el modal; al cerrar, el modal de validación permanece) ----
+let _vzEscala = 1;
+function abrirZoomVoucher(){
+  const src = document.getElementById('vmVoucherImg')?.src; if(!src) return;
+  const img = document.getElementById('vzImg'); img.src = src;
+  _vzEscala = 1; _vzAplicar();
+  document.getElementById('voucherZoom').classList.remove('hidden');
+}
+function cerrarZoomVoucher(){ document.getElementById('voucherZoom').classList.add('hidden'); }
+function zoomVoucherEscala(d){ _vzEscala = Math.min(4, Math.max(0.5, +(_vzEscala+d).toFixed(2))); _vzAplicar(); }
+function _vzAplicar(){
+  const img = document.getElementById('vzImg');
+  // Escala 1 = ajustado a la ventana; >1 amplía (aparece scroll para desplazarse)
+  img.style.maxWidth  = _vzEscala===1 ? '100%' : 'none';
+  img.style.maxHeight = _vzEscala===1 ? '100%' : 'none';
+  img.style.width = _vzEscala===1 ? '' : (_vzEscala*100)+'%';
+  document.getElementById('vzPct').textContent = Math.round(_vzEscala*100)+'%';
+}
+document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !document.getElementById('voucherZoom')?.classList.contains('hidden')) cerrarZoomVoucher(); });
+
 function abrirVoucher(pagoId) {
   S.selectedPagoId = pagoId;
   const p = S.pagos.find(x=>x.id===pagoId);
@@ -6691,6 +6723,10 @@ function abrirVoucher(pagoId) {
   document.getElementById('vmBanco').textContent = `${p.medio} — Comprobante de transferencia`;
   document.getElementById('vmMonto').textContent = fmt(p.monto);
   document.getElementById('vmFecha').textContent = p.fecha;
+  // Voucher grande en el panel izquierdo
+  const vImg = document.getElementById('vmVoucherImg'), vNo = document.getElementById('vmSinVoucher'), vZb = document.getElementById('vmZoomBtn');
+  if(p.voucherUrl){ vImg.src = p.voucherUrl; vImg.classList.remove('hidden'); vNo.classList.add('hidden'); vZb.classList.remove('hidden'); }
+  else { vImg.src=''; vImg.classList.add('hidden'); vNo.classList.remove('hidden'); vZb.classList.add('hidden'); }
   const saldo = esClasif ? saldoClasif(p.clasificatorioId, p.torneoId) : saldoCxcClub(p.clubId, p.torneoId);
   const canAprobar = ['organizador','tesorero'].includes(S.role);
   const medios = myMediosPago().filter(m=>m.activo);
@@ -6712,14 +6748,6 @@ function abrirVoucher(pagoId) {
     ['Fecha de registro', p.regEn],
     ['Saldo pendiente actual', `<span class="font-bold mono text-rose-600">${fmt(Math.max(0,saldo))}</span>`],
   ].map(([k,v])=>`<div class="flex justify-between items-center py-1.5 border-b border-slate-100 text-sm"><span class="text-slate-500 shrink-0">${k}</span><span>${v}</span></div>`).join('')
-  + (p.voucherUrl ? `
-    <div class="mt-3 mb-1">
-      <p class="text-xs font-semibold text-slate-500 mb-2">Voucher adjunto</p>
-      <a href="${p.voucherUrl}" target="_blank" rel="noopener">
-        <img src="${p.voucherUrl}" alt="Voucher" class="w-full max-h-64 object-contain rounded-lg border border-slate-200 cursor-pointer hover:opacity-90 transition">
-      </a>
-      <a href="${p.voucherUrl}" target="_blank" rel="noopener" class="block text-center text-xs text-[#4F86C6] hover:underline mt-1">🔍 Ver en tamaño completo</a>
-    </div>` : `<div class="mt-3 mb-1 py-4 text-center text-xs text-slate-300 border border-dashed border-slate-200 rounded-lg">Sin voucher adjunto</div>`)
   + (canAprobar ? `
     <div class="mt-4 pt-3 border-t border-slate-200">
       <p class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Corregir datos del pago</p>
