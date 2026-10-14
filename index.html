@@ -3034,7 +3034,7 @@ const pagoPayerNombre = p => p?.clasificatorioId
 
 function badgeEstado(e) {
   const m = {pendiente:'bg-amber-100 text-amber-700',aprobado:'bg-emerald-100 text-emerald-700',rechazado:'bg-rose-100 text-rose-700'};
-  const l = {pendiente:'Pendiente',aprobado:'Aprobado',rechazado:'Rechazado'};
+  const l = {pendiente:'Pendiente de aprobación',aprobado:'Aprobado',rechazado:'Rechazado'};
   return `<span class="text-[11px] font-semibold px-2 py-0.5 rounded-full ${m[e]||'bg-slate-100 text-slate-500'}">${l[e]||e}</span>`;
 }
 function badgeEquipo(e) {
@@ -3738,7 +3738,7 @@ function renderRepPagos() {
     ? '<span class="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Aprobado</span>'
     : e==='rechazado'
     ? '<span class="text-[10px] font-bold bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full">Rechazado</span>'
-    : '<span class="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Pendiente</span>';
+    : '<span class="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Pendiente de aprobación</span>';
 
   const tbody = document.getElementById('repPagosTbody');
   const vacio = document.getElementById('repVacio');
@@ -6826,7 +6826,7 @@ function p2RenderDetalle() {
     ? '<span class="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Aprobado</span>'
     : st==='rechazado'
     ? '<span class="text-[10px] font-bold bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full">Rechazado</span>'
-    : '<span class="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Pendiente</span>';
+    : '<span class="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Pendiente de aprobación</span>';
 
   document.getElementById('p2_pagos_resumen').textContent =
     `${todosPagos.length} pago(s) · aprobados: ${todosPagos.filter(p=>p.estado==='aprobado').length}`;
@@ -8905,7 +8905,7 @@ function renderEstadoCuenta() {
     ? '<span class="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Aprobado</span>'
     : st==='rechazado'
     ? '<span class="text-[10px] font-bold bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full">Rechazado</span>'
-    : '<span class="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Pendiente</span>';
+    : '<span class="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Pendiente de aprobación</span>';
 
   document.getElementById('ec_pagos_resumen').textContent =
     `${pagosClub.length} pago(s) · aprobados: ${pagosClub.filter(p=>p.estado==='aprobado').length}`;
