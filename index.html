@@ -986,6 +986,21 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
             <div class="md:col-span-3 text-[11px] text-slate-400">Las credenciales de Nubefact van como secretos en Supabase: <span class="mono">NUBEFACT_RUTA_&lt;RUC&gt;</span> y <span class="mono">NUBEFACT_TOKEN_&lt;RUC&gt;</span>.</div>
           </div>
         </div>
+
+        <!-- WhatsApp cobranzas (por empresa) -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm mt-6 overflow-hidden">
+          <div class="px-5 py-3 border-b border-slate-200 flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <h2 class="text-sm font-bold text-slate-700">💬 WhatsApp · Cobranzas</h2>
+              <p class="text-[11px] text-slate-400">Los recordatorios salen del número de la plataforma Liguify (plantilla <span class="mono">cobranza_torneos</span>). Aquí va tu WhatsApp propio para el auto-reply y los medios de pago que lleva el mensaje.</p>
+            </div>
+            <button onclick="guardarWspCfg()" class="text-sm font-semibold text-white bg-[#18324F] px-4 py-2 rounded-lg hover:bg-[#0f253d] transition shrink-0">💾 Guardar WhatsApp</button>
+          </div>
+          <div class="p-5 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+            <div><label class="block text-xs font-semibold text-slate-600 mb-1">WhatsApp de respuestas <span class="text-slate-400 font-normal">(tu número)</span></label><input id="wc_wsp" placeholder="983 788 038" class="w-full border border-slate-300 rounded-lg px-3 py-2 mono outline-none focus:ring-2 focus:ring-blue-200"></div>
+            <div class="md:col-span-2"><label class="block text-xs font-semibold text-slate-600 mb-1">Medios de pago <span class="text-slate-400 font-normal">(una línea; es el {{5}} de la plantilla)</span></label><input id="wc_medios" placeholder="Yape 983 788 038 · BCP 191-xxxxxxxx-0-xx · Plin 9xx xxx xxx" class="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-200"></div>
+          </div>
+        </div>
       </div>
 
       <!-- P: Nuevo Torneo -->
@@ -1279,6 +1294,18 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
 
       <!-- P_rep_pagos: Reporte de Pagos -->
       <!-- REPORTE: RESUMEN POR FECHA -->
+      <!-- P: WhatsApp · Bandeja (Cloud API de Meta, número de la plataforma; mismo flujo que Academias) -->
+      <div id="p_whatsapp" class="screen">
+        <div class="flex items-start justify-between mb-4 gap-4">
+          <div>
+            <h1 class="text-xl font-bold mb-1">💬 WhatsApp · Bandeja</h1>
+            <p class="text-xs text-slate-500">Respuestas de los clubes a los recordatorios de cobranza. Puedes responder dentro de las 24 h siguientes a su último mensaje.</p>
+          </div>
+          <button onclick="renderWsp()" class="shrink-0 text-xs font-semibold text-slate-500 border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-50">🔄 Actualizar</button>
+        </div>
+        <div id="wspBox"></div>
+      </div>
+
       <!-- P: Emitir documentos (pantalla completa, como en Academias) -->
       <div id="p_emision" class="screen">
         <div id="emBody"></div>
@@ -1498,6 +1525,11 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
         <div id="cxcVencBar" class="hidden mb-3 flex items-center gap-3 bg-rose-50 border border-rose-200 rounded-lg px-4 py-2.5">
           <span class="text-[11px] font-bold text-rose-600 uppercase tracking-wide">Mostrando solo equipos con fecha de pago vencida</span>
           <button onclick="setCxcVencFilter(false)" class="ml-auto text-xs text-rose-500 hover:text-rose-700 font-semibold underline">Ver todos ✕</button>
+        </div>
+        <!-- 📣 recordatorios por WhatsApp (plantilla aprobada de Meta) -->
+        <div class="mb-3 flex items-center gap-2 flex-wrap">
+          <button onclick="formCobranzaMasiva()" class="text-xs font-bold text-white bg-emerald-600 px-4 py-2 rounded-lg hover:bg-emerald-700 transition shadow-sm">📣 Recordatorios por WhatsApp</button>
+          <span class="text-[11px] text-slate-400">Envía la plantilla aprobada a los clubes con deuda (quedan fuera los recordados en los últimos 7 días).</span>
         </div>
         <!-- 📧 barra de cobro por email: aparece al seleccionar cobros -->
         <div id="cxcCobroBar" class="hidden mb-3 flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-2.5">
@@ -1949,6 +1981,40 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
       <button onclick="addCategoria()" class="text-sm font-semibold text-white bg-[#18324F] px-4 py-2 rounded-lg hover:bg-[#0f253d]">Inscribir Equipo</button>
     </div>
   </div>
+</div>
+
+<!-- waCobroModal: cobro individual por WhatsApp (mensaje libre, wa.me) -->
+<div id="waCobroModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 fade-in">
+    <h3 class="font-bold text-base mb-1" id="waCobroTitle">💬 Cobro por WhatsApp</h3>
+    <p class="text-xs text-slate-500 mb-2" id="waCobroSub"></p>
+    <textarea id="wa_msj" rows="11" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200"></textarea>
+    <div class="mt-3 flex justify-end gap-2">
+      <button onclick="closeModal('waCobroModal')" class="text-sm font-medium text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">Cancelar</button>
+      <button id="waCobroBtn" class="text-sm font-semibold text-white bg-emerald-600 px-4 py-2 rounded-lg hover:bg-emerald-700">📲 Abrir WhatsApp</button>
+    </div>
+  </div>
+</div>
+<!-- cobranzaMasivaModal: plantilla aprobada a varios clubes -->
+<div id="cobranzaMasivaModal" class="modal-overlay hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60">
+  <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col fade-in">
+    <div class="px-6 pt-5 pb-3 border-b border-slate-200">
+      <h3 class="font-bold text-base">📣 Recordatorios por WhatsApp</h3>
+      <p class="text-xs text-slate-500 mt-1">Se enviará la <b>plantilla aprobada</b> a los contactos marcados. Quedan fuera los que recibieron un recordatorio en los últimos 7 días.</p>
+    </div>
+    <div id="cmBody" class="px-6 py-3 overflow-y-auto"></div>
+    <div class="px-6 py-4 border-t border-slate-200 flex items-center justify-between gap-3">
+      <span class="text-[11px] text-slate-400">Marcados por defecto: solo deuda <b>vencida</b>. Costo aprox. USD 0.03 por mensaje.</span>
+      <div class="flex gap-2 shrink-0">
+        <button onclick="closeModal('cobranzaMasivaModal')" class="text-sm font-medium text-slate-500 px-4 py-2 rounded-lg hover:bg-slate-100">Cancelar</button>
+        <button id="cmEnviar" onclick="enviarCobranzaMasiva()" class="text-sm font-semibold text-white bg-emerald-600 px-4 py-2 rounded-lg hover:bg-emerald-700 disabled:opacity-50">📣 Enviar (<span id="cmN">0</span>)</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- wspMediaModal: ver imagen/documento recibido -->
+<div id="wspMediaModal" class="modal-overlay hidden fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/85 cursor-zoom-out" onclick="closeModal('wspMediaModal')">
+  <div id="wspMediaBody" class="max-w-4xl max-h-full" onclick="event.stopPropagation()"></div>
 </div>
 
 <!-- reciboModal: recibo interno (sin valor fiscal) -->
@@ -2913,6 +2979,7 @@ const MENU = [
       {id:'p_rep_pagos',label:'Reporte de Pagos',roles:['organizador','tesorero']},
     ]},
   {id:'p_cxc',label:'Cuentas por Cobrar',icon:'📊',roles:['organizador','tesorero']},
+  {id:'p_whatsapp',label:'WhatsApp · Bandeja',icon:'💬',roles:['organizador','tesorero','operador']},
   {id:'p_clubes',label:'Clubes',icon:'👥',roles:['organizador','operador']},
   {id:'p_seguridad',label:'Seguridad',icon:'🔐',roles:['organizador']},
   {id:'__cfg',label:'Configuración',icon:'⚙️',roles:['organizador'],noScreen:true,
@@ -4330,6 +4397,7 @@ function renderScreen(id) {
   else if(id==='p3') renderP3();
   else if(id==='p4') renderP4(S.selectedClubId);
   else if(id==='p_cxc') renderCxc();
+  else if(id==='p_whatsapp') abrirBandejaWsp();
   else if(id==='p_clubes') renderClubes(true);
   else if(id==='p_rep_pagos') initRepPagos();
   else if(id==='p_emision') colaEmision();
@@ -7374,7 +7442,22 @@ function guardarMedio() {
 }
 
 // ---- Facturación electrónica: configuración por empresa ----
+// ---- WhatsApp cobranzas: configuración por empresa ----
+function cargarWspCfg(){
+  const o = S.organizacionActual; if(!o) return;
+  const set=(id,v)=>{ const e=document.getElementById(id); if(e) e.value = v ?? ''; };
+  set('wc_wsp', o.whatsappRespuestas); set('wc_medios', o.mediosCobro);
+}
+async function guardarWspCfg(){
+  const o = S.organizacionActual; if(!o) return;
+  const v = id => (document.getElementById(id)?.value||'').trim();
+  // Meta exige una sola línea en las variables de plantilla
+  o.whatsappRespuestas = v('wc_wsp'); o.mediosCobro = v('wc_medios').replace(/\s*\n+\s*/g,' · ');
+  if(sbOn()){ try { await SB().data.actualizarOrganizacion(o.id, {whatsapp_respuestas:o.whatsappRespuestas||null, medios_cobro:o.mediosCobro||null}); } catch(e){ toast('⚠ No se pudo guardar: '+e.message,'error'); return; } }
+  toast('WhatsApp guardado ✓','success');
+}
 function cargarFacturacionCfg(){
+  cargarWspCfg();
   const o = S.organizacionActual; if(!o || !document.getElementById('fc_ruc')) return;
   const set=(id,v)=>{ const e=document.getElementById(id); if(e) e.value = v ?? ''; };
   set('fc_ruc',o.rucEmisor); set('fc_rz',o.razonSocialEmisor); set('fc_dir',o.direccionFiscal);
@@ -7869,6 +7952,231 @@ function cxcClasifRows() {
 // Todas las filas de cobranza (clubes + clasificatorios)
 function cxcAllRows() { return [...cxcRows(), ...cxcClasifRows()]; }
 
+// ============================================================================
+//  💬 COBRANZAS POR WHATSAPP — mismo flujo que Liguify Academias
+//  · Cobro individual: mensaje libre por wa.me (no usa la API).
+//  · Recordatorios masivos: plantilla aprobada vía 'torneos-whatsapp-enviar'
+//    (mismo número y secretos que Academias; plantilla cobranza_torneos).
+//  · Bandeja: conversaciones que escribe el webhook compartido 'whatsapp-entrante'.
+// ============================================================================
+function waNumero(tel){
+  let d = String(tel||'').replace(/\D/g,'');
+  if(d.length===9 && d.startsWith('9')) d = '51'+d;
+  return d.length>=10 ? d : '';
+}
+// Teléfono de cobro de un club en un torneo: el del contacto pagador del equipo; si no, el del club.
+function _waTelClub(clubId, tid){
+  const eq = myEquipos().find(e=>+e.clubId===+clubId && (!tid || +e.torneoId===+tid) && e.estado==='activo' && e.contactoTelefono);
+  const c = clubById(clubId);
+  return { tel: (eq && eq.contactoTelefono) || c?.telefono || '', contacto: (eq && eq.contacto) || c?.delegado || '' };
+}
+const _waDeuda = (clubId, tid) => cxcRows().filter(r=>+r.c.id===+clubId && (!tid || +r.tid===+tid));
+
+function waCobro(clubId, tid){
+  const c = clubById(clubId); if(!c) return;
+  const {tel, contacto} = _waTelClub(clubId, tid);
+  const num = waNumero(tel);
+  if(!num){ toast('El club no tiene un teléfono válido (9 dígitos).','error'); return; }
+  const filas = _waDeuda(clubId, tid);
+  if(!filas.length){ toast('El club no tiene deuda pendiente.','error'); return; }
+  const total = filas.reduce((s,r)=>s+r.deuda,0);
+  const lineas = filas.map(r=>`• ${r.torneo?.nombre||'Torneo'}${r.fechaVenc?` (vence ${r.fechaVenc})`:''}: S/ ${r.deuda.toFixed(2)}${r.vencido?' ⚠️ VENCIDO':''}`).join('\n');
+  const o = S.organizacionActual||{};
+  const medios = o.mediosCobro || myMediosPago().filter(m=>m.activo && m.tipo!=='efectivo').map(m=>m.nombre).join(', ');
+  const msj = `Hola${contacto?' '+contacto.split(' ')[0]:''} 👋\n`
+    + `Le saludamos de *${o.nombre||'Liguify'}*.\n`
+    + `Le recordamos los pagos pendientes de *${c.nombre}*:\n\n${lineas}\n\n*Total pendiente: S/ ${total.toFixed(2)}*\n\n`
+    + (medios ? `Puede pagar por ${medios} y enviarnos el voucher por este medio. ` : '') + `¡Gracias! 🙌`;
+  document.getElementById('waCobroTitle').textContent = `💬 Cobro por WhatsApp · ${c.nombre}`;
+  document.getElementById('waCobroSub').innerHTML = `Se abrirá WhatsApp al número <b>+${num}</b> con este mensaje (puedes editarlo antes):`;
+  document.getElementById('wa_msj').value = msj;
+  document.getElementById('waCobroBtn').onclick = ()=>waCobroEnviar(clubId, num);
+  openModal('waCobroModal');
+}
+function waCobroEnviar(clubId, num){
+  const c = clubById(clubId); if(!c) return;
+  window.open(`https://wa.me/${num}?text=${encodeURIComponent(document.getElementById('wa_msj').value)}`, '_blank');
+  c.ultimoRecordatorio = today();
+  if(sbOn()) SB().data.actualizarClub(clubId, {ultimo_recordatorio: c.ultimoRecordatorio}).catch(()=>{});
+  closeModal('waCobroModal'); toast('🔔 Recordatorio registrado · WhatsApp abierto','success');
+  if(_currentScreenId==='p_cxc') renderCxcTabla();
+}
+
+// Candidatos: clubes con deuda, teléfono válido y sin recordatorio en los últimos 7 días (una fila por club+torneo)
+function candidatosCobranzaMasiva(){
+  const hace7 = new Date(Date.now()-7*86400000).toISOString().slice(0,10);
+  return cxcRows().map(r=>{
+    const {tel, contacto} = _waTelClub(r.c.id, r.tid);
+    return { c:r.c, tid:r.tid, torneo:r.torneo, contacto, num:waNumero(tel), total:r.deuda, vencido:!!r.vencido,
+      reciente: !!(r.c.ultimoRecordatorio && r.c.ultimoRecordatorio >= hace7) };
+  }).filter(x=>x.num && !x.reciente).sort((a,b)=>b.total-a.total);
+}
+function formCobranzaMasiva(){
+  const cand = candidatosCobranzaMasiva();
+  if(!cand.length){ toast('No hay candidatos: sin deuda, sin teléfono válido o ya recordados esta semana.','error'); return; }
+  window.__cmCand = cand;
+  document.getElementById('cmBody').innerHTML = `
+    <div class="rounded-lg ring-1 ring-slate-200 divide-y divide-slate-100">
+      ${cand.map((x,i)=>`<label class="flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer hover:bg-slate-50">
+        <input type="checkbox" class="cmChk h-4 w-4 accent-emerald-600" value="${i}" ${x.vencido?'checked':''} onchange="cmCount()">
+        <span class="flex-1 min-w-0 truncate"><b>${x.c.nombre}</b> <span class="text-xs text-slate-400">· ${x.torneo?.nombre||''} · ${x.contacto||'sin contacto'} · +${x.num}</span></span>
+        <b class="shrink-0 ${x.vencido?'text-rose-600':'text-slate-700'}">${fmt(x.total)}</b>
+      </label>`).join('')}
+    </div>`;
+  cmCount(); openModal('cobranzaMasivaModal');
+}
+function cmCount(){ const n=document.querySelectorAll('.cmChk:checked').length; const e=document.getElementById('cmN'); if(e) e.textContent=n; }
+async function enviarCobranzaMasiva(){
+  if(!sbOn()){ toast('El envío masivo solo funciona en modo conectado.','error'); return; }
+  const sel = [...document.querySelectorAll('.cmChk:checked')].map(c=>window.__cmCand[+c.value]).filter(Boolean);
+  if(!sel.length){ toast('Marca al menos un club.','error'); return; }
+  if(!confirm(`¿Enviar el recordatorio de WhatsApp a ${sel.length} contacto(s)?`)) return;
+  const btn = document.getElementById('cmEnviar'); btn.disabled = true;
+  const o = S.organizacionActual||{}; let ok=0; const fallos=[];
+  for(let i=0;i<sel.length;i++){
+    const x = sel[i]; btn.textContent = `Enviando ${i+1} de ${sel.length}…`;
+    try{
+      const r = await SB().client.functions.invoke('torneos-whatsapp-enviar', { body: {
+        accion:'cobranza', telefono:x.num, club_id:x.c.id,
+        variables:[ (x.contacto||'delegado').split(' ')[0], x.c.nombre, 'S/ '+x.total.toFixed(2), x.torneo?.nombre||'el torneo',
+          o.mediosCobro || 'consulta los medios de pago con la organización' ] } });
+      let msg=null;
+      if(r.error){ msg=r.error.message; try{ const b=r.error.context && await r.error.context.json(); if(b&&b.error) msg=b.error; }catch(_){} }
+      else if(r.data && r.data.error) msg=r.data.error;
+      if(msg) throw new Error(msg);
+      x.c.ultimoRecordatorio = today(); ok++;
+      SB().data.actualizarClub(x.c.id, {ultimo_recordatorio:x.c.ultimoRecordatorio}).catch(()=>{});
+    }catch(e){ fallos.push({to:'+'+x.num, error:e.message||String(e)}); }
+  }
+  btn.disabled=false; btn.innerHTML='📣 Enviar (<span id="cmN">0</span>)';
+  closeModal('cobranzaMasivaModal');
+  toast(`📣 ${ok} recordatorio(s) enviados${fallos.length?` · ${fallos.length} fallaron: ${fallos[0].to} ${fallos[0].error}`:''}`, fallos.length?'error':'success');
+  if(_currentScreenId==='p_cxc') renderCxcTabla();
+}
+
+// ---- Bandeja ----
+let WSP_SEL=null, WSP_TIMER=null, WSP_CONVS=[], WSP_ENVIANDO=false;
+function abrirBandejaWsp(){ clearInterval(WSP_TIMER); WSP_TIMER = setInterval(()=>renderWsp(true), 10000); renderWsp(); }
+async function wspCargarConvs(){
+  if(!sbOn()){ WSP_CONVS=[]; return; }
+  const { data, error } = await SB().client.from('wsp_conversaciones').select('*').order('ultimo_mensaje_at',{ascending:false,nullsFirst:false}).limit(100);
+  if(!error) WSP_CONVS = data||[];
+}
+async function wspCargarMsgs(cid){
+  if(!sbOn()) return [];
+  const { data } = await SB().client.from('wsp_mensajes').select('*').eq('conversacion_id',cid).order('created_at').limit(300);
+  return data||[];
+}
+async function wspAbrir(cid){
+  WSP_SEL = cid;
+  const c = WSP_CONVS.find(x=>x.id===cid);
+  if(c && c.no_leidos){ c.no_leidos=0; if(sbOn()) SB().client.from('wsp_conversaciones').update({no_leidos:0}).eq('id',cid).then(()=>{}); }
+  renderWsp();
+}
+async function renderWsp(silencioso){
+  if(_currentScreenId!=='p_whatsapp'){ clearInterval(WSP_TIMER); return; }
+  await wspCargarConvs();
+  const box = document.getElementById('wspBox'); if(!box) return;
+  const conv = WSP_CONVS.find(x=>x.id===WSP_SEL)||null;
+  const msgs = conv ? await wspCargarMsgs(conv.id) : [];
+  const hhmm = iso => iso ? new Date(iso).toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'}) : '';
+  const esc = s => String(s||'').replace(/</g,'&lt;');
+  const abierta = conv && conv.ultimo_entrante_at && (Date.now()-new Date(conv.ultimo_entrante_at).getTime()) < 24*3600*1000;
+  box.innerHTML = `
+    ${!sbOn() ? '<div class="mb-3 text-xs bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-3 py-2">La bandeja funciona solo en modo conectado a Supabase.</div>' : ''}
+    <div class="grid gap-3 md:grid-cols-3" style="height:calc(100vh - 230px);min-height:420px">
+      <div class="rounded-xl bg-white border border-slate-200 overflow-y-auto">
+        ${WSP_CONVS.length ? WSP_CONVS.map(c=>{ const cl = c.club_id ? clubById(c.club_id) : null;
+          return `<button onclick="wspAbrir(${c.id})" class="block w-full border-b border-slate-100 px-3 py-2.5 text-left hover:bg-slate-50 ${WSP_SEL===c.id?'bg-blue-50':''}">
+            <div class="flex items-center justify-between gap-2">
+              <span class="min-w-0 truncate text-sm font-medium">${esc(c.nombre||'+'+c.telefono)}</span>
+              ${+c.no_leidos ? `<span class="shrink-0 rounded-full bg-emerald-500 px-1.5 text-[11px] font-bold text-white">${c.no_leidos}</span>` : ''}
+            </div>
+            ${cl ? `<div class="text-[11px] text-[#4F86C6] truncate">🏟 ${esc(cl.nombre)}</div>` : '<div class="text-[11px] text-amber-600">sin club vinculado</div>'}
+            <div class="truncate text-xs text-slate-400">${esc(c.ultimo_mensaje||'')}</div>
+          </button>`; }).join('')
+        : '<p class="p-4 text-sm text-slate-400">Sin conversaciones aún. Aparecerán cuando los clubes respondan a los recordatorios.</p>'}
+      </div>
+      <div class="md:col-span-2 flex flex-col rounded-xl bg-white border border-slate-200 overflow-hidden">
+        ${!conv ? '<div class="flex flex-1 items-center justify-center text-sm text-slate-400">Elige una conversación</div>' : `
+        <div class="border-b border-slate-200 px-4 py-2.5">
+          <div class="text-sm font-semibold">${esc(conv.nombre||'+'+conv.telefono)} <span class="text-xs font-normal text-slate-400">· +${conv.telefono}</span></div>
+          ${conv.club_id && clubById(conv.club_id) ? `<div class="text-[11px] text-slate-500">Club: <button onclick="abrirCxcClub(${conv.club_id})" class="text-[#4F86C6] hover:underline">${esc(clubById(conv.club_id).nombre)}</button></div>` : ''}
+        </div>
+        <div id="wspHilo" class="flex-1 space-y-2 overflow-y-auto bg-slate-50 p-4">
+          ${msgs.map(m=>`
+            <div class="flex ${m.direccion==='out'?'justify-end':'justify-start'}">
+              <div class="max-w-[80%] rounded-xl px-3 py-2 text-sm shadow-sm ${m.direccion==='out'?'bg-emerald-100':'bg-white border border-slate-200'}">
+                ${m.tipo==='imagen'||m.tipo==='documento' ? `
+                  <div class="flex flex-col gap-1.5">
+                    <button onclick="wspVerMedia('${(m.media_path||'').replace(/'/g,'')}')" class="rounded-lg bg-slate-100 px-3 py-4 text-2xl hover:bg-slate-200">${m.tipo==='imagen'?'🖼️':'📄'} <span class="block text-xs text-slate-500">Ver ${m.tipo}</span></button>
+                    ${conv.club_id ? `<button onclick="wspUsarVoucher(${conv.id},${m.id})" class="rounded-lg bg-[#18324F] px-2 py-1.5 text-xs font-medium text-white hover:bg-[#0f253d]">💳 Registrar pago con este voucher</button>` : ''}
+                  </div>${m.cuerpo?`<div class="mt-1">${esc(m.cuerpo)}</div>`:''}`
+                : `<div>${esc(m.cuerpo)}</div>`}
+                <div class="mt-0.5 text-right text-[10px] text-slate-400">${m.enviado_por&&m.direccion==='out'?m.enviado_por+' · ':''}${hhmm(m.created_at)}${m.direccion==='out'&&m.estado?' · '+({sent:'✓',delivered:'✓✓',read:'✓✓',failed:'⚠'}[m.estado]||''):''}</div>
+              </div>
+            </div>`).join('')}
+        </div>
+        <div class="border-t border-slate-200 p-3">
+          ${abierta ? `<div class="flex gap-2">
+            <input id="wspTxt" placeholder="Escribe una respuesta…" onkeydown="if(event.key==='Enter'){event.preventDefault(); if(!event.repeat) wspEnviar();}" class="flex-1 min-w-0 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+            <button onclick="wspEnviar()" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">Enviar</button>
+          </div>` : '<p class="text-xs text-amber-600">⏳ La ventana de 24h está cerrada (el club no escribió en el último día). Para contactarlo usa el recordatorio desde Cuentas por Cobrar.</p>'}
+        </div>`}
+      </div>
+    </div>`;
+  const hilo = document.getElementById('wspHilo'); if(hilo) hilo.scrollTop = hilo.scrollHeight;
+}
+async function wspEnviar(){
+  if(WSP_ENVIANDO) return;
+  const inp = document.getElementById('wspTxt'); const txt = ((inp&&inp.value)||'').trim();
+  const conv = WSP_CONVS.find(x=>x.id===WSP_SEL); if(!txt||!conv) return;
+  if(inp) inp.value='';
+  WSP_ENVIANDO = true;
+  try{
+    const r = await SB().client.functions.invoke('torneos-whatsapp-enviar', { body:{accion:'texto', conversacion_id:conv.id, texto:txt} });
+    let msg=null;
+    if(r.error){ msg=r.error.message; try{ const b=r.error.context && await r.error.context.json(); if(b&&b.error) msg=b.error; }catch(_){} }
+    else if(r.data && r.data.error) msg=r.data.error;
+    if(msg) throw new Error(msg);
+    await renderWsp();
+  }catch(e){ toast('⚠ '+(e.message||e),'error'); const i2=document.getElementById('wspTxt'); if(i2&&!i2.value) i2.value=txt; }
+  finally{ WSP_ENVIANDO=false; }
+}
+async function _wspUrlMedia(mediaPath){
+  const ruta = String(mediaPath||'').replace(/^vstore:/,'');
+  const { data, error } = await SB().client.storage.from('vouchers').createSignedUrl(ruta, 3600);
+  if(error) throw error; return data.signedUrl;
+}
+async function wspVerMedia(mediaPath){
+  if(!mediaPath){ toast('Este mensaje no tiene archivo.','error'); return; }
+  try{
+    const u = await _wspUrlMedia(mediaPath);
+    document.getElementById('wspMediaBody').innerHTML = /\.pdf(\?|$)/i.test(u.split('?')[0]) || /\.pdf$/i.test(mediaPath)
+      ? `<iframe src="${u}" class="w-[90vw] max-w-3xl h-[85vh] rounded-lg bg-white"></iframe>`
+      : `<img src="${u}" class="max-h-[85vh] max-w-full rounded-lg shadow-2xl">`;
+    openModal('wspMediaModal');
+  }catch(e){ toast('⚠ No se pudo cargar: '+(e.message||e),'error'); }
+}
+// Voucher recibido → Registrar pago con el club preseleccionado y el archivo ya adjunto
+async function wspUsarVoucher(cid, mid){
+  const conv = WSP_CONVS.find(x=>x.id===cid);
+  if(!conv || !conv.club_id){ toast('Esta conversación no está vinculada a un club.','error'); return; }
+  const msgs = await wspCargarMsgs(cid); const m = msgs.find(x=>x.id===mid);
+  if(!m || !m.media_path){ toast('No se encontró el archivo.','error'); return; }
+  let file;
+  try{ const u = await _wspUrlMedia(m.media_path); const blob = await (await fetch(u)).blob();
+    file = new File([blob], 'voucher-whatsapp.'+((blob.type||'').includes('pdf')?'pdf':'jpg'), {type:blob.type||'image/jpeg'}); }
+  catch(e){ toast('⚠ No se pudo descargar el voucher: '+(e.message||e),'error'); return; }
+  showScreen('p2'); p2SetTipo('club');
+  const ci = document.getElementById('p2ClubInput') || document.querySelector('#p2 input[oninput*="clubACFilter"]');
+  if(ci) ci.value = clubById(conv.club_id)?.nombre||'';
+  p2SelectClub(conv.club_id);
+  const dt = new DataTransfer(); dt.items.add(file);
+  const vi = document.getElementById('vfileInput'); if(vi){ vi.files = dt.files; onVoucherSelected(vi); }
+  toast('Voucher adjuntado: completa monto, medio y registra el pago.','success');
+}
+
 function renderCxc() {
   _cxcTorneoFilter = null;
   document.getElementById('cxcFiltroBar').classList.add('hidden');
@@ -8141,6 +8449,8 @@ function renderCxcTabla() {
       </td>
       <td class="py-3 px-4 text-right mono font-bold ${f.vencido?'text-rose-700':'text-rose-600'}">${fmt(f.deuda)}</td>
       <td class="py-3 px-4 text-center whitespace-nowrap">
+        ${f.c.ultimoRecordatorio ? `<span class="text-[10px] text-slate-400 mr-1" title="Último recordatorio por WhatsApp">🔔 ${f.c.ultimoRecordatorio}</span>` : ''}
+        <button onclick="event.stopPropagation();waCobro(${f.c.id},${f.tid})" class="text-xs font-semibold text-emerald-700 border border-emerald-200 bg-emerald-50 px-2 py-1 rounded-md hover:bg-emerald-100 transition mr-1" title="Cobro por WhatsApp (mensaje libre)">💬 Cobro</button>
         <button onclick="event.stopPropagation();abrirAvisoAnulacion(${f.c.id},${f.tid})" class="text-xs font-semibold text-rose-600 border border-rose-200 bg-rose-50 px-2 py-1 rounded-md hover:bg-rose-100 transition mr-1" title="Aviso de anulación">⚠ Anulación</button>
         <button onclick="event.stopPropagation();abrirCxcClub(${f.c.id})" class="text-xs font-semibold text-[#4F86C6] hover:underline">Ver detalle →</button>
       </td>
@@ -9325,6 +9635,7 @@ let _obData = null;                 // datos de organización capturados en onbo
 const _num = v => v==null ? 0 : +v; // numeric(12,2) llega como string desde PostgREST
 
 function _mapOrg(o){ return {id:o.id,nombre:o.nombre,contacto:o.contacto,email:o.email,ruc:o.ruc,telefono:o.telefono,plan:o.plan,planVence:o.plan_vence,activo:o.activo,esPropia:o.es_propia,fechaReg:o.fecha_reg,torneosAnio:o.torneos_anio||'—',
+  whatsappRespuestas:o.whatsapp_respuestas||'',mediosCobro:o.medios_cobro||'',
   logoUrl:o.logo_url||'',rucEmisor:o.ruc_emisor||'',razonSocialEmisor:o.razon_social_emisor||'',direccionFiscal:o.direccion_fiscal||'',serieBoleta:o.serie_boleta||'',serieFactura:o.serie_factura||'',
   correlativoBoleta:+o.correlativo_boleta||1,correlativoFactura:+o.correlativo_factura||1,correlativoRecibo:+o.correlativo_recibo||1}; }
 function _mapUser(u){ return {id:u.id,nombre:u.nombre,email:u.email,rol:u.rol,orgId:u.org_id,esAdminPlataforma:u.es_admin_plataforma,metodo:u.metodo,activo:u.activo,pendiente:u.pendiente}; }
@@ -9341,7 +9652,7 @@ async function sbHydrate(){
   S.proveedores    = (d.proveedores||[]).map(p=>({id:p.id,nombre:p.nombre,rucDni:p.ruc_dni,telefono:p.telefono,conceptoIds:(p.concepto_ids||[]).map(Number),banco1Nombre:p.banco1_nombre,banco1Cuenta:p.banco1_cuenta,banco2Nombre:p.banco2_nombre,banco2Cuenta:p.banco2_cuenta,orgId:p.org_id}));
   S.costos         = (d.costos||[]).map(c=>({id:c.id,torneoId:c.torneo_id,conceptoId:c.concepto_id,proveedorId:c.proveedor_id,descripcion:c.descripcion,monto:_num(c.monto),adelantos:(c.adelantos||[]).map(a=>({fecha:a.fecha,monto:_num(a.monto)})),orgId:c.org_id}));
   S.clasificatorios= (d.clasificatorios||[]).map(c=>({id:c.id,nombre:c.nombre,contacto:c.contacto,telefono:c.telefono,orgId:c.org_id}));
-  S.clubes         = (d.clubes||[]).map(c=>({id:c.id,nombre:c.nombre,delegado:c.delegado,telefono:c.telefono,provincia:c.provincia,email:c.email,logoUrl:c.logo_url,dni:c.dni||'',ruc:c.ruc||'',razonSocial:c.razon_social||'',orgId:c.org_id}));
+  S.clubes         = (d.clubes||[]).map(c=>({id:c.id,nombre:c.nombre,delegado:c.delegado,telefono:c.telefono,provincia:c.provincia,email:c.email,logoUrl:c.logo_url,dni:c.dni||'',ruc:c.ruc||'',razonSocial:c.razon_social||'',ultimoRecordatorio:c.ultimo_recordatorio||null,orgId:c.org_id}));
   const catsByT = {};
   (d.torneo_categorias||[]).forEach(tc=>{ (catsByT[tc.torneo_id] = catsByT[tc.torneo_id]||[]).push({catId:tc.cat_id,nombre:catNombre(tc.cat_id),modalidad:tc.modalidad,aforo:tc.aforo,fechas:tc.fechas,inscripcion:_num(tc.inscripcion),arbitraje:_num(tc.arbitraje),comision:_num(tc.comision)}); });
   S.torneos = (d.torneos||[]).map(t=>({id:t.id,nombre:t.nombre,sede:t.sede,esquema:t.esquema,estado:t.estado,inicio:t.inicio,fin:t.fin,fechaVenc:t.fecha_venc,label:t.label,headerUrl:t.header_url,bienvenidaUrl:t.bienvenida_url,bienvenidaCfg:t.bienvenida_cfg||null,condiciones:t.condiciones,snap:t.snap,orgId:t.org_id,cats:catsByT[t.id]||[]}));

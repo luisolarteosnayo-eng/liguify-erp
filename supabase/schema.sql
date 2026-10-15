@@ -397,3 +397,10 @@ alter table public.pagos
 
 -- ---- v21: logo de la empresa (recibos) ----
 alter table public.organizaciones add column if not exists logo_url text;
+
+-- ---- v22: cobranzas por WhatsApp (ver migrate_v22.sql) ----
+alter table public.organizaciones add column if not exists whatsapp_respuestas text, add column if not exists medios_cobro text;
+alter table public.clubes add column if not exists telefono_norm text generated always as (regexp_replace(coalesce(telefono,''), '\D', '', 'g')) stored, add column if not exists ultimo_recordatorio date;
+alter table public.equipos add column if not exists contacto_tel_norm text generated always as (regexp_replace(coalesce(contacto_telefono,''), '\D', '', 'g')) stored;
+create table if not exists public.wsp_conversaciones (id bigint generated always as identity primary key, org_id bigint references public.organizaciones(id) on delete cascade, club_id bigint references public.clubes(id) on delete set null, telefono text not null, nombre text, ultimo_mensaje text, ultimo_mensaje_at timestamptz, ultimo_entrante_at timestamptz, no_leidos int not null default 0, created_at timestamptz not null default now(), unique (telefono, org_id));
+create table if not exists public.wsp_mensajes (id bigint generated always as identity primary key, conversacion_id bigint not null references public.wsp_conversaciones(id) on delete cascade, org_id bigint references public.organizaciones(id) on delete cascade, direccion text not null check (direccion in ('in','out')), tipo text not null default 'texto', cuerpo text, media_path text, wa_id text unique, enviado_por text, estado text, created_at timestamptz not null default now());
