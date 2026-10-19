@@ -8019,6 +8019,14 @@ function formCobranzaMasiva(){
   if(!cand.length){ toast('No hay candidatos: sin deuda, sin teléfono válido o ya recordados esta semana.','error'); return; }
   window.__cmCand = cand;
   document.getElementById('cmBody').innerHTML = `
+    <div class="mb-2 flex items-center gap-2 text-xs">
+      <button onclick="cmSelTodos(true)" class="font-semibold text-[#4F86C6] hover:underline">Seleccionar todo</button>
+      <span class="text-slate-300">·</span>
+      <button onclick="cmSelTodos(false)" class="font-semibold text-slate-500 hover:underline">Deseleccionar todo</button>
+      <span class="text-slate-300">·</span>
+      <button onclick="cmSelVencidos()" class="font-semibold text-rose-600 hover:underline">Solo vencidos</button>
+      <span class="ml-auto text-slate-400">${cand.length} candidato(s)</span>
+    </div>
     <div class="rounded-lg ring-1 ring-slate-200 divide-y divide-slate-100">
       ${cand.map((x,i)=>`<label class="flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer hover:bg-slate-50">
         <input type="checkbox" class="cmChk h-4 w-4 accent-emerald-600" value="${i}" ${x.vencido?'checked':''} onchange="cmCount()">
@@ -8029,6 +8037,8 @@ function formCobranzaMasiva(){
   cmCount(); openModal('cobranzaMasivaModal');
 }
 function cmCount(){ const n=document.querySelectorAll('.cmChk:checked').length; const e=document.getElementById('cmN'); if(e) e.textContent=n; }
+function cmSelTodos(on){ document.querySelectorAll('.cmChk').forEach(c=>c.checked=on); cmCount(); }
+function cmSelVencidos(){ document.querySelectorAll('.cmChk').forEach(c=>{ c.checked = !!(window.__cmCand[+c.value]||{}).vencido; }); cmCount(); }
 async function enviarCobranzaMasiva(){
   if(!sbOn()){ toast('El envío masivo solo funciona en modo conectado.','error'); return; }
   const sel = [...document.querySelectorAll('.cmChk:checked')].map(c=>window.__cmCand[+c.value]).filter(Boolean);
