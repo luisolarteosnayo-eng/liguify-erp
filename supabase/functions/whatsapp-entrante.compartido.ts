@@ -61,7 +61,11 @@ Deno.serve(async (req) => {
       const binRes = await fetch(meta.url, { headers: { Authorization: `Bearer ${TOKEN}`, 'User-Agent': 'Liguify/1.0' } });
       if (!binRes.ok) { console.error('[media] download', binRes.status); return null; }
       const bin = await binRes.arrayBuffer();
-      const ext = (meta.mime_type || '').includes('pdf') ? 'pdf' : (meta.mime_type || '').includes('png') ? 'png' : 'jpg';
+      const mt = meta.mime_type || '';
+      const ext = mt.includes('pdf') ? 'pdf' : mt.includes('png') ? 'png'
+        : mt.includes('ogg') ? 'ogg' : mt.includes('mpeg') && m.type === 'audio' ? 'mp3'
+        : mt.includes('mp4') && m.type === 'audio' ? 'm4a' : mt.includes('aac') ? 'aac'
+        : mt.includes('amr') ? 'amr' : 'jpg';
       const ruta = `wsp/${convId}/${Date.now()}-${String(m.id).replace(/[^a-zA-Z0-9]/g, '').slice(-24)}.${ext}`;
       const up = await fetch(`${SUPABASE_URL}/storage/v1/object/${bucket}/${ruta}`, {
         method: 'POST', headers: { apikey: SRK, Authorization: `Bearer ${SRK}`, 'Content-Type': meta.mime_type || 'image/jpeg', 'x-upsert': 'true' }, body: bin,
@@ -138,11 +142,14 @@ Deno.serve(async (req) => {
             destino = tt > ta ? 'torneos' : 'academias';
           }
 
-          const tipo = m.type === 'text' ? 'texto' : m.type === 'image' ? 'imagen' : m.type === 'document' ? 'documento' : 'texto';
+          const tipo = m.type === 'text' ? 'texto' : m.type === 'image' ? 'imagen'
+            : m.type === 'document' ? 'documento' : m.type === 'audio' ? 'audio' : 'texto';
           const cuerpoBase = m.type === 'text' ? (m.text && m.text.body)
             : (m.type === 'image' || m.type === 'document') ? ((m[m.type] && m[m.type].caption) || null)
+            : m.type === 'audio' ? null
             : `(${m.type})`;
-          const resumen = tipo === 'texto' ? (cuerpoBase || '').slice(0, 120) : (tipo === 'imagen' ? '📷 Imagen' : '📄 Documento');
+          const resumen = tipo === 'texto' ? (cuerpoBase || '').slice(0, 120)
+            : tipo === 'imagen' ? '📷 Imagen' : tipo === 'audio' ? '🎵 Audio' : '📄 Documento';
           const ahora = new Date().toISOString();
 
           if (destino === 'torneos') {
@@ -153,7 +160,7 @@ Deno.serve(async (req) => {
             if (!conv) continue;
             if (!conv.club_id) await dbT('PATCH', `wsp_conversaciones?id=eq.${conv.id}`, { club_id: club.id }, 'return=minimal');
             const esPrimeroEn20h = !conv.ultimo_entrante_at || (Date.now() - new Date(conv.ultimo_entrante_at).getTime()) > 20 * 3600 * 1000;
-            const mediaPath = (m.type === 'image' || m.type === 'document') ? await guardarMedia(m, 'vouchers', conv.id) : null;
+            const mediaPath = (m.type === 'image' || m.type === 'document' || m.type === 'audio') ? await guardarMedia(m, 'vouchers', conv.id) : null;
             await dbT('POST', `wsp_mensajes?on_conflict=wa_id`, { conversacion_id: conv.id, org_id: orgId, direccion: 'in', tipo, cuerpo: cuerpoBase, media_path: mediaPath, wa_id: m.id }, 'return=minimal,resolution=ignore-duplicates');
             await dbT('PATCH', `wsp_conversaciones?id=eq.${conv.id}`, { ultimo_mensaje: resumen, ultimo_mensaje_at: ahora, ultimo_entrante_at: ahora, no_leidos: (+conv.no_leidos || 0) + 1, nombre: conv.nombre || nombrePerfil, marcada: 'sin_respuesta' }, 'return=minimal');
             if (esPrimeroEn20h && TOKEN && PHONE_ID) {
@@ -179,7 +186,7 @@ Deno.serve(async (req) => {
             conv.jugador_id = jugadorId;
           }
           const esPrimeroEn20h = !conv.ultimo_entrante_at || (Date.now() - new Date(conv.ultimo_entrante_at).getTime()) > 20 * 3600 * 1000;
-          const mediaPath = (m.type === 'image' || m.type === 'document') ? await guardarMedia(m, 'academias-vouchers', conv.id) : null;
+          const mediaPath = (m.type === 'image' || m.type === 'document' || m.type === 'audio') ? await guardarMedia(m, 'academias-vouchers', conv.id) : null;
           await dbA('POST', `wsp_mensajes?on_conflict=wa_id`, { conversacion_id: conv.id, academia_id: academiaId, direccion: 'in', tipo, cuerpo: cuerpoBase, media_path: mediaPath, wa_id: m.id }, 'return=minimal,resolution=ignore-duplicates');
           await dbA('PATCH', `wsp_conversaciones?id=eq.${conv.id}`, { ultimo_mensaje: resumen, ultimo_mensaje_at: ahora, ultimo_entrante_at: ahora, no_leidos: (+conv.no_leidos || 0) + 1, nombre: conv.nombre || nombrePerfil, marcada: 'sin_respuesta' }, 'return=minimal');
           if (esPrimeroEn20h && TOKEN && PHONE_ID && sedeW && sedeW.whatsapp_respuestas) {
