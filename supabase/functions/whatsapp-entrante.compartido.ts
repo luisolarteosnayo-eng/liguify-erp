@@ -74,8 +74,8 @@ Deno.serve(async (req) => {
       console.error('[media] upload', up.status, await up.text()); return null;
     } catch (e) { console.error('[media]', e); return null; }
   };
-  const enviarTexto = async (to: string, texto: string) => {
-    const r = await fetch(`${GRAPH}/${PHONE_ID}/messages`, {
+  const enviarTexto = async (to: string, texto: string, fromId?: string) => {
+    const r = await fetch(`${GRAPH}/${fromId || PHONE_ID}/messages`, {
       method: 'POST', headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'text', text: { body: texto } }),
     });
@@ -104,42 +104,54 @@ Deno.serve(async (req) => {
           const nombrePerfil = (v.contacts && v.contacts[0] && v.contacts[0].profile && v.contacts[0].profile.name) || null;
           const last9 = telefono.slice(-9);
 
+          // --- Enrutado DETERMINISTA por número RECEPTOR: cada app tiene su
+          // número de WhatsApp. Lo que llega al número de Torneos es Torneos;
+          // lo que llega al de Academias es Academias. Solo en TRANSICIÓN (un
+          // club escribiendo al número viejo) se usa el match por teléfono. ---
+          const PHONE_TOR = Deno.env.get('WHATSAPP_PHONE_ID_TORNEOS') || '';
+          const phoneRx = String((v.metadata && v.metadata.phone_number_id) || '');
+          const esNumeroTorneos = !!PHONE_TOR && phoneRx === PHONE_TOR;
+
           // --- Candidato ACADEMIAS: tutor por teléfono o, si no está en tutores,
           // la ficha del ALUMNO (datos migrados guardan el celular en el jugador) ---
           let tutor: any = null, jugadorId = null, sedeW: any = null, sedeId = null, acaId = null, tutorIdA = null;
-          const tuts = await dbA('GET', `tutores?select=id,academia_id,nombres&telefono_norm=like.*${last9}&limit=1`);
-          if (Array.isArray(tuts) && tuts[0]) {
-            tutor = tuts[0]; tutorIdA = tutor.id; acaId = tutor.academia_id;
-            const js = await dbA('GET', `jugadores?select=id,sede_id&tutor_id=eq.${tutor.id}&limit=1`);
-            if (Array.isArray(js) && js[0]) { jugadorId = js[0].id; sedeId = js[0].sede_id; }
-          } else {
-            const js = await dbA('GET', `jugadores?select=id,sede_id,tutor_id&telefono_norm=like.*${last9}&limit=1`);
-            if (Array.isArray(js) && js[0]) { jugadorId = js[0].id; sedeId = js[0].sede_id; tutorIdA = js[0].tutor_id || null; }
-          }
-          if (sedeId) {
-            const sds = await dbA('GET', `sedes?select=whatsapp_respuestas,nombre_sede,academia_id&id=eq.${sedeId}&limit=1`);
-            if (Array.isArray(sds) && sds[0]) { sedeW = sds[0]; if (!acaId) acaId = sds[0].academia_id; }
-          }
-          const matchAca = !!(tutor || jugadorId);
-          // --- Candidato TORNEOS: club por teléfono del club o del contacto de un equipo ---
-          let club: any = null;
-          const cls = await dbT('GET', `clubes?select=id,org_id,nombre,delegado&telefono_norm=like.*${last9}&limit=1`);
-          if (Array.isArray(cls) && cls[0]) club = cls[0];
-          else {
-            const eqs = await dbT('GET', `equipos?select=club_id&contacto_tel_norm=like.*${last9}&estado=eq.activo&limit=1`);
-            if (Array.isArray(eqs) && eqs[0]) {
-              const c2 = await dbT('GET', `clubes?select=id,org_id,nombre,delegado&id=eq.${eqs[0].club_id}&limit=1`);
-              if (Array.isArray(c2) && c2[0]) club = c2[0];
+          if (!esNumeroTorneos) {
+            const tuts = await dbA('GET', `tutores?select=id,academia_id,nombres&telefono_norm=like.*${last9}&limit=1`);
+            if (Array.isArray(tuts) && tuts[0]) {
+              tutor = tuts[0]; tutorIdA = tutor.id; acaId = tutor.academia_id;
+              const js = await dbA('GET', `jugadores?select=id,sede_id&tutor_id=eq.${tutor.id}&limit=1`);
+              if (Array.isArray(js) && js[0]) { jugadorId = js[0].id; sedeId = js[0].sede_id; }
+            } else {
+              const js = await dbA('GET', `jugadores?select=id,sede_id,tutor_id&telefono_norm=like.*${last9}&limit=1`);
+              if (Array.isArray(js) && js[0]) { jugadorId = js[0].id; sedeId = js[0].sede_id; tutorIdA = js[0].tutor_id || null; }
+            }
+            if (sedeId) {
+              const sds = await dbA('GET', `sedes?select=whatsapp_respuestas,nombre_sede,academia_id&id=eq.${sedeId}&limit=1`);
+              if (Array.isArray(sds) && sds[0]) { sedeW = sds[0]; if (!acaId) acaId = sds[0].academia_id; }
             }
           }
-          // --- Enrutar: si el teléfono está en ambas apps, gana la conversación más reciente ---
-          let destino: 'academias' | 'torneos' = matchAca ? 'academias' : (club ? 'torneos' : 'academias');
-          if (matchAca && club) {
-            const ca = (await dbA('GET', `wsp_conversaciones?select=ultimo_mensaje_at&telefono=eq.${telefono}&academia_id=eq.${acaId}&limit=1`) || [])[0];
-            const ct = (await dbT('GET', `wsp_conversaciones?select=ultimo_mensaje_at&telefono=eq.${telefono}&org_id=eq.${club.org_id}&limit=1`) || [])[0];
-            const ta = ca && ca.ultimo_mensaje_at ? new Date(ca.ultimo_mensaje_at).getTime() : 0;
-            const tt = ct && ct.ultimo_mensaje_at ? new Date(ct.ultimo_mensaje_at).getTime() : 0;
-            destino = tt > ta ? 'torneos' : 'academias';
+          const matchAca = !!(tutor || jugadorId);
+          // --- Candidato TORNEOS: su número propio o, en transición, un club
+          // que escribe al número viejo y no corresponde a ninguna academia ---
+          let club: any = null;
+          if (esNumeroTorneos || !matchAca) {
+            const cls = await dbT('GET', `clubes?select=id,org_id,nombre,delegado&telefono_norm=like.*${last9}&limit=1`);
+            if (Array.isArray(cls) && cls[0]) club = cls[0];
+            else {
+              const eqs = await dbT('GET', `equipos?select=club_id&contacto_tel_norm=like.*${last9}&estado=eq.activo&limit=1`);
+              if (Array.isArray(eqs) && eqs[0]) {
+                const c2 = await dbT('GET', `clubes?select=id,org_id,nombre,delegado&id=eq.${eqs[0].club_id}&limit=1`);
+                if (Array.isArray(c2) && c2[0]) club = c2[0];
+              }
+            }
+          }
+          const destino: 'academias' | 'torneos' = esNumeroTorneos ? 'torneos'
+            : (matchAca ? 'academias' : (club ? 'torneos' : 'academias'));
+          if (destino === 'torneos' && !club) {
+            // Número de Torneos con remitente no registrado como club: se deja
+            // constancia en el log y no se crea conversación (org desconocida)
+            console.warn('[torneos] mensaje de numero no registrado', telefono);
+            continue;
           }
 
           const tipo = m.type === 'text' ? 'texto' : m.type === 'image' ? 'imagen'
@@ -168,7 +180,7 @@ Deno.serve(async (req) => {
               if (org && org.whatsapp_respuestas) {
                 const texto = `Gracias por tu mensaje 🙌. Este es el canal de avisos de ${org.nombre || 'la organización'}. ` +
                   `Tu mensaje fue registrado; para una atención más rápida también puedes escribirnos al WhatsApp del torneo: ${org.whatsapp_respuestas}`;
-                const r = await enviarTexto(telefono, texto);
+                const r = await enviarTexto(telefono, texto, phoneRx);
                 await dbT('POST', 'wsp_mensajes', { conversacion_id: conv.id, org_id: orgId, direccion: 'out', tipo: 'texto', cuerpo: texto, wa_id: r.waId || null, enviado_por: 'auto', estado: r.ok ? 'sent' : 'failed' }, 'return=minimal');
               }
             }
@@ -193,7 +205,7 @@ Deno.serve(async (req) => {
             try {
               const texto = `Gracias por tu mensaje 🙌. Este es el canal de avisos de ${sedeW.nombre_sede || 'la academia'}. ` +
                 `Tu mensaje fue registrado; para una atención más rápida también puedes escribirnos al WhatsApp de la sede: ${sedeW.whatsapp_respuestas}`;
-              const r = await enviarTexto(telefono, texto);
+              const r = await enviarTexto(telefono, texto, phoneRx);
               await dbA('POST', 'wsp_mensajes', { conversacion_id: conv.id, academia_id: academiaId, direccion: 'out', tipo: 'texto', cuerpo: texto, wa_id: r.waId || null, enviado_por: 'auto', estado: r.ok ? 'sent' : 'failed' }, 'return=minimal');
             } catch (e) { console.error('[auto-reply]', e); }
           }

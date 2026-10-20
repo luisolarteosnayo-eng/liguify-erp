@@ -10,7 +10,8 @@
 // DESPLIEGUE: Edge Functions → Deploy new function → nombre: torneos-whatsapp-enviar
 // (Verify JWT activado: siempre se llama con la sesión del usuario).
 //
-// SECRETOS (ya existen por Academias): WHATSAPP_TOKEN · WHATSAPP_PHONE_ID
+// SECRETOS: WHATSAPP_TOKEN (compartido, mismo WABA) · WHATSAPP_PHONE_ID_TORNEOS
+//   (el numero propio del ERP: +51 986 205 553; si falta, cae al de Academias)
 //   WHATSAPP_TPL_COBRANZA_TORNEOS (opcional, default 'cobranza_torneos'; en
 //   pruebas con el número de test de Meta usar 'hello_world')
 // Plantilla cobranza_torneos (es_PE), 5 variables:
@@ -33,8 +34,8 @@ Deno.serve(async (req) => {
     const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
     const SRK = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const TOKEN = Deno.env.get('WHATSAPP_TOKEN');
-    const PHONE_ID = Deno.env.get('WHATSAPP_PHONE_ID');
-    if (!TOKEN || !PHONE_ID) return json({ error: 'Faltan los secretos WHATSAPP_TOKEN / WHATSAPP_PHONE_ID' }, 500);
+    const PHONE_ID = Deno.env.get('WHATSAPP_PHONE_ID_TORNEOS') || Deno.env.get('WHATSAPP_PHONE_ID');
+    if (!TOKEN || !PHONE_ID) return json({ error: 'Faltan los secretos WHATSAPP_TOKEN / WHATSAPP_PHONE_ID_TORNEOS' }, 500);
     const auth = req.headers.get('Authorization') || '';
     if (!auth) return json({ error: 'Falta la sesión del usuario' }, 401);
 
