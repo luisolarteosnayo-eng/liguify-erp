@@ -116,7 +116,9 @@ Deno.serve(async (req) => {
           // la ficha del ALUMNO (datos migrados guardan el celular en el jugador) ---
           let tutor: any = null, jugadorId = null, sedeW: any = null, sedeId = null, acaId = null, tutorIdA = null;
           if (!esNumeroTorneos) {
-            const tuts = await dbA('GET', `tutores?select=id,academia_id,nombres&telefono_norm=like.*${last9}&limit=1`);
+            // El tutor puede tener DOS celulares (papá y mamá): la respuesta de
+            // cualquiera de los dos cae en la misma conversación familiar
+            const tuts = await dbA('GET', `tutores?select=id,academia_id,nombres&or=(telefono_norm.like.*${last9},telefono2_norm.like.*${last9})&limit=1`);
             if (Array.isArray(tuts) && tuts[0]) {
               tutor = tuts[0]; tutorIdA = tutor.id; acaId = tutor.academia_id;
               // Preferir al hijo ACTIVO (un tutor puede tener hermanos: uno de
