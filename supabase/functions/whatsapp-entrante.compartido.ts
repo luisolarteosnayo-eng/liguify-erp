@@ -119,7 +119,10 @@ Deno.serve(async (req) => {
             const tuts = await dbA('GET', `tutores?select=id,academia_id,nombres&telefono_norm=like.*${last9}&limit=1`);
             if (Array.isArray(tuts) && tuts[0]) {
               tutor = tuts[0]; tutorIdA = tutor.id; acaId = tutor.academia_id;
-              const js = await dbA('GET', `jugadores?select=id,sede_id&tutor_id=eq.${tutor.id}&limit=1`);
+              // Preferir al hijo ACTIVO (un tutor puede tener hermanos: uno de
+              // baja y otro activo; la conversación se vincula al vigente)
+              let js = await dbA('GET', `jugadores?select=id,sede_id&tutor_id=eq.${tutor.id}&estado_alumno=neq.baja&limit=1`);
+              if (!Array.isArray(js) || !js[0]) js = await dbA('GET', `jugadores?select=id,sede_id&tutor_id=eq.${tutor.id}&limit=1`);
               if (Array.isArray(js) && js[0]) { jugadorId = js[0].id; sedeId = js[0].sede_id; }
             } else {
               const js = await dbA('GET', `jugadores?select=id,sede_id,tutor_id&telefono_norm=like.*${last9}&limit=1`);
