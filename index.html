@@ -3907,6 +3907,7 @@ function colaEmision(tipoSel){
           <option value="boleta" ${cls==='boleta'?'selected':''}>Boleta</option>
           <option value="factura" ${cls==='factura'?'selected':''} ${puedeFactura?'':'disabled'}>Factura${puedeFactura?'':' (sin RUC)'}</option>
         </select>
+        <button type="button" onclick="vincularComprobanteExistente(${p.id})" title="El documento ya salió en Nubefact pero no quedó registrado aquí: ingresa su número para vincularlo a este pago sin volver a emitir" class="mt-1 block text-[11px] text-[#4F86C6] hover:underline">🔗 Vincular N° emitido</button>
       </td>
       <td class="py-2.5 px-3 text-sm">${cliente}</td>
     </tr>`;
@@ -3955,6 +3956,38 @@ function emCount(){
   const t = document.getElementById('emCountTxt'); if(t) t.textContent = n ? `${n} seleccionado(s)` : '';
   const b = document.getElementById('emBtnEmitir'); if(b) b.disabled = n===0;
 }
+// Vincular un pago con un documento YA emitido en Nubefact que no quedó
+// registrado en el sistema: consulta el serie-número, muestra a quién salió y
+// por cuánto, y al confirmar lo asigna al pago sin reemitir.
+async function vincularComprobanteExistente(pid){
+  const p = S.pagos.find(x=>x.id===pid);
+  if(!p || p.docTipo) return;
+  if(!sbOn()){ toast('Requiere conexión a la base de datos.','error'); return; }
+  const o = _docOrg();
+  const tipo = document.getElementById('emTipo_'+pid)?.value || clasificaDoc(p);
+  if(tipo==='recibo'){ toast('Los recibos simples no se vinculan: usa Procesar seleccionados.','error'); return; }
+  const serie = tipo==='boleta' ? o.serieBoleta : o.serieFactura;
+  if(!serie){ toast(`Configura la serie de ${tipo} en Medios de Pago → Facturación.`,'error'); return; }
+  const num = prompt(`Número de la ${tipo} ya emitida en Nubefact (serie ${serie}) que corresponde a este pago:`);
+  if(!num || !(+num>0)) return;
+  try{
+    const r = await SB().data.emitirComprobante({pago_id:pid, tipo, serie, numero:+num, consultar:true});
+    const coincide = r.total!=null && Math.abs(r.total-(+p.monto||0))<0.01;
+    if(!confirm(`Nubefact ${serie}-${num}: ${r.cliente||'(sin denominación)'} · ${fmt(r.total||0)}`
+      +`\nPago a vincular: ${fmt(p.monto)}`
+      +(coincide?'':'\n\n⚠ LOS MONTOS NO COINCIDEN: verifica que sea el documento correcto.')
+      +`\n\n¿Vincular este documento al pago?`)) return;
+    Object.assign(p,{docTipo:tipo,docSerie:serie,docNumero:+num,docPdfUrl:r.pdf||null,docXmlUrl:r.xml||null,sunatEstado:'emitido',sunatError:null,emitidoAt:new Date().toISOString()});
+    await SB().data.actualizarPago(pid,{doc_tipo:tipo,doc_serie:serie,doc_numero:+num,doc_pdf_url:p.docPdfUrl,doc_xml_url:p.docXmlUrl,sunat_estado:'emitido',sunat_error:null,emitido_at:p.emitidoAt});
+    // El correlativo local nunca debe quedar por detrás de un número ya usado
+    const campos = {};
+    if(tipo==='boleta' && (o.correlativoBoleta||1)<=+num){ o.correlativoBoleta=+num+1; campos.correlativo_boleta=o.correlativoBoleta; }
+    if(tipo==='factura' && (o.correlativoFactura||1)<=+num){ o.correlativoFactura=+num+1; campos.correlativo_factura=o.correlativoFactura; }
+    if(Object.keys(campos).length) await SB().data.actualizarOrganizacion(o.id,campos);
+    toast(`🔗 ${serie}-${num} vinculado al pago.`,'success');
+    colaEmision();
+  }catch(e){ toast('No se pudo vincular: '+e.message,'error'); }
+}
 function emitirSeleccionados(){
   EM_PENDIENTE = [...document.querySelectorAll('.emChk:checked')].map(c=>{ const id=+c.dataset.id; return {pid:id, tipo:document.getElementById('emTipo_'+id)?.value||'recibo'}; });
   if(!EM_PENDIENTE.length){ toast('Selecciona al menos un pago.','error'); return; }
@@ -3980,21 +4013,54 @@ async function ejecutarEmision(){
       continue;
     }
     const serie = tipo==='boleta' ? o.serieBoleta : o.serieFactura;
-    const num   = tipo==='boleta' ? (o.correlativoBoleta||1) : (o.correlativoFactura||1);
+    let num     = tipo==='boleta' ? (o.correlativoBoleta||1) : (o.correlativoFactura||1);
     if(!sbOn()){ errores++; primerError = primerError||'La emisión a SUNAT requiere conexión a la base de datos.'; continue; }
+    let r = null;
     try{
-      const r = await SB().data.emitirComprobante({pago_id:pid, tipo, serie, numero:num});
-      Object.assign(p,{docTipo:tipo,docSerie:serie,docNumero:num,docPdfUrl:r.pdf||null,docXmlUrl:r.xml||null,sunatEstado:'emitido',sunatError:null,emitidoAt:new Date().toISOString()});
-      if(tipo==='boleta') o.correlativoBoleta=num+1; else o.correlativoFactura=num+1;
-      sunat++;
-      await SB().data.actualizarPago(pid,{doc_tipo:tipo,doc_serie:serie,doc_numero:num,doc_pdf_url:p.docPdfUrl,doc_xml_url:p.docXmlUrl,sunat_estado:'emitido',sunat_error:null,emitido_at:p.emitidoAt});
-      await SB().data.actualizarOrganizacion(o.id, tipo==='boleta'?{correlativo_boleta:o.correlativoBoleta}:{correlativo_factura:o.correlativoFactura});
+      // Si Nubefact responde que el serie-número ya existe: se ADOPTA ese
+      // comprobante cuando es el mismo pago (mismo total y mismo DNI/RUC —
+      // emisión previa cuyo registro se perdió), o se salta al siguiente
+      // número libre si pertenece a otro documento (correlativo desfasado)
+      let saltos = 0;
+      for(;;){
+        r = await SB().data.emitirComprobante({pago_id:pid, tipo, serie, numero:num});
+        if(r && r.ya_existia){
+          const c = clubById(p.clubId);
+          const docEsperado = tipo==='factura' ? String((c&&c.ruc)||'-').trim()
+            : (c && /^\d{8}$/.test(String(c.dni||'').trim())) ? String(c.dni).trim() : '-';
+          const docExistente = r.cliente_doc_existente==null ? null : (String(r.cliente_doc_existente).trim()||'-');
+          const mismo = r.total_existente!=null && Math.abs(r.total_existente-(+p.monto||0))<0.01
+            && (docExistente===null || docExistente===docEsperado);
+          if(!mismo){
+            if(++saltos>50) throw new Error(`La serie ${serie} tiene demasiados números ya ocupados en Nubefact: ajusta el correlativo en Configuración → Medios de Pago → Facturación.`);
+            num++; continue;   // número de otro documento: probar el siguiente
+          }
+          // mismo total y cliente → es este pago: se vincula el comprobante ya emitido
+        }
+        break;
+      }
     }catch(e){
       errores++; primerError = primerError||e.message;
       p.sunatEstado='error'; p.sunatError=e.message;   // el número NO se consume: se puede reintentar
       try{ await SB().data.actualizarPago(pid,{sunat_estado:'error',sunat_error:e.message}); }catch(_){}
+      await new Promise(rs=>setTimeout(rs,250));
+      continue;
     }
-    await new Promise(r=>setTimeout(r,250));
+    Object.assign(p,{docTipo:tipo,docSerie:serie,docNumero:num,docPdfUrl:r.pdf||null,docXmlUrl:r.xml||null,sunatEstado:'emitido',sunatError:null,emitidoAt:new Date().toISOString()});
+    if(tipo==='boleta') o.correlativoBoleta=num+1; else o.correlativoFactura=num+1;
+    sunat++;
+    try{
+      // CRÍTICO: el registro del documento emitido debe llegar a la BD; si
+      // falla, el lote SE DETIENE (seguir emitiendo a ciegas crea documentos
+      // en Nubefact sin registro local)
+      await SB().data.actualizarPago(pid,{doc_tipo:tipo,doc_serie:serie,doc_numero:num,doc_pdf_url:p.docPdfUrl,doc_xml_url:p.docXmlUrl,sunat_estado:'emitido',sunat_error:null,emitido_at:p.emitidoAt});
+      await SB().data.actualizarOrganizacion(o.id, tipo==='boleta'?{correlativo_boleta:o.correlativoBoleta}:{correlativo_factura:o.correlativoFactura});
+    }catch(e){
+      errores++;
+      primerError = `⚠ La ${tipo} ${serie}-${num} SÍ se emitió en Nubefact pero NO se pudo guardar su registro (${e.message}). El lote se detuvo: revisa tu conexión y usa "🔗 Vincular N° emitido" con ese número si el pago sigue sin documento.`;
+      break;
+    }
+    await new Promise(rs=>setTimeout(rs,250));
   }
   if(prog) prog.textContent='';
   colaEmision();   // refresca la pantalla: los emitidos salen de la cola
