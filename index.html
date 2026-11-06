@@ -6157,7 +6157,7 @@ function openAddClasifEquipo(){
   openModal('addClasifEquipoModal');
 }
 
-function guardarClasifEquipo(){
+async function guardarClasifEquipo(){
   const clasifId = parseInt(document.getElementById('aceClasif').value)||0;
   const [catIdStr, modalidad] = (document.getElementById('aceCat').value||'|').split('|');
   const catId = parseInt(catIdStr)||0;
@@ -6172,13 +6172,16 @@ function guardarClasifEquipo(){
   const eq = {id:S.nextId++, torneoId:_clasifTorneoId, clubId, catId, modalidad:modalidad||'', nombre:'',
     inscripcion:0, arbitraje:0, fechas:0, monto:0, invitado:false, estado:'activo',
     createdBy:S.usuarioActual?.id, clasificatorioId:clasifId, clasifPrecio:precio, orgId:myOrgId()};
-  S.equipos.push(eq);
+  // Grabar PRIMERO: solo aparece si la base lo aceptó.
   if(sbOn()){
-    SB().data.inscribirEquipo({torneo_id:_clasifTorneoId, club_id:clubId, cat_id:catId, modalidad:modalidad||'', nombre:'',
-      inscripcion:0, arbitraje:0, fechas:0, monto:0, invitado:false, estado:'activo',
-      clasificatorio_id:clasifId, clasif_precio:precio, org_id:myOrgId()})
-      .then(r=>{ eq.id=r.id; }).catch(e=>toast('⚠ '+e.message,'error'));
+    try {
+      const r = await SB().data.inscribirEquipo({torneo_id:_clasifTorneoId, club_id:clubId, cat_id:catId, modalidad:modalidad||'', nombre:'',
+        inscripcion:0, arbitraje:0, fechas:0, monto:0, invitado:false, estado:'activo',
+        clasificatorio_id:clasifId, clasif_precio:precio, org_id:myOrgId()});
+      eq.id = r.id;
+    } catch(e){ avisoNoGuardado('el equipo clasificado de "'+(clubById(clubId)?.nombre||'club')+'"', e); return; }
   }
+  S.equipos.push(eq);
   closeModal('addClasifEquipoModal');
   renderClasifTorneo();
   if(typeof renderP1Detalle==='function') renderP1Detalle();
@@ -9202,7 +9205,13 @@ async function crearClub() {
       try {
         const c = await SB().data.crearClub({nombre,delegado:nuevo.delegado,telefono:nuevo.telefono,provincia:nuevo.provincia,email:email||null,logo_url:logoUrl,dni:fis.dni||null,ruc:fis.ruc||null,razon_social:fis.razonSocial||null,org_id:myOrgId()});
         nuevo.id = c.id;
-      } catch(e){ toast('⚠ Error al guardar club: '+e.message,'error'); }
+      } catch(e){
+        // El club NO se grabó: no puede quedar un club "fantasma" con id local, porque
+        // todo equipo que se le inscriba fallaría después por llave foránea.
+        S.clubes = S.clubes.filter(x=>x!==nuevo);
+        avisoNoGuardado('el club "'+nombre+'"', e);
+        return;
+      }
     }
     toast(`Club "${nombre}" creado ✓`,'success');
   }
@@ -9224,13 +9233,15 @@ async function crearClub() {
     const arb    = soloInsc ? 0 : (tc?.arbitraje || 0);
     const fechas = soloInsc ? 0 : (tc?.fechas || 0);
     const monto  = soloInsc ? insc : insc + arb * fechas;
-    const localEq = {id:S.nextId++,torneoId:S.torneoSelId,clubId:nuevo.id,catId,nombre:'',inscripcion:insc,arbitraje:arb,fechas,monto,invitado:false,estado:'activo',createdBy:S.usuarioActual?.id,orgId:myOrgId()};
-    S.equipos.push(localEq);
+    const localEq = {id:S.nextId++,torneoId:S.torneoSelId,clubId:nuevo.id,catId,modalidad:tc?.modalidad||'',nombre:'',inscripcion:insc,arbitraje:arb,fechas,monto,invitado:false,estado:'activo',createdBy:S.usuarioActual?.id,orgId:myOrgId()};
+    // Grabar PRIMERO: el equipo solo aparece en pantalla si la base lo aceptó.
     if(sbOn()){
-      SB().data.inscribirEquipo({torneo_id:S.torneoSelId,club_id:nuevo.id,cat_id:catId,nombre:'',inscripcion:insc,arbitraje:arb,fechas,monto,invitado:false,estado:'activo',org_id:myOrgId()})
-        .then(eq=>{ localEq.id=eq.id; })
-        .catch(e=>toast('⚠ Error al inscribir: '+e.message,'error'));
+      try {
+        const eq = await SB().data.inscribirEquipo({torneo_id:S.torneoSelId,club_id:nuevo.id,cat_id:catId,modalidad:tc?.modalidad||'',nombre:'',inscripcion:insc,arbitraje:arb,fechas,monto,invitado:false,estado:'activo',org_id:myOrgId()});
+        localEq.id = eq.id;
+      } catch(e){ avisoNoGuardado('la inscripción de "'+nuevo.nombre+'"', e); renderP1Detalle(); return; }
     }
+    S.equipos.push(localEq);
     renderP1Detalle();
     setTimeout(() => openEstadoCuenta(nuevo.id, S.torneoSelId), 120);
   }
@@ -9718,7 +9729,28 @@ function acOnCatChange() {
 
 let _acClubId = null;
 
-function addCategoria() {
+// Aviso PERSISTENTE (no un toast que desaparece): algo no se grabó en la base de datos.
+// Se queda en pantalla hasta que el usuario lo cierre, para que un fallo nunca pase inadvertido.
+function avisoNoGuardado(que, err){
+  const msg = (err && (err.message||err)) || 'error desconocido';
+  console.error('[NO GUARDADO]', que, err);
+  let box = document.getElementById('avisoNoGuardado');
+  if(!box){
+    box = document.createElement('div'); box.id='avisoNoGuardado';
+    box.className='fixed top-4 left-1/2 -translate-x-1/2 z-[200] w-[min(92vw,560px)] space-y-2';
+    document.body.appendChild(box);
+  }
+  const item = document.createElement('div');
+  item.className='bg-rose-600 text-white rounded-xl shadow-2xl px-4 py-3 flex items-start gap-3';
+  item.innerHTML = `<span class="text-xl leading-none">⚠️</span>
+    <div class="flex-1 text-sm"><b>NO SE GUARDÓ ${String(que).replace(/</g,'&lt;')}</b><br>
+    <span class="text-rose-100 text-xs">${String(msg).replace(/</g,'&lt;')}</span><br>
+    <span class="text-rose-100 text-xs">No aparece en el sistema. Revisa tu conexión o vuelve a iniciar sesión y regístralo otra vez.</span></div>
+    <button class="text-white/80 hover:text-white text-lg leading-none" onclick="this.parentElement.remove()">✕</button>`;
+  box.appendChild(item);
+}
+
+async function addCategoria() {
   const clubId = _acClubId || parseInt(document.getElementById('acClub').value);
   const [catIdStr, catMod] = (document.getElementById('acCat').value||'|').split('|');
   const catId = parseInt(catIdStr);
@@ -9739,6 +9771,19 @@ function addCategoria() {
   if(existe){ toast('Ya existe un equipo con ese nombre en esta categoría/modalidad. Asigna un nombre diferente (ej. "Equipo B").'); return; }
   const montoFinal = insc + arb * fechas;
   const localEq = {id:S.nextId++,torneoId,clubId,catId,modalidad,nombre,contacto,contactoTelefono:contactoTel,inscripcion:insc,arbitraje:arb,fechas,monto:montoFinal,invitado:false,estado:'activo',createdBy:S.usuarioActual?.id,orgId:myOrgId()};
+  // Grabar PRIMERO en la base. Solo si se guardó aparece en pantalla; si falla, el modal
+  // queda abierto con los datos y se muestra un aviso persistente (nunca un "inscrito ✓" falso).
+  if(sbOn()){
+    const btn = document.querySelector('#addCatModal button[onclick="addCategoria()"]');
+    if(btn){ if(btn.disabled) return; btn.disabled = true; btn.dataset.txt = btn.textContent; btn.textContent = 'Guardando…'; }
+    try {
+      const eq = await SB().data.inscribirEquipo({torneo_id:torneoId,club_id:clubId,cat_id:catId,modalidad,nombre,contacto,contacto_telefono:contactoTel,inscripcion:insc,arbitraje:arb,fechas,monto:montoFinal,invitado:false,estado:'activo',org_id:myOrgId()});
+      localEq.id = eq.id;
+    } catch(e){
+      avisoNoGuardado('el equipo de "'+(clubById(clubId)?.nombre||'club')+'" en '+(catById(catId)?.nombre||'la categoría'), e);
+      return;
+    } finally { if(btn){ btn.disabled = false; btn.textContent = btn.dataset.txt || 'Inscribir Equipo'; } }
+  }
   S.equipos.push(localEq);
   document.getElementById('acClub').disabled = false;
   closeModal('addCatModal');
@@ -9748,11 +9793,6 @@ function addCategoria() {
   }
   const club = clubById(clubId);
   toast(`${nombre||club?.nombre} inscrito en ${catById(catId)?.nombre}${modalidad?' '+modalidad:''} ✓`);
-  if(sbOn()){
-    SB().data.inscribirEquipo({torneo_id:torneoId,club_id:clubId,cat_id:catId,modalidad,nombre,contacto,contacto_telefono:contactoTel,inscripcion:insc,arbitraje:arb,fechas,monto:montoFinal,invitado:false,estado:'activo',org_id:myOrgId()})
-      .then(eq=>{ localEq.id=eq.id; })
-      .catch(e=>{ toast('⚠ Error al guardar equipo: '+e.message,'error'); S.equipos=S.equipos.filter(x=>x!==localEq); renderP1Detalle(); });
-  }
 }
 
 // ============================================================================
