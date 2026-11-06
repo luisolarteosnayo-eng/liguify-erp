@@ -72,12 +72,26 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
     const tablas = ['organizaciones','profiles','categorias','complejos','medios_pago',
                     'clubes','torneos','torneo_categorias','equipos','prospectos','pagos','conceptos','ingresos_fecha',
                     'proveedores','costos','clasificatorios'];
-    const out = {};
-    for (const t of tablas) {
-      const { data, error } = await sb.from(t).select('*');
-      if (error) { console.error('[Liguify] load', t, error); out[t] = []; }
-      else out[t] = data;
-    }
+    // PostgREST devuelve como máximo 1000 filas por consulta: una tabla que supera ese
+    // tope se truncaba en silencio (los equipos más recientes "desaparecían" de pantalla
+    // aunque estaban en la base). Se lee por páginas, ordenado por id, hasta agotar.
+    const PAG = 1000;
+    const leerTodo = async (t) => {
+      const filas = [];
+      for (let desde = 0; ; desde += PAG) {
+        const { data, error } = await sb.from(t).select('*').order('id', { ascending: true }).range(desde, desde + PAG - 1);
+        if (error) throw error;
+        filas.push(...(data || []));
+        if (!data || data.length < PAG) break;
+      }
+      return filas;
+    };
+    const out = {}; const fallidas = [];
+    await Promise.all(tablas.map(async (t) => {
+      try { out[t] = await leerTodo(t); }
+      catch (error) { console.error('[Liguify] load', t, error); out[t] = []; fallidas.push(t); }
+    }));
+    out.__fallidas = fallidas;   // tablas que no se pudieron leer (para avisar en vez de mostrar datos incompletos)
     return out;
   }
 
@@ -9862,6 +9876,13 @@ function _mapUser(u){ return {id:u.id,nombre:u.nombre,email:u.email,rol:u.rol,or
 
 async function sbHydrate(){
   const d = await SB().data.loadAll();
+  // Si alguna tabla no cargó, avisar de forma persistente: nunca mostrar datos incompletos como si fueran todo.
+  if(d.__fallidas && d.__fallidas.length && typeof avisoNoGuardado==='function'){
+    const box = document.getElementById('avisoNoGuardado') || (()=>{ const b=document.createElement('div'); b.id='avisoNoGuardado'; b.className='fixed top-4 left-1/2 -translate-x-1/2 z-[200] w-[min(92vw,560px)] space-y-2'; document.body.appendChild(b); return b; })();
+    const it = document.createElement('div'); it.className='bg-amber-600 text-white rounded-xl shadow-2xl px-4 py-3 flex items-start gap-3';
+    it.innerHTML = `<span class="text-xl leading-none">⚠️</span><div class="flex-1 text-sm"><b>Datos incompletos</b><br><span class="text-xs">No se pudo cargar: ${d.__fallidas.join(', ')}. Recarga la página (Ctrl+F5); si persiste, vuelve a iniciar sesión.</span></div><button class="text-white/80 hover:text-white text-lg leading-none" onclick="this.parentElement.remove()">✕</button>`;
+    box.appendChild(it);
+  }
   const catNombre = id => (d.categorias||[]).find(c=>c.id===id)?.nombre || '';
   S.organizaciones = (d.organizaciones||[]).map(_mapOrg);
   S.usuarios       = (d.profiles||[]).map(_mapUser);
