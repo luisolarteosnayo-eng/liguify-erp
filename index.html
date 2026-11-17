@@ -1232,10 +1232,15 @@ window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
               <p class="text-[11px]">o haz clic para seleccionar</p>
               <input type="file" id="vfileInput" accept="image/*,application/pdf" class="hidden">
             </label>
-            <div id="vpreview" class="hidden flex items-center gap-2 mt-2 bg-slate-50 rounded-lg p-2">
-              <div class="w-9 h-9 rounded bg-slate-200 flex items-center justify-center text-[10px] text-slate-500 shrink-0">IMG</div>
-              <span class="text-xs flex-1 truncate" id="vname">voucher.jpg</span>
-              <button onclick="removeVoucher()" class="text-slate-400 hover:text-rose-500 shrink-0 text-lg leading-none">✕</button>
+            <div id="vpreview" class="hidden mt-2 bg-slate-50 border border-slate-200 rounded-lg p-2">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-xs flex-1 truncate font-medium text-slate-600" id="vname">voucher.jpg</span>
+                <button type="button" id="vZoomBtn" onclick="abrirZoomVoucherLocal()" class="text-xs font-semibold text-[#4F86C6] hover:underline shrink-0">🔍 Ampliar</button>
+                <button type="button" onclick="removeVoucher()" class="text-slate-400 hover:text-rose-500 shrink-0 text-lg leading-none" title="Quitar voucher">✕</button>
+              </div>
+              <img id="vPrevImg" src="" alt="Vista previa del voucher" onclick="abrirZoomVoucherLocal()" title="Clic para ampliar"
+                   class="hidden w-full max-h-80 object-contain rounded-md bg-slate-900 cursor-zoom-in">
+              <div id="vPrevDoc" class="hidden text-center text-xs text-slate-500 py-6 border border-dashed border-slate-300 rounded-md">📄 Archivo adjunto (sin vista previa de imagen)</div>
             </div>
             <div id="verr" class="hidden text-xs text-rose-500 mt-1">⚠ El voucher es obligatorio para enviar a Tesorería.</div>
             <button onclick="registrarPago()" class="w-full mt-5 bg-[#18324F] text-white font-semibold text-sm py-3 rounded-lg hover:bg-[#0f253d] transition shadow-sm">
@@ -7019,20 +7024,27 @@ function onVoucherSelected(input) {
   document.getElementById('vzone').classList.add('hidden');
   document.getElementById('vpreview').classList.remove('hidden');
   document.getElementById('verr').classList.add('hidden');
-  // Preview de imagen
-  if(file.type.startsWith('image/')){
-    const reader = new FileReader();
-    reader.onload = e => {
-      const img = document.querySelector('#vpreview .w-9');
-      if(img) { img.style.backgroundImage=`url(${e.target.result})`; img.style.backgroundSize='cover'; img.textContent=''; }
-    };
-    reader.readAsDataURL(file);
-  }
+  // Vista previa real del voucher (clic = zoom), para leer monto, fecha y N° de operación antes de registrar
+  const img = document.getElementById('vPrevImg'), doc = document.getElementById('vPrevDoc'), zb = document.getElementById('vZoomBtn');
+  if(_voucherPrevUrl){ URL.revokeObjectURL(_voucherPrevUrl); _voucherPrevUrl = null; }
+  const esImg = file.type.startsWith('image/');
+  if(esImg){ _voucherPrevUrl = URL.createObjectURL(file); img.src = _voucherPrevUrl; }
+  img.classList.toggle('hidden', !esImg); zb.classList.toggle('hidden', !esImg); doc.classList.toggle('hidden', esImg);
+}
+let _voucherPrevUrl = null;
+// Abre el voucher recién adjuntado en el mismo visor con zoom de Aprobar Pagos
+function abrirZoomVoucherLocal(){
+  if(!_voucherPrevUrl) return;
+  document.getElementById('vzImg').src = _voucherPrevUrl;
+  _vzEscala = 1; _vzAplicar();
+  document.getElementById('voucherZoom').classList.remove('hidden');
 }
 
 function removeVoucher() {
   _voucherFile = null;
   S.voucherUploaded = false;
+  if(_voucherPrevUrl){ URL.revokeObjectURL(_voucherPrevUrl); _voucherPrevUrl = null; }
+  const _pi = document.getElementById('vPrevImg'); if(_pi){ _pi.src=''; _pi.classList.add('hidden'); }
   document.getElementById('vzone').classList.remove('hidden');
   document.getElementById('vpreview').classList.add('hidden');
   const input = document.getElementById('vfileInput');
